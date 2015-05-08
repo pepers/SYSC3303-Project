@@ -17,6 +17,7 @@ README
 
 
 AUTHORS
+	Adhiraj Chakraborty
 	Anuj Dalal
 	Hidara Abdallah
 	Matthew Pepers
