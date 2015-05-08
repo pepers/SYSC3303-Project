@@ -1,4 +1,4 @@
-  _______     _______  _____ ____ ____   ___ ____  
+   _______     _______  _____ ____ ____   ___ ____  
   / ____\ \   / / ____|/ ____|___ \___ \ / _ \___ \ 
  | (___  \ \_/ / (___ | |      __) |__) | | | |__) |
   \___ \  \   / \___ \| |     |__ <|__ <| | | |__ < 
@@ -33,7 +33,7 @@ FILES
 
 INSTALL/RUN
 	- create a new Java Project in Eclipse, named 
-  'SYSC3303 Project' (without the quotes)
+	'SYSC3303 Project' (without the quotes)
 	- add Client.java, Server.java, and ErrorSim.java
 	to the project
 
