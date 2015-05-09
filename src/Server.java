@@ -45,7 +45,8 @@ public class Server {
 					
 				// create new thread to communicate with Client and transfer file
 				// pass it datagram that was received
-				Thread clientConnectionThread = new Thread(new ClientConnection(data));
+				Thread clientConnectionThread = new Thread(
+						new ClientConnection(receivePacket));
 				clientConnectionThread.start();
 					
 			} else if (data[1] == 2 && data[0] == 0) {	// valid WRQ
@@ -53,7 +54,8 @@ public class Server {
 				
 				// create new thread to communicate with Client and transfer file
 				// pass it datagram that was received
-				Thread clientConnectionThread = new Thread(new ClientConnection(data));
+				Thread clientConnectionThread = new Thread(
+						new ClientConnection(receivePacket));
 				clientConnectionThread.start();
 				
 			} else {					// invalid packet
@@ -69,7 +71,7 @@ class ClientConnection implements Runnable {
 	DatagramSocket sendSocket;
 	
 
-	public ClientConnection(byte data[]) {
+	public ClientConnection(DatagramPacket receivePacket) {
 	
 	}
 	
