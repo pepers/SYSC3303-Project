@@ -94,23 +94,51 @@ class ClientConnection implements Runnable {
 	}
 	
 	public void run() {
-  	  // to get rid of trailing null bytes from buffer	      
-  	  byte received[] = new byte[receivePacket.getLength()]; 
-  	  System.arraycopy(receivePacket, 0, received, 0, receivePacket.getLength()); 
-	  
-  	  // deal with OPcodes
-  	  if (op == Server.Opcode.RRQ) {
-  		  System.out.println("Server: Read Request Received:");
-  	  } else if (op == Server.Opcode.WRQ) {
-  		  System.out.println("Server: Write Request Received:");
-  	  }
+		// to get rid of trailing null bytes from buffer	      
+  	  	byte received[] = new byte[receivePacket.getLength()]; 
+  	  	System.arraycopy(receivePacket, 0, received, 0, receivePacket.getLength()); 
   	  
-  	  // process the received datagram and print data
-  	  System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-  	  System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-  	  System.out.println(Arrays.toString(received));
-  	  System.out.print("\tFilename: " + new String(receivePacket.getData(), 2, 9, Charset.forName("utf-8")) +
-			  			"\t\tMode: " + new String(receivePacket.getData(), 12, 5, Charset.forName("utf-8")) + "\n");
-		
+  	  	// get filename length
+  	  	int fLen = 2; // filename length counter
+  	  	if (op != Server.Opcode.INVALID) {
+  	  		for (int i=2; i<received.length; i++) {
+  	  			if (received[i] == 0) {
+  	  				break;
+  	  			} else {
+  	  				fLen += 1;
+  	  			}
+  	  		}
+  	  		// didn't find a 0 byte
+  	  		if (fLen == received.length) op = Server.Opcode.INVALID;
+  	  	}
+  	  
+  	  	// get mode length
+  	  	int mLen = 2+fLen+1; // mode length counter
+  	  	if (op != Server.Opcode.INVALID) {
+  	  		for (int i=2+fLen+1; i<received.length; i++) {
+  	  			if (received[i] == 0) {
+  	  				break;
+  	  			} else {
+  	  				mLen += 1;
+  	  			}
+  	  		}
+  	  		// didn't find a 0 byte
+  	  		if (mLen == received.length) op = Server.Opcode.INVALID;
+  	  	}
+  	  
+  	  	// deal with OPcodes
+  	  	if (op != Server.Opcode.INVALID) {
+  	  		if (op == Server.Opcode.RRQ) {
+  	  			System.out.println("Server: Read Request Received:");
+  	  		} else if (op == Server.Opcode.WRQ) {
+  	  			System.out.println("Server: Write Request Received:");
+  	  		}
+  	  		// process the received datagram and print data
+    	  	System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+    	  	System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+    	  	System.out.println(Arrays.toString(received));
+    	  	System.out.print("\tFilename: " + new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) +
+    	  			"\t\tMode: " + new String(receivePacket.getData(), 2+fLen+1, mLen-(2+fLen+1), Charset.forName("utf-8")) + "\n");    	  	  
+  	  	}
 	}	
 }
