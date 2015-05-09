@@ -105,7 +105,7 @@ class ClientConnection implements Runnable {
 				if (received[i] == 0) {
 					break;
 				} else {
-					fLen += 1
+					fLen += 1;
 				}
 			}
 			// didn't find a 0 byte
@@ -122,8 +122,6 @@ class ClientConnection implements Runnable {
 					mLen += 1;
 				}
 			}
-			// didn't find a 0 byte
-			if (mLen == received.length) op = Server.Opcode.INVALID;
 		}
 		
 		// deal with OPcodes
