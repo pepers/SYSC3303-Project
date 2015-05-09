@@ -40,39 +40,45 @@ public class Server {
 			}
 			
 			// check for valid TFTP request packet
-			if (data[1] == 1 && data[0] == 0) { 		// valid RRQ
-				System.out.println("\nServer: RRQ Received:");
-					
-				// create new thread to communicate with Client and transfer file
-				// pass it datagram that was received
-				Thread clientConnectionThread = new Thread(
-						new ClientConnection(receivePacket));
-				clientConnectionThread.start();
-					
-			} else if (data[1] == 2 && data[0] == 0) {	// valid WRQ
-				System.out.println("\nServer: WRQ Received:");
-				
-				// create new thread to communicate with Client and transfer file
-				// pass it datagram that was received
-				Thread clientConnectionThread = new Thread(
-						new ClientConnection(receivePacket));
-				clientConnectionThread.start();
-				
-			} else {					// invalid packet
-				System.out.println("\nServer: Invalid Request Packet Received:");
-				
-			} 
+			if (data[0] != 0) { // invalid Opcode
+				System.out.println("\nServer: Invalid Opcode Received:");
+				break;
+			} else {
+				byte op = data[1];
+				switch (op) {
+					// valid request
+					case 1: case 2:
+						System.out.println("\nServer: Valid Reqest Received:");					
+						// create new thread to communicate with Client and transfer file
+						// pass it datagram that was received
+						Thread clientConnectionThread = new Thread(
+								new ClientConnection(receivePacket));
+						clientConnectionThread.start();	
+						System.out.println("\nServer: Packet Sent for Processing:");
+						break;
+					// invalid request
+					default:
+						System.out.println("\nServer: Invalid Request Received:");
+						break;
+				}
+			}
 		} // end of while
 	}
 }
 
 class ClientConnection implements Runnable {
+	// requests we can receive
+	public static enum Opcode {RRQ, WRQ}; 
+	
+	DatagramPacket receivePacket;
 	DatagramPacket sendPacket;
 	DatagramSocket sendSocket;
 	
 
 	public ClientConnection(DatagramPacket receivePacket) {
-	
+		// pass in the received datagram packet from the Server
+		// in order to facilitate file trasfers with the Client
+		this.receivePacket = receivePacket;
 	}
 	
 	public void run() {
