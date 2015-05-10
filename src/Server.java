@@ -114,7 +114,7 @@ public class Server {
 				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
 				System.out.println(Arrays.toString(received));
 				System.out.print("\tFilename: " + new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) + 
-				"\t\tMode: " + new String(receivePacket.getData(), 2+fLen+1, mLen-(2+fLen+1), Charset.forName("utf-8")) + "\n");
+				"\t\tMode: " + new String(receivePacket.getData(), fLen+1, mLen-(fLen+1), Charset.forName("utf-8")) + "\n");
 				
 				// create new thread to communicate with Client and transfer file
 				// pass it datagram that was received				
