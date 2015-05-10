@@ -46,7 +46,7 @@ public class Server {
 			
 			// to get rid of trailing null bytes from buffer	      
 			byte received[] = new byte[receivePacket.getLength()];
-			System.arraycopy(receivePacket, 0, received, 0, receivePacket.getLength());
+			System.arraycopy(data, 0, received, 0, receivePacket.getLength());
 			
 			// check for valid TFTP request packet
 			Opcode op;
@@ -150,7 +150,7 @@ class ClientConnection implements Runnable {
 	public void run() {
 		// to get rid of trailing null bytes from buffer	      
 		byte received[] = new byte[receivePacket.getLength()];
-		System.arraycopy(receivePacket, 0, received, 0, receivePacket.getLength());
+		System.arraycopy(receivePacket.getData(), 0, received, 0, receivePacket.getLength());
 				
 		// open new socket to send response to Client
 		try {
