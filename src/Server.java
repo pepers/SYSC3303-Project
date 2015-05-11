@@ -13,7 +13,7 @@ public class Server {
 	public static void main(String[] args) {
 		// create new thread to wait for and verify TFTP packets
 		Server s = new Server();
-		s.receive();
+		s.listener();
 	}
 	
 	public Server() {
@@ -26,7 +26,8 @@ public class Server {
 		}   
 	}
 	
-	public void receive() {
+	// listens for new requests on port 69
+	public void listener() {
 		while (true) {
 			// prepare for receiving packet
 			byte data[] = new byte[100];
