@@ -1,15 +1,16 @@
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.nio.file.FileSystems//import this to search for the file
+import java.nio.file.FileSystems;//import this to search for the file
 
 public class Server {	
 	// requests we can receive
 	public static enum Opcode {RRQ, WRQ, DATA, ACK, ERROR}; 
-	public String fileName = null;
 	
 	DatagramPacket receivePacket;
 	DatagramSocket receiveSocket;
@@ -33,7 +34,7 @@ public class Server {
 	
 	// listens for new requests on port 69
 	public void listener() {
-		
+		String fileName;
 		while (true) {
 			
 			// prepare for receiving packet
@@ -127,7 +128,7 @@ public class Server {
 				
 				// create new thread to communicate with Client and transfer file
 				// pass it datagram that was received				
-				Thread clientConnectionThread = new Thread(new ClientConnection(receivePacket, op));
+				Thread clientConnectionThread = new Thread(new ClientConnection(receivePacket, op,fileName));
 				System.out.println("Server: Packet Sent for Processing: \n");
 				clientConnectionThread.start();					
 			} else {
@@ -140,8 +141,7 @@ public class Server {
 
 class ClientConnection implements Runnable {
 	Server.Opcode op;
-	String filename=new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) + 
-			"\t\tMode: " + new String(receivePacket.getData(), fLen+1, mLen-(fLen+1), Charset.forName("utf-8")) + "\n";
+	String fileName;
 	
 	// responses for valid requests
 	public static final byte[] readResp = {1,0};
@@ -151,12 +151,12 @@ class ClientConnection implements Runnable {
 	DatagramPacket sendPacket;
 	DatagramSocket sendSocket;	
 
-	public ClientConnection(DatagramPacket receivePacket, Server.Opcode opServer, Server.fileName) {
+	public ClientConnection(DatagramPacket receivePacket, Server.Opcode opServer, String fn) {
 		// pass in the received datagram packet from the Server
 		// in order to facilitate file transfers with the Client
 		this.receivePacket = receivePacket;
 		this.op = opServer;
-		this.filename=fn;
+		this.fileName=fn;
 	}
 	
 	public void run() {
@@ -186,7 +186,8 @@ class ClientConnection implements Runnable {
 				e.printStackTrace();
 			}
 		}
-		
+
+			
 		//This is the part where we try to send the actual file(as in create the data)
 		
 		/*
@@ -195,7 +196,7 @@ class ClientConnection implements Runnable {
          * around the FileInputStream, which may increase the
          * efficiency of reading from the stream.
          */
-        BufferedInputStream in = new BufferedInputStream(new FileInputStream(filename));
+        BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName));
 
         /*
          * A FileOutputStream object is created to write the file
@@ -203,7 +204,7 @@ class ClientConnection implements Runnable {
          * around the FileOutputStream, which may increase the
          * efficiency of writing to the stream.
          */
-        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(filename));
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(fileName));
 
         byte[] data = new byte[512];
         int n;
@@ -218,18 +219,29 @@ class ClientConnection implements Runnable {
             //check to see if you dont have a full 512 byte chunk, se we can trim the extra zeroes
             if (n!=512){
             	//adding the data to the response array
-            	System.arraycopy(data,0,response,response.length,data.length)
+            	System.arraycopy(data,0,response,response.length,data.length);
             	sendPacket = new DatagramPacket(response, 4+n, receivePacket.getAddress(), receivePacket.getPort());
             }
             	
             	//adding the data to the response array
-            	System.arraycopy(data,0,response,response.length,data.length)
+            	System.arraycopy(data,0,response,response.length,data.length);
             	sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
             		
         }
         
-        in.close();
-        out.close();
+        try {
+			in.close();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+        try {
+			out.close();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
         
 		 
         sendPacket = new DatagramPacket(response, 4, receivePacket.getAddress(), receivePacket.getPort());
