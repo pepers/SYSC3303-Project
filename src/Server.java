@@ -12,8 +12,8 @@ public class Server {
 
 	public static void main(String[] args) {
 		// create new thread to wait for and verify TFTP packets
-		Server c = new Server();
-		c.receive();
+		Server s = new Server();
+		s.receive();
 	}
 	
 	public Server() {
@@ -62,7 +62,7 @@ public class Server {
 					case 2:
 						op = Opcode.WRQ;
 						break;
-					default: // invalid reqest						
+					default: // invalid request						
 						op = Opcode.ERROR;
 						break;
 				}
