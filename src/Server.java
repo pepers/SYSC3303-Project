@@ -1,11 +1,15 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.nio.file.FileSystems//import this to search for the file
 
 public class Server {	
 	// requests we can receive
 	public static enum Opcode {RRQ, WRQ, DATA, ACK, ERROR}; 
+	public String fileName = null;
 	
 	DatagramPacket receivePacket;
 	DatagramSocket receiveSocket;
@@ -13,6 +17,7 @@ public class Server {
 	public static void main(String[] args) {
 		// create new thread to wait for and verify TFTP packets
 		Server s = new Server();
+		
 		s.listener();
 	}
 	
@@ -28,7 +33,9 @@ public class Server {
 	
 	// listens for new requests on port 69
 	public void listener() {
+		
 		while (true) {
+			
 			// prepare for receiving packet
 			byte data[] = new byte[100];
 			receivePacket = new DatagramPacket(data, data.length);
@@ -109,13 +116,14 @@ public class Server {
 				} else if (op == Server.Opcode.WRQ) {
 					System.out.println("Server: Write Request Received:");
 				}
-				
+				//save the filename in a variable for later use
+				fileName=new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) + 
+						"\t\tMode: " + new String(receivePacket.getData(), fLen+1, mLen-(fLen+1), Charset.forName("utf-8")) + "\n";
 				// process the received datagram and print data
 				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
 				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
 				System.out.println(Arrays.toString(received));
-				System.out.print("\tFilename: " + new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) + 
-				"\t\tMode: " + new String(receivePacket.getData(), fLen+1, mLen-(fLen+1), Charset.forName("utf-8")) + "\n");
+				System.out.print("\tFilename: " + fileName);
 				
 				// create new thread to communicate with Client and transfer file
 				// pass it datagram that was received				
@@ -132,27 +140,31 @@ public class Server {
 
 class ClientConnection implements Runnable {
 	Server.Opcode op;
+	String filename=new String(receivePacket.getData(), 2, fLen-2, Charset.forName("utf-8")) + 
+			"\t\tMode: " + new String(receivePacket.getData(), fLen+1, mLen-(fLen+1), Charset.forName("utf-8")) + "\n";
 	
 	// responses for valid requests
-	public static final byte[] readResp = {0, 3, 0, 1};
-	public static final byte[] writeResp = {0, 4, 0, 0};
+	public static final byte[] readResp = {1,0};
+	public static final byte[] writeResp = {0};
 	
 	DatagramPacket receivePacket;
 	DatagramPacket sendPacket;
 	DatagramSocket sendSocket;	
 
-	public ClientConnection(DatagramPacket receivePacket, Server.Opcode opServer) {
+	public ClientConnection(DatagramPacket receivePacket, Server.Opcode opServer, Server.fileName) {
 		// pass in the received datagram packet from the Server
 		// in order to facilitate file transfers with the Client
 		this.receivePacket = receivePacket;
 		this.op = opServer;
+		this.filename=fn;
 	}
 	
 	public void run() {
 		// to get rid of trailing null bytes from buffer	      
 		byte received[] = new byte[receivePacket.getLength()];
 		System.arraycopy(receivePacket.getData(), 0, received, 0, receivePacket.getLength());
-				
+		
+		
 		// open new socket to send response to Client
 		try {
 			sendSocket = new DatagramSocket();
@@ -162,7 +174,7 @@ class ClientConnection implements Runnable {
 		}
 		
 		// create response packet
-		byte response[] = new byte[4];
+		byte response[] = new byte[516];
 		if (op == Server.Opcode.RRQ) {
 			response = readResp;
 		} else if (op == Server.Opcode.WRQ) {
@@ -174,7 +186,54 @@ class ClientConnection implements Runnable {
 				e.printStackTrace();
 			}
 		}
-		sendPacket = new DatagramPacket(response, 4, receivePacket.getAddress(), receivePacket.getPort());
+		
+		//This is the part where we try to send the actual file(as in create the data)
+		
+		/*
+         * A FileInputStream object is created to read the file
+         * as a byte stream. A BufferedInputStream object is wrapped
+         * around the FileInputStream, which may increase the
+         * efficiency of reading from the stream.
+         */
+        BufferedInputStream in = new BufferedInputStream(new FileInputStream(filename));
+
+        /*
+         * A FileOutputStream object is created to write the file
+         * as a byte stream. A BufferedOutputStream object is wrapped
+         * around the FileOutputStream, which may increase the
+         * efficiency of writing to the stream.
+         */
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(filename));
+
+        byte[] data = new byte[512];
+        int n;
+        
+        /* Read the file in 512 byte chunks. */
+        while ((n = in.read(data)) != -1) {
+            /* 
+             * We just read "n" bytes into array data. 
+             * Now write them to the output file. 
+             */
+            out.write(data, 0, n);
+            //check to see if you dont have a full 512 byte chunk, se we can trim the extra zeroes
+            if (n!=512){
+            	//adding the data to the response array
+            	System.arraycopy(data,0,response,response.length,data.length)
+            	sendPacket = new DatagramPacket(response, 4+n, receivePacket.getAddress(), receivePacket.getPort());
+            }
+            	
+            	//adding the data to the response array
+            	System.arraycopy(data,0,response,response.length,data.length)
+            	sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
+            		
+        }
+        
+        in.close();
+        out.close();
+        
+		 
+        sendPacket = new DatagramPacket(response, 4, receivePacket.getAddress(), receivePacket.getPort());
+		
 		
 		// Send the datagram packet to the client via the send socket.
 		try {
