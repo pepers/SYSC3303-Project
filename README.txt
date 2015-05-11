@@ -14,6 +14,12 @@
         
 
 README
+	This project is a file transfer system based on 
+	the TFTP specification (RFC 1350).  The project
+	will consist of three separate programs, a client,
+	an error simulator, and a server. The user will
+	send file requests for specific files, from the
+	client to the server program.
 
 
 AUTHORS
@@ -37,6 +43,7 @@ INSTALL/RUN
 	'SYSC3303 Project' (without the quotes)
 	- add Client.java, Server.java, and ErrorSim.java
 	to the project
+	- run Server.java, then ErrorSim.java, then Client.java
 
 
 USE
