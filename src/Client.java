@@ -138,8 +138,8 @@ public void sendAndReceive(decision request)
      byte writeout[]=new byte[100];
      System.out.println();
      int datacounter=1;
-     int readcounter=1;
-     byte blocks=1;
+     int readblock=1;
+   
      //for read request, we have to send the ACK packets with a 0 block and as stated in TFTP protocol
      //so for every write request, there 
      if (request==decision.read){
@@ -153,10 +153,10 @@ public void sendAndReceive(decision request)
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-			setAckMsg(readcounter);
+			setAckMsg(1);
     				for(int i=3;i<receivedata.length;i++){writeout[i-3]=receivedata[i];}
     				try {
-						out.write(writeout, (counter-1)*512,writeout.length );
+						out.write(writeout, (readcounter-1)*512,writeout.length );
 					} catch (IOException e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
