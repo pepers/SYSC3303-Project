@@ -4,6 +4,7 @@ import java.net.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
 public class Server {	
@@ -166,6 +167,8 @@ class ClientConnection implements Runnable {
 	DatagramPacket sendPacket;			// datagram packet to send in response to the Client
 	DatagramPacket transferPacket;		// datagram packet received from Client during file transfer
 	DatagramSocket sendReceiveSocket;	// new socket connection with Client for file transfer
+	
+	private BufferedInputStream in;		// stream to read data from files
 
 	public ClientConnection(DatagramPacket receivePacket, Server.Opcode opServer, String fn) {
 		// pass in the received datagram packet from the Server
@@ -196,61 +199,69 @@ class ClientConnection implements Runnable {
 			response[0] = 0;
 			response[1] = 3;	// DATA opcode
 			response[2] = 0;
-			response[3] = (byte) (blockNum + 1);	// start at block number 1
-			
-			// stream to read the bytes of the requested file
-			BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName));
-			
+			response[3] = (byte) (blockNum + 1);	// start at block number 1			
+
 			byte[] data = new byte[MAX_DATA];	// the data chunk to read from the file
 	        int n;								// number of bytes read from the file
 	        
-	        // reads the file in 512 byte chunks
-	        while ((n = in.read(data)) != -1) {
-	        	byte[] transfer = new byte[response.length + data.length];	// byte array to send to Client
-	        	
-	        	// copy opcode, blocknumber, and data into array to send to Client
-	        	System.arraycopy(response, 0, transfer, 0, 4);
-	        	System.arraycopy(data, 0, transfer, 4, data.length);
-	        	
-	        	// Send the data packet to the client via the send socket.
-				sendPacket = new DatagramPacket(transfer, transfer.length, receivePacket.getAddress(), receivePacket.getPort());
-				try {
-					sendReceiveSocket.send(sendPacket);
-					// print out thread and port info, from which the packet was sent to Client
-					System.out.println(Thread.currentThread() + ": DATA packet sent using port " + 
-							sendReceiveSocket.getLocalPort() + "\n");
-					// print byte info on packet being sent to Client
-					System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-					System.out.println(Arrays.toString(transfer));
-				} catch (IOException e) {
-					e.printStackTrace();
-					System.exit(1);
-				}
+			try {
+				in = new BufferedInputStream(new FileInputStream(fileName));
 				
-				blockNum += 1;	// increase the block number after each block is sent
-				
-				// prepare for receiving packet with ACK
-				byte ack[] = new byte[4];
-				transferPacket = new DatagramPacket(ack, ack.length);
-				System.out.println(Thread.currentThread() + ": Waiting for ACK.\n");
+				// reads the file in 512 byte chunks
+		        while ((n = in.read(data)) != -1) {
+		        	byte[] transfer = new byte[response.length + data.length];	// byte array to send to Client
+		        	
+		        	// copy opcode, blocknumber, and data into array to send to Client
+		        	System.arraycopy(response, 0, transfer, 0, 4);
+		        	System.arraycopy(data, 0, transfer, 4, n);
+		        	
+		        	// Send the data packet to the client via the send socket.
+					sendPacket = new DatagramPacket(transfer, transfer.length, receivePacket.getAddress(), receivePacket.getPort());
+					try {
+						sendReceiveSocket.send(sendPacket);
+						// print out thread and port info, from which the packet was sent to Client
+						System.out.println(Thread.currentThread() + ": DATA packet sent using port " + 
+								sendReceiveSocket.getLocalPort() + "\n");
+						// print byte info on packet being sent to Client
+						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+						System.out.println(Arrays.toString(transfer));
+					} catch (IOException e) {
+						e.printStackTrace();
+						System.exit(1);
+					}
+					
+					blockNum += 1;	// increase the block number after each block is sent
+					
+					// prepare for receiving packet with ACK
+					byte ack[] = new byte[4];
+					transferPacket = new DatagramPacket(ack, ack.length);
+					System.out.println(Thread.currentThread() + ": Waiting for ACK.\n");
 
-				// block until a ACK packet is received from sendReceiveSocket
-				try {        
-					System.out.println("Waiting...");
-					sendReceiveSocket.receive(transferPacket);
-				} catch (IOException e) {
-					System.out.print("IO Exception: likely:");
-					System.out.println("Receive Socket Timed Out.\n" + e);
-					e.printStackTrace();
-					System.exit(1);
-				}
-	        	
-				// process the received ACK and print data
-				System.out.println(Thread.currentThread() + ": ACK received: \n")
-				System.out.println("From host: " + transferPacket.getAddress() + " : " + transferPacket.getPort());
-				System.out.print("Containing " + transferPacket.getLength() + " bytes: \n");
-				System.out.println(Arrays.toString(ack));
-	        }
+					// block until a ACK packet is received from sendReceiveSocket
+					try {        
+						System.out.println("Waiting...");
+						sendReceiveSocket.receive(transferPacket);
+					} catch (IOException e) {
+						System.out.print("IO Exception: likely:");
+						System.out.println("Receive Socket Timed Out.\n" + e);
+						e.printStackTrace();
+						System.exit(1);
+					}
+		        	
+					// process the received ACK and print data
+					System.out.println(Thread.currentThread() + ": ACK received: \n");
+					System.out.println("From host: " + transferPacket.getAddress() + " : " + transferPacket.getPort());
+					System.out.print("Containing " + transferPacket.getLength() + " bytes: \n");
+					System.out.println(Arrays.toString(ack));
+		        }
+			} catch (FileNotFoundException e1) {
+				e1.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+	        
+	        
 			
 		} else if (op == Server.Opcode.WRQ) {	// write request response
 			response[0] = 0;
@@ -322,7 +333,7 @@ class ClientConnection implements Runnable {
 					System.exit(1);
 				}
 				
-				// check if tranfer is over, and that was last ACK to send
+				// check if transfer is over, and that was last ACK to send
 				if (data.length < MAX_DATA) {
 					transferFinished = true;	// transfer is complete
 				}
