@@ -197,6 +197,9 @@ class ClientConnection implements Runnable {
 			response[1] = 3;	// DATA opcode
 			response[2] = 0;
 			response[3] = (byte) (blockNum + 1);	// start at block number 1
+			
+			InputStream in = newInputStream(fileName);
+			
 		} else if (op == Server.Opcode.WRQ) {	// write request response
 			response[0] = 0;
 			response[1] = 4;	// ACK opcode
@@ -245,7 +248,7 @@ class ClientConnection implements Runnable {
 				
 				// write the data from the transfer to a file at the requested filename
 				try {
-					Files.write(Paths.get(fileName), data);
+					Files.write(Paths.get(fileName), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 					System.out.println(Thread.currentThread() + ": writing data to file: " + fileName);
 				} catch (IOException e) {
 					System.out.println(Thread.currentThread() + ": writing data to file has failed.\n");
