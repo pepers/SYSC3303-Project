@@ -202,20 +202,20 @@ class ClientConnection implements Runnable {
 			response[3] = (byte) (blockNum + 1);	// start at block number 1			
 
 			byte[] data = new byte[MAX_DATA];	// the data chunk to read from the file
-	        int n;								// number of bytes read from the file
+			int n;					// number of bytes read from the file
 	        
 			try {
 				in = new BufferedInputStream(new FileInputStream(fileName));
 				
 				// reads the file in 512 byte chunks
-		        while ((n = in.read(data)) != -1) {
-		        	byte[] transfer = new byte[response.length + data.length];	// byte array to send to Client
-		        	
-		        	// copy opcode, blocknumber, and data into array to send to Client
-		        	System.arraycopy(response, 0, transfer, 0, 4);
-		        	System.arraycopy(data, 0, transfer, 4, n);
-		        	
-		        	// Send the data packet to the client via the send socket.
+		        	while ((n = in.read(data)) != -1) {
+					byte[] transfer = new byte[response.length + data.length];	// byte array to send to Client
+						        	
+					// copy opcode, blocknumber, and data into array to send to Client
+					System.arraycopy(response, 0, transfer, 0, 4);
+					System.arraycopy(data, 0, transfer, 4, n);
+						        	
+					// Send the data packet to the client via the send socket.
 					sendPacket = new DatagramPacket(transfer, transfer.length, receivePacket.getAddress(), receivePacket.getPort());
 					try {
 						sendReceiveSocket.send(sendPacket);
@@ -253,16 +253,12 @@ class ClientConnection implements Runnable {
 					System.out.println("From host: " + transferPacket.getAddress() + " : " + transferPacket.getPort());
 					System.out.print("Containing " + transferPacket.getLength() + " bytes: \n");
 					System.out.println(Arrays.toString(ack));
-		        }
+				}
 			} catch (FileNotFoundException e1) {
 				e1.printStackTrace();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			
-	        
-	        
-			
 		} else if (op == Server.Opcode.WRQ) {	// write request response
 			response[0] = 0;
 			response[1] = 4;	// ACK opcode
