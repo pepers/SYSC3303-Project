@@ -23,7 +23,7 @@ README
 
 
 AUTHORS
-	Adhiraj Chakraborty 1111
+	Adhiraj Chakraborty
 	Anuj Dalal
 	Hidara Abdallah
 	Matthew Pepers
