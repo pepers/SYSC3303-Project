@@ -1,5 +1,7 @@
 package iteration1;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
@@ -8,7 +10,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;	// printing out byte array
 import java.util.Scanner;
 
-public class Client {
+public class Client implements KeyListener{
 
    DatagramPacket sendPacket, receivePacket;
    DatagramSocket sendReceiveSocket;
@@ -295,4 +297,22 @@ public class Client {
        in.close(); // close the stream
        ui();
    }
+
+@Override
+public void keyTyped(KeyEvent e) {
+	// TODO Auto-generated method stub
+	if (e.getKeyChar()=='q'){System.exit(0);}
+}
+
+@Override
+public void keyPressed(KeyEvent e) {
+	// TODO Auto-generated method stub
+	
+}
+
+@Override
+public void keyReleased(KeyEvent e) {
+	// TODO Auto-generated method stub
+	
+}
 }
