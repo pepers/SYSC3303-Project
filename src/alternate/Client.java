@@ -149,13 +149,24 @@ public class Client {
 	   in = new BufferedInputStream(new FileInputStream(fileName));
 		
 	   // reads the file in 512 byte chunks
-       while ((n = in.read(data)) != -1) {    	   
-    	   byte[] transfer = new byte[response.length + data.length];	// byte array to send to Server
+       while ((n = in.read(data)) != -1) {
+    	   // cut off zero bytes
+    	   int size = 0;
+    	   while (size < data.length) {
+    		   if (data[size] == 0) {
+    			   break;
+    		   }
+    		   size++;
+    	   }
+    	   
+    	   byte[] transfer = new byte[response.length + size];	// byte array to send to Server
 				        	
 			// copy opcode, blocknumber, and data into array to send to Server
 			System.arraycopy(response, 0, transfer, 0, 4);
-			System.arraycopy(data, 0, transfer, 4, n);
-				        	
+			System.arraycopy(data, 0, transfer, 4, size);
+			
+			
+			        	
 			// send the data packet to the server via the send socket
 			sendPacket = new DatagramPacket(transfer, transfer.length, receivePacket.getAddress(), receivePacket.getPort());
 			try {
@@ -197,6 +208,6 @@ public class Client {
 			System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
 			System.out.print("Containing " + receivePacket.getLength() + " bytes: " + Arrays.toString(ack));
 		}
-
+       in.close(); // close the stream
    }
 }

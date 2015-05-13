@@ -306,6 +306,7 @@ class ClientConnection implements Runnable {
 				// to get just the data portion of the transferPacket	      
 				byte data[] = new byte[transferPacket.getLength() - 4];
 				System.arraycopy(transfer, 4, data, 0, transferPacket.getLength() - 4);
+				System.out.println("\n" + Thread.currentThread() + ": received " + data.length + " bytes of data to write.");
 				
 				// write the data from the transfer to a file at the requested filename
 				try {
@@ -332,9 +333,8 @@ class ClientConnection implements Runnable {
 				}
 				
 				// check if transfer is over, and that was last ACK to send
-				if (data.length < MAX_DATA + 4) {
+				if (data.length < MAX_DATA) {
 					transferFinished = true;	// transfer is complete
-					sendReceiveSocket.close(); 
 				}
 			}
 		} else {
