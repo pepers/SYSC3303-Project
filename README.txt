@@ -47,3 +47,8 @@ INSTALL/RUN
 
 
 USE
+	- follow onscreen console prompts from the Client
+	- first choose whether you want to send a (R)ead 
+	Request, a (W)rite Request, or (Q)uit
+	- if you chose to read/write, next type in the name
+	of the file that you want to read/write
