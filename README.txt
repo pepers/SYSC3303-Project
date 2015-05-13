@@ -36,6 +36,8 @@ FILES
 	Server.java
 	ErrorSim.java
 	README.txt
+	Iteration 1 - UCM.pdf
+	Iteration 1 Class Diagram.jpg
 
 
 INSTALL/RUN
