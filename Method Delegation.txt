@@ -1,23 +1,14 @@
 ----------Methods to be created on the client-----------------
-oublic static void main (string args[])
+public static void main (string args[])
+public void ui()
 public createRequest(Byte opcode, String filename, Byte mode):byte[]-Raj
 public createACK(Byte blockNumber):byte[4]
-<<<<<<< HEAD
 public createData(Byte blockNUmber,Byte data[512]):byte[]
+public createError (Byte errorCode, Byte errorMsg):byte[]-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
 public void receive():byte[]-Raj
-(Hyde)public createError (Byte errorCode, Byte errorMsg):byte[] 
-public processACK (byte[])
-=======
-public createRequest(Byte blockNUmber,Byte data[512]):byte[]
-public void send(byte data[],InetAddress,int port)
-public void receive():byte[]
-public createError (Byte errorCode, Byte errorMsg):byte[]-Hyde
+public processRequest (byte[])-Anuj 
 public processACK (byte[])-Anuj
-<<<<<<< HEAD
->>>>>>> origin/master
-=======
->>>>>>> origin/master
 public processData (byte[])-Mohammed
 public processError (byte[])-Mohammed
-public processRequest (byte[])-Anuj 
+
