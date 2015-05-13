@@ -1,3 +1,5 @@
+package alternate;
+
 
 import java.io.*;
 import java.net.*;
@@ -301,7 +303,7 @@ class ClientConnection implements Runnable {
 				blockNum = transfer[3];	// get the data block number from Client write packet
 				response[3] = blockNum;	// set the ACK block number
 				
-				// to get just the data portion of the transerPacket	      
+				// to get just the data portion of the transferPacket	      
 				byte data[] = new byte[transferPacket.getLength() - 4];
 				System.arraycopy(transfer, 4, data, 0, transferPacket.getLength() - 4);
 				
@@ -330,7 +332,7 @@ class ClientConnection implements Runnable {
 				}
 				
 				// check if transfer is over, and that was last ACK to send
-				if (data.length < MAX_DATA) {
+				if (data.length < MAX_DATA + 4) {
 					transferFinished = true;	// transfer is complete
 					sendReceiveSocket.close(); 
 				}

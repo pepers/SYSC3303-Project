@@ -1,3 +1,5 @@
+package alternate;
+
 
 import java.io.*;
 import java.net.*;
@@ -142,19 +144,12 @@ public class Client {
 	   response[0] = 0;
 	   response[1] = 3;
 	   response[2] = 0;
-	   response[3] = 0;
+	   response[3] = 1;
 	   
 	   in = new BufferedInputStream(new FileInputStream(fileName));
 		
 	   // reads the file in 512 byte chunks
-       while ((n = in.read(data)) != -1) {
-    	   // increase the block number after each block is sent
-    	   if (response[3] == 255) {
-    		   response[3] = 0;
-    	   } else {
-    		   response[3] = (byte)(response[3] + 1);
-    	   }
-    	   
+       while ((n = in.read(data)) != -1) {    	   
     	   byte[] transfer = new byte[response.length + data.length];	// byte array to send to Server
 				        	
 			// copy opcode, blocknumber, and data into array to send to Server
@@ -173,7 +168,14 @@ public class Client {
 			} catch (IOException e) {
 				e.printStackTrace();
 				System.exit(1);
-			}			
+			}	
+			
+			// increase the block number after each block is sent
+			if (response[3] == 127) {
+				response[3] = 0;
+			} else {
+				response[3] = (byte)(response[3] + 1);
+			}
 			
 			// prepare for receiving packet with ACK
 			receivePacket = new DatagramPacket(ack, ack.length);
