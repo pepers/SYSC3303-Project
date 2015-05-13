@@ -132,9 +132,9 @@ public class Server {
 			if (op != Opcode.ERROR) {				
 				// tell user if Read or Write request was received
 				if (op == Opcode.RRQ) {
-					System.out.println("Server: Read Request Received:");
+					System.out.println("\nServer: Read Request Received:");
 				} else if (op == Opcode.WRQ) {
-					System.out.println("Server: Write Request Received:");
+					System.out.println("\nServer: Write Request Received:");
 				}				
 				
 				// process the received datagram and print data
@@ -147,7 +147,7 @@ public class Server {
 				// pass it datagram that was received				
 				Thread clientConnectionThread = new Thread(
 						new ClientConnection(receivePacket, op, fileName), "Client Connection Thread");
-				System.out.println("Server: Packet Sent for Processing: \n");
+				System.out.println("\nServer: Packet Sent for Processing: \n");
 				clientConnectionThread.start();					
 			} else {
 				System.out.println("Server: Invalid Request Received: \n");
@@ -270,8 +270,8 @@ class ClientConnection implements Runnable {
 			try {
 				sendReceiveSocket.send(sendPacket);
 				// print out thread and port info, from which the packet was sent to Client
-				System.out.println(Thread.currentThread() + ": ACK packet sent using port " + 
-						sendReceiveSocket.getLocalPort() + "\n");
+				System.out.println("\n" + Thread.currentThread() + ": ACK packet sent using port " + 
+						sendReceiveSocket.getLocalPort());
 				// print byte info on packet being sent to Client
 				System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 				System.out.println(Arrays.toString(response));
@@ -285,7 +285,7 @@ class ClientConnection implements Runnable {
 				// prepare for receiving packet with write data
 				byte transfer[] = new byte[MAX_DATA + 4];
 				transferPacket = new DatagramPacket(transfer, transfer.length);
-				System.out.println(Thread.currentThread() + ": Waiting for write data.\n");
+				System.out.println("\n" + Thread.currentThread() + ": Waiting for write data.\n");
 
 				// block until a datagram packet is received from sendReceiveSocket
 				try {        
@@ -308,9 +308,9 @@ class ClientConnection implements Runnable {
 				// write the data from the transfer to a file at the requested filename
 				try {
 					Files.write(Paths.get(fileName), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-					System.out.println(Thread.currentThread() + ": writing data to file: " + fileName);
+					System.out.println("\n" + Thread.currentThread() + ": writing data to file: " + fileName);
 				} catch (IOException e) {
-					System.out.println(Thread.currentThread() + ": writing data to file has failed.\n");
+					System.out.println("\n" + Thread.currentThread() + ": writing data to file has failed.\n");
 					e.printStackTrace();
 				}
 				
@@ -319,8 +319,8 @@ class ClientConnection implements Runnable {
 				try {
 					sendReceiveSocket.send(sendPacket);
 					// print out thread and port info, from which the packet was sent to Client
-					System.out.println(Thread.currentThread() + ": ACK packet sent using port " + 
-							sendReceiveSocket.getLocalPort() + "\n");
+					System.out.println("\n" + Thread.currentThread() + ": ACK packet sent using port " + 
+							sendReceiveSocket.getLocalPort());
 					// print byte info on packet being sent to Client
 					System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 					System.out.println(Arrays.toString(response));
@@ -332,6 +332,7 @@ class ClientConnection implements Runnable {
 				// check if transfer is over, and that was last ACK to send
 				if (data.length < MAX_DATA) {
 					transferFinished = true;	// transfer is complete
+					sendReceiveSocket.close(); 
 				}
 			}
 		} else {
