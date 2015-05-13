@@ -202,7 +202,6 @@ public class ErrorSim {
          // We're finished with this socket, so close it.
          sendSocket.close();
          
-         
      }
     
      
