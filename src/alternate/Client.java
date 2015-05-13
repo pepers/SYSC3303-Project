@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;	// printing out byte array
+import java.util.Scanner;
 
 public class Client {
 
@@ -22,6 +23,8 @@ public class Client {
    public static final int MAX_DATA = 512;	//maximum number of bytes in data block
    
    private BufferedInputStream in;	// stream to read in file
+   private Scanner input;			// get user choices in UId
+   
 
    public Client() {
 	   try {
@@ -34,25 +37,44 @@ public class Client {
 
    public static void main(String args[]) throws IOException {
 	   Client c = new Client();
+	   System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program! *****\n");
 	   c.ui();	// start the user interface
    }
    
    // simple user interface for Client
-   public void ui() throws IOException {
-	   System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program! *****\n");
+   public void ui() throws IOException {	
 	   String fileName = "test0.txt";	// the file to be sent/received
 	   String mode = "netascii";		// the mode in which to send/receive the file
 	   Decision request = Decision.RRQ;	// the user's choice of request to send
+	   input = new Scanner(System.in);
+	   
+	   System.out.println("Would you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
+	   String choice = input.nextLine();	// user's choice
+	   
+	   if (choice.equalsIgnoreCase("R")) {			// read request
+		   request = Decision.RRQ;
+		   System.out.println("Client: You have chosen to send a read request.");
+	   } else if (choice.equalsIgnoreCase("W")) {	// write request
+		   request = Decision.WRQ;
+		   System.out.println("Client: You have chosen to send a write request.");
+	   } else if (choice.equalsIgnoreCase("Q")) {	// quit
+		   System.out.println("Goodbye!");
+		   System.exit(1);
+	   } else {										// not valid
+		   System.out.println("I'm sorry, that is not a valid choice.  Please try again...");
+		   ui();
+	   }	   
+	   
+	   System.out.println("Please choose a file to modify.  Type in a file name: ");
+	   fileName = input.nextLine();	// user's choice
 	   
 	   // send user's choice of request
-	   if (request == Decision.RRQ) {
-		   System.out.println("Client: You have chosen to send a read request.");
+	   if (request == Decision.RRQ) {  		   
 		   System.out.println("Client: You have chosen the file: " + fileName + ", to be received in " + 
 				   mode + " mode.\n");
 		   read(fileName, mode);	// send read request
 		   
 	   } else if (request == Decision.WRQ) {
-		   System.out.println("Client: You have chosen to send a write request.");
 		   System.out.println("Client: You have chosen the file: " + fileName + ", to be sent in " + 
 				   mode + " mode.\n");
 		   write(fileName, mode);	// send write request
@@ -152,6 +174,7 @@ public class Client {
 		   }
 		   
 	   } while (!(received.length < MAX_DATA));
+	   ui();
    }
    
    // send a write request
@@ -271,5 +294,6 @@ public class Client {
 			System.out.print("Containing " + receivePacket.getLength() + " bytes: " + Arrays.toString(ack));
 		}
        in.close(); // close the stream
+       ui();
    }
 }
