@@ -8,7 +8,7 @@
  | |__) | __ ___  _  ___  ___| |_                   
  |  ___/ '__/ _ \| |/ _ \/ __| __|                  
  | |   | | | (_) | |  __/ (__| |_                   
- |_|   |_|  \___/| |\___|\___|\__|   iteration 1                
+ |_|   |_|  \___/| |\___|\___|\__|   iteration 2                
                 _/ |                                
                |__/                                 
         
@@ -36,8 +36,6 @@ FILES
 	Server.java
 	ErrorSim.java
 	README.txt
-	Iteration 1 - UCM.pdf
-	Iteration 1 Class Diagram.jpg
 
 
 INSTALL/RUN
