@@ -1,6 +1,7 @@
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
@@ -196,7 +197,13 @@ class ClientConnection implements Runnable {
          * around the FileInputStream, which may increase the
          * efficiency of reading from the stream.
          */
-        BufferedInputStream in = new BufferedInputStream(new FileInputStream(fileName));
+        BufferedInputStream in = null;
+		try {
+			in = new BufferedInputStream(new FileInputStream(fileName));
+		} catch (FileNotFoundException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
 
         /*
          * A FileOutputStream object is created to write the file
@@ -204,30 +211,41 @@ class ClientConnection implements Runnable {
          * around the FileOutputStream, which may increase the
          * efficiency of writing to the stream.
          */
-        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(fileName));
+        BufferedOutputStream out = null;
+		try {
+			out = new BufferedOutputStream(new FileOutputStream(fileName));
+		} catch (FileNotFoundException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
 
         byte[] data = new byte[512];
         int n;
         
         /* Read the file in 512 byte chunks. */
-        while ((n = in.read(data)) != -1) {
-            /* 
-             * We just read "n" bytes into array data. 
-             * Now write them to the output file. 
-             */
-            out.write(data, 0, n);
-            //check to see if you dont have a full 512 byte chunk, se we can trim the extra zeroes
-            if (n!=512){
-            	//adding the data to the response array
-            	System.arraycopy(data,0,response,response.length,data.length);
-            	sendPacket = new DatagramPacket(response, 4+n, receivePacket.getAddress(), receivePacket.getPort());
-            }
-            	
-            	//adding the data to the response array
-            	System.arraycopy(data,0,response,response.length,data.length);
-            	sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
-            		
-        }
+        try {
+			while ((n = in.read(data)) != -1) {
+			    /* 
+			     * We just read "n" bytes into array data. 
+			     * Now write them to the output file. 
+			     */
+			    out.write(data, 0, n);
+			    //check to see if you dont have a full 512 byte chunk, se we can trim the extra zeroes
+			    if (n!=512){
+			    	//adding the data to the response array
+			    	System.arraycopy(data,0,response,response.length,data.length);
+			    	sendPacket = new DatagramPacket(response, 4+n, receivePacket.getAddress(), receivePacket.getPort());
+			    }
+			    	
+			    	//adding the data to the response array
+			    	System.arraycopy(data,0,response,response.length,data.length);
+			    	sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
+			    		
+			}
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
         
         try {
 			in.close();
