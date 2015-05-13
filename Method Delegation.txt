@@ -7,6 +7,6 @@ public void send(byte data[],InetAddress,int port)
 public void receive():byte[]
 (Hyde)public createError (Byte errorCode, Byte errorMsg):byte[] 
 public processACK (byte[])
-public processData (byte[])
-public processError (byte[])
+public processData (byte[])-Mohammed
+public processError (byte[])-Mohammed
 public processRequest (byte[])
