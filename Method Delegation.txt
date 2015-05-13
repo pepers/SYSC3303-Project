@@ -7,8 +7,8 @@ public createData(Byte blockNUmber,Byte data[512]):byte[]
 public createError (Byte errorCode, Byte errorMsg):byte[]-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
 public void receive():byte[]-Raj
-public processRequest (byte[])-Anuj 
-public processACK (byte[])-Anuj
-public processData (byte[])-Mohammed
-public processError (byte[])-Mohammed
+public parseRequest (byte[])-Anuj 
+public parseACK (byte[])-Anuj
+public parseData (byte[])-Mohammed
+public parseError (byte[])-Mohammed
 
