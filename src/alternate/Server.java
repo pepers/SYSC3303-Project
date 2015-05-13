@@ -210,7 +210,7 @@ class ClientConnection implements Runnable {
 				in = new BufferedInputStream(new FileInputStream(fileName));
 				
 				// reads the file in 512 byte chunks
-		        	while ((n = in.read(data)) != -1) {
+				while ((n = in.read(data)) != -1) {
 					byte[] transfer = new byte[response.length + data.length];	// byte array to send to Client
 						        	
 					// copy opcode, blocknumber, and data into array to send to Client
@@ -222,8 +222,8 @@ class ClientConnection implements Runnable {
 					try {
 						sendReceiveSocket.send(sendPacket);
 						// print out thread and port info, from which the packet was sent to Client
-						System.out.println(Thread.currentThread() + ": DATA packet sent using port " + 
-								sendReceiveSocket.getLocalPort() + "\n");
+						System.out.println("\n" + Thread.currentThread() + ": DATA packet sent using port " + 
+								sendReceiveSocket.getLocalPort());
 						// print byte info on packet being sent to Client
 						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 						System.out.println(Arrays.toString(transfer));
@@ -233,11 +233,17 @@ class ClientConnection implements Runnable {
 					}
 					
 					blockNum += 1;	// increase the block number after each block is sent
+					// increase the block number after each block is sent
+					if (response[3] == 127) {
+						response[3] = 0;
+					} else {
+						response[3] = (byte)(response[3] + 1);
+					}
 					
 					// prepare for receiving packet with ACK
 					byte ack[] = new byte[4];
 					transferPacket = new DatagramPacket(ack, ack.length);
-					System.out.println(Thread.currentThread() + ": Waiting for ACK.\n");
+					System.out.println("\n" + Thread.currentThread() + ": Waiting for ACK.\n");
 
 					// block until a ACK packet is received from sendReceiveSocket
 					try {        
@@ -251,7 +257,7 @@ class ClientConnection implements Runnable {
 					}
 		        	
 					// process the received ACK and print data
-					System.out.println(Thread.currentThread() + ": ACK received: \n");
+					System.out.println("\n" + Thread.currentThread() + ": ACK received: ");
 					System.out.println("From host: " + transferPacket.getAddress() + " : " + transferPacket.getPort());
 					System.out.print("Containing " + transferPacket.getLength() + " bytes: \n");
 					System.out.println(Arrays.toString(ack));
@@ -303,9 +309,18 @@ class ClientConnection implements Runnable {
 				blockNum = transfer[3];	// get the data block number from Client write packet
 				response[3] = blockNum;	// set the ACK block number
 				
+				// cut off zero bytes
+				int size = 4;
+				while (size < transfer.length) {
+					if (transfer[size] == 0) {
+						break;
+					}
+					size++;
+				}
+				
 				// to get just the data portion of the transferPacket	      
-				byte data[] = new byte[transferPacket.getLength() - 4];
-				System.arraycopy(transfer, 4, data, 0, transferPacket.getLength() - 4);
+				byte data[] = new byte[size - 4];
+				System.arraycopy(transfer, 4, data, 0, size - 4);
 				System.out.println("\n" + Thread.currentThread() + ": received " + data.length + " bytes of data to write.");
 				
 				// write the data from the transfer to a file at the requested filename

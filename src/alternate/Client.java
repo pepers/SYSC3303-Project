@@ -3,6 +3,9 @@ package alternate;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;	// printing out byte array
 
 public class Client {
@@ -39,7 +42,7 @@ public class Client {
 	   System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program! *****\n");
 	   String fileName = "test0.txt";	// the file to be sent/received
 	   String mode = "netascii";		// the mode in which to send/receive the file
-	   Decision request = Decision.WRQ;	// the user's choice of request to send
+	   Decision request = Decision.RRQ;	// the user's choice of request to send
 	   
 	   // send user's choice of request
 	   if (request == Decision.RRQ) {
@@ -76,7 +79,7 @@ public class Client {
 	   request = req.toByteArray();
 	   
 	   // form the request packet and send it
-	   sendPacket = new DatagramPacket(request, request.length, receivePacket.getAddress(), 69);
+	   sendPacket = new DatagramPacket(request, request.length, InetAddress.getLocalHost(), 69);
 	   try {
 		   sendReceiveSocket.send(sendPacket);
 		   System.out.println("Client: Read Request sent using port " + 
@@ -88,6 +91,67 @@ public class Client {
 		   e.printStackTrace();
 		   System.exit(1);
 	   }
+	   
+	   byte[] received = new byte[MAX_DATA]; // initialize for do-while loop
+	   
+	   do {
+		   // prepare for receiving data packet
+		   byte[] data = new byte[MAX_DATA + 4];
+		   receivePacket = new DatagramPacket(data, data.length);
+		   System.out.println("\nClient: Waiting for DATA.\n");
+	   
+		   // block until a ACK packet is received from sendReceiveSocket
+		   try {
+			   System.out.println("Waiting...");
+			   sendReceiveSocket.receive(receivePacket);
+		   } catch (IOException e) {
+			   System.out.print("IO Exception: likely:");
+			   System.out.println("Receive Socket Timed Out.\n" + e);
+			   e.printStackTrace();
+			   System.exit(1);
+		   }
+	   
+		   // cut off zero bytes
+		   int size = 4;
+		   while (size < data.length) {
+			   if (data[size] == 0) {
+				   break;
+			   }
+			   size++;
+		   }
+		   received = new byte[size - 4];
+		   System.arraycopy(data, 4, received, 0, size-4);
+	   
+		   // process the received DATA 
+		   System.out.println("\nClient: DATA received: ");
+		   System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+		   System.out.print("Containing " + received.length + " bytes: ");
+		   System.out.print(Arrays.toString(received));
+	   
+		   // read DATA to file
+		   Files.write(Paths.get(fileName), received, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+		   System.out.println("\nClient: reading data to file: " + fileName);
+	   
+		   byte[] response = new byte[4];		// data opcode and block number
+		   response[0] = 0;
+		   response[1] = 4;
+		   response[2] = 0;
+		   response[3] = data[3];
+		   
+		   // form the ACK packet and send it
+		   sendPacket = new DatagramPacket(response, 4, receivePacket.getAddress(), receivePacket.getPort());
+		   try {
+			   sendReceiveSocket.send(sendPacket);
+			   System.out.println("\nClient: ACK sent using port " + 
+					   sendReceiveSocket.getLocalPort() + ".");
+			   // print byte info on packet being sent
+			   System.out.print("Containing " + sendPacket.getLength() + " bytes: " + Arrays.toString(response));
+		   } catch (IOException e) {
+			   e.printStackTrace();
+			   System.exit(1);
+		   }
+		   
+	   } while (!(received.length < MAX_DATA));
    }
    
    // send a write request
@@ -139,7 +203,6 @@ public class Client {
 	   System.out.print("Containing " + receivePacket.getLength() + " bytes: " + Arrays.toString(ack) + "\n");
 	   
 	   byte[] data = new byte[MAX_DATA];	// the data chunk to read from the file
-	   int n;								// number of bytes read from the file
 	   byte[] response = new byte[4];		// data opcode and block number
 	   response[0] = 0;
 	   response[1] = 3;
@@ -149,7 +212,7 @@ public class Client {
 	   in = new BufferedInputStream(new FileInputStream(fileName));
 		
 	   // reads the file in 512 byte chunks
-       while ((n = in.read(data)) != -1) {
+       while ((in.read(data)) != -1) {
     	   // cut off zero bytes
     	   int size = 0;
     	   while (size < data.length) {
@@ -163,8 +226,7 @@ public class Client {
 				        	
 			// copy opcode, blocknumber, and data into array to send to Server
 			System.arraycopy(response, 0, transfer, 0, 4);
-			System.arraycopy(data, 0, transfer, 4, size);
-			
+			System.arraycopy(data, 0, transfer, 4, size);			
 			
 			        	
 			// send the data packet to the server via the send socket
