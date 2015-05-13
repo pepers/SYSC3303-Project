@@ -1,6 +1,7 @@
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 
 public class Client {
@@ -10,12 +11,12 @@ public class Client {
 
 	
 	public Client() {
-		   try {
-			   sendReceiveSocket = new DatagramSocket();	// new socket to send requests and receive responses
-		   } catch (SocketException se) {   // Can't create the socket.
-			   se.printStackTrace();
-			   System.exit(1);
-		   }
+		try {
+			sendReceiveSocket = new DatagramSocket();	// new socket to send requests and receive responses
+		} catch (SocketException se) {   // Can't create the socket.
+			se.printStackTrace();
+			System.exit(1);
+		}
 	}
 
 	public static void main(String[] args) {
@@ -58,6 +59,14 @@ public class Client {
 	
 	public void processError (byte[] error) {
 		// TODO 
+	}
+	
+	public void send (byte[] data, InetAddress addr, int port) {
+		// TODO
+	}
+	
+	public byte[] receive () {
+		// TODO return byte[]
 	}
 
 }
