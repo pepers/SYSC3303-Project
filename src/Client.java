@@ -3,6 +3,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Scanner;
 
 /**
@@ -53,40 +54,67 @@ public class Client {
 	}
 	
 	/**
-	 * Creates a new Client, and starts the user interface.
+	 * Creates a new Client, starts the user interface, and continues a connection
+	 * to the Server or ErrorSim.
 	 * 
 	 * @param args	command line arguments
 	 */
 	public static void main (String args[]) {
 		Client c = new Client();
-		c.ui();	// start the user interface
+		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
+		c.ui();	// start the user interface to send request
+		c.connection();	// receive and send packets with Server or ErrorSim
 	}
 	
 	/**
-	 * The simple console text user interface for the client program.
+	 * The simple console text user interface for the client program.  User navigates 
+	 * through menus to send request datagram packet.
+	 * 
 	 */
-	public void ui() {
-		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
-		
+	public void ui() {		
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input
-		while(true) {
-			System.out.println("Would you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
+		while (true) {
+			System.out.println("\nWould you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
 			String choice = input.nextLine();	// user's choice
 			if (choice.equalsIgnoreCase("R")) {			// read request
 				op = Opcode.RRQ;
-				System.out.println("Client: You have chosen to send a read request.");
+				System.out.println("\nClient: You have chosen to send a read request.");
 				break;
 			} else if (choice.equalsIgnoreCase("W")) {	// write request
 				op = Opcode.WRQ;
-				System.out.println("Client: You have chosen to send a write request.");
+				System.out.println("\nClient: You have chosen to send a write request.");
 				break;
 			} else if (choice.equalsIgnoreCase("Q")) {	// quit
-				System.out.println("Goodbye!");
+				System.out.println("\nGoodbye!");
 				System.exit(0);
 			} else {
-				System.out.println("I'm sorry, that is not a valid choice.  Please try again...");
+				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+			}
+		}
+		
+		// determines where the user wants to send the request
+		int dest; // the port destination of the user's request
+		while (true) {
+			System.out.println("Where would you like to send your request: ");
+			System.out.println("- directly to the (S)erver ");
+			System.out.println("- to the Server, but through the (E)rror Simulator first");
+			System.out.println("- I've changed my mind, I want to (Q)uit instead");
+			String choice = input.nextLine();	// user's choice
+			if (choice.equalsIgnoreCase("S")) {			// request to Server
+				dest = 69;
+				System.out.println("\nClient: You have chosen to send your request to the Server.");
+				break;
+			} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
+				dest = 68;
+				System.out.println("\nClient: You have chosen to send your request to the Error Simulator.");
+				break;
+			} else if (choice.equalsIgnoreCase("Q")) {	// quit
+				System.out.println("\nGoodbye!");
+				System.exit(0);
+			} else {
+				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 			}
 		}
 		
@@ -98,14 +126,28 @@ public class Client {
 		
 		// deal with user's choice of request
 		if (op == Opcode.RRQ) {
-			System.out.println("Client: You have chosen the file: " + fileName + ", to be received in " + 
-					mode + " mode.\n");			
+			System.out.println("\nClient: You have chosen the file: " + fileName + ", to be received in " + 
+					mode + " mode.");			
 		} else if (op == Opcode.WRQ) {
-			System.out.println("Client: You have chosen the file: " + fileName + ", to be sent in " + 
-					mode + " mode.\n");
+			System.out.println("\nClient: You have chosen the file: " + fileName + ", to be sent in " + 
+					mode + " mode.");
 		}
 		byte[] request = createRequest(op.op(), fileName, mode);	// get the request byte[] to send
-		   
+		
+		// send request to correct port destination
+		try {
+			send(request, InetAddress.getLocalHost(), dest);
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();			
+		}	
+	}
+	
+	/**
+	 * Continues connection with Server or ErrorSim, to transfer datagram packets.
+	 */
+	public void connection () {
+		System.out.println("Hello world.");
 	}
 	
 	/**

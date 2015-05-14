@@ -1,6 +1,7 @@
 ----------Methods to be created on the client-----------------
 public static void main (string args[])-matt
 public void ui()-matt
+public void connection()-matt
 public createRequest(Byte opcode, String filename, Byte mode):byte[]-Raj
 public createACK(Byte blockNumber):byte[4]
 public createData(Byte blockNUmber,Byte data[512]):byte[]
