@@ -3,14 +3,15 @@ public static void main (string args[])-matt
 public void ui()-matt
 public void connection()-matt
 public createRequest(Byte opcode, String filename, Byte mode):byte[]-Raj
-public createACK(Byte blockNumber):byte[4]
-public createData(Byte blockNUmber,Byte data[512]):byte[]
+public createACK(Byte blockNumber):byte[4]-Scott
+public createData(Byte blockNUmber,Byte data[512]):byte[]-Scott
 public createError (Byte errorCode, Byte errorMsg):byte[]-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
 public receive():DatagramPacket-Raj
 public process(DatagramPacket):byte[]-Raj
 public parseRequest (byte[])-Anuj 
 public parseACK (byte[])-Anuj
-public parseData (byte[])-Mohammed
+public parseData (byte[]):byte[]-Mohammed
 public parseError (byte[])-Mohammed
+public void writeToFile(String,byte[])-Matt
 
