@@ -57,9 +57,10 @@ public class Client {
 	 * Creates a new Client, starts the user interface, and continues a connection
 	 * to the Server or ErrorSim.
 	 * 
-	 * @param args	command line arguments
+	 * @param args			command line arguments
+	 * @throws Exception	 
 	 */
-	public static void main (String args[]) {
+	public static void main (String args[]) throws Exception {
 		Client c = new Client();
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
 		c.ui();	// start the user interface to send request
@@ -138,16 +139,32 @@ public class Client {
 		try {
 			send(request, InetAddress.getLocalHost(), dest);
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();			
+			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
+			System.exit(1);			
 		}	
 	}
 	
 	/**
 	 * Continues connection with Server or ErrorSim, to transfer datagram packets.
+	 * 
+	 * @throws Exception 
 	 */
-	public void connection () {
-		System.out.println("Hello world.");
+	public void connection () throws Exception {
+		DatagramPacket datagram = receive();	// gets received DatagramPacket
+		byte[] received = process(datagram);	// received packet turned into byte[]
+		
+		// parse request
+		if (received[1] == Opcode.ACK.op()) {			// Acknowledge packet received
+			parseAck(received);
+		} else if (received[1] == Opcode.DATA.op()) {	// Data packet received
+			parseData(received);
+			byte[] ack = createAck(received[3]);
+			send(ack, datagram.getAddress(), datagram.getPort());
+		} else if (received[1] == Opcode.ERROR.op()) {	// Error packet received
+			parseError(received);
+		} else {
+			throw new Exception ("Improperly formatted packet received.");
+		}
 	}
 	
 	/**
@@ -212,8 +229,9 @@ public class Client {
 	 * 
 	 * @param ack	the acknowledge byte[]
 	 */
-	public void parseAck (byte[] ack) {
-		// TODO 
+	public byte[] parseAck (byte[] ack) {
+		// TODO return 
+		return null;
 	}
 	
 	/**
@@ -235,23 +253,34 @@ public class Client {
 	}
 	
 	/**
-	 * Sends datagram packet.
+	 * Sends DatagramPacket.
 	 * 
-	 * @param data	data byte[] to be included in datagram packet
-	 * @param addr	internet address to send datagram packet to 
-	 * @param port	port number to send datagram packet to
+	 * @param data	data byte[] to be included in DatagramPacket
+	 * @param addr	internet address to send DatagramPacket to 
+	 * @param port	port number to send DatagramPacket to
 	 */
 	public void send (byte[] data, InetAddress addr, int port) {
 		// TODO
 	}
 	
 	/**
-	 * Receives datagram packet, and processes it's data into byte[].
+	 * Receives DatagramPacket.
 	 * 
-	 * @return	byte[] containing data received in datagram packet
+	 * @return DatagramPacket received
 	 */
-	public byte[] receive () {
-		// TODO return byte[]
+	public DatagramPacket receive () {
+		// TODO return DatagramPacket that was received
+		return null;
+	}
+	
+	/**
+	 * Gets byte[] from DatagramPacket.
+	 * 
+	 * @param received	DatagramPacket received
+	 * @return			byte[] containing the data from the DatagramPacket
+	 */
+	public byte[] process (DatagramPacket received) {
+		// TODO return byte[] contained in received DatagramPacket
 		return null;
 	}
 
