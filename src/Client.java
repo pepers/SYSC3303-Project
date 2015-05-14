@@ -1,4 +1,6 @@
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -19,10 +21,14 @@ import java.util.Scanner;
  */
 public class Client {
 	
-	DatagramPacket sendPacket;			// datagram packet to send data to server 
-	DatagramPacket receivePacket;		// datagram packet to receive data in
-	DatagramSocket sendReceiveSocket;	// datagram socket to send and receive packets from
-	private static Scanner input;		// scans user input in the simple console ui of main()
+	DatagramPacket sendPacket;				// to send data to server 
+	DatagramPacket receivePacket;			// to receive data in
+	DatagramSocket sendReceiveSocket;		// to send to and receive packets from server
+	private static Scanner input;			// scans user input in the simple console ui()
+	String fileName = "test0.txt";			// the file to be sent/received
+	String mode = "octet";				// the mode in which to send/receive the file
+	private BufferedInputStream in;			// input stream to read data from file
+	public static final int MAX_DATA = 512;	// max number of bytes for data field in packet
 	
 	/**
 	 * opcodes for the different datagram packets in TFTP
@@ -120,8 +126,6 @@ public class Client {
 		}
 		
 		// determine which file the user wants to modify		
-		String fileName = "test0.txt";	// the file to be sent/received
-		String mode = "netascii";		// the mode in which to send/receive the file
 		System.out.println("Please choose a file to modify.  Type in a file name: ");
 		fileName = input.nextLine();	// user's choice
 		
@@ -153,11 +157,35 @@ public class Client {
 		DatagramPacket datagram = receive();	// gets received DatagramPacket
 		byte[] received = process(datagram);	// received packet turned into byte[]
 		
-		// parse request
-		if (received[1] == Opcode.ACK.op()) {			// Acknowledge packet received
-			parseAck(received);
-		} else if (received[1] == Opcode.DATA.op()) {	// Data packet received
-			parseData(received);
+		in = new BufferedInputStream(new FileInputStream(fileName));
+		
+		// parse received packet, based on opcode
+		if (received[1] == Opcode.ACK.op()) {			// Acknowledge packet received (response to WRQ)
+			parseAck(received);	// parse the acknowledgment and print info to user
+			byte[] fileData = new byte[MAX_DATA];	// data to read in from file
+			
+			// reads the file in 512 byte chunks
+			while ((in.read(fileData)) != -1) {
+				byte[] data = createData(received[3], fileData);		// create DATA packet
+				send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
+				datagram = receive();									// gets received DatagramPacket
+				received = process(datagram);							// received packet turned into byte[]
+				
+				// check response 
+				if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
+					parseAck(received);		
+					if (data.length < (MAX_DATA + 4)) {	// done sending file
+						break; 				
+					}	
+				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
+					parseError(received);	
+				} else {
+					throw new Exception ("Improperly formatted packet received.");
+				}
+			}			
+		} else if (received[1] == Opcode.DATA.op()) {	// Data packet received (response to RRQ)
+			parseData(received);	// parse the DATA packet and print info to user
+			// create and send ACK packet
 			byte[] ack = createAck(received[3]);
 			send(ack, datagram.getAddress(), datagram.getPort());
 		} else if (received[1] == Opcode.ERROR.op()) {	// Error packet received
