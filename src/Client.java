@@ -3,9 +3,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.Scanner;
 
 /**
- * The Client part of the SYSC3303 TFTP Group Project.
+ * The client program for the SYSC3303 TFTP Group Project.
  * 
  * @author	Adhiraj Chakraborty
  * @author	Anuj Dalal
@@ -17,9 +18,29 @@ import java.net.SocketException;
  */
 public class Client {
 	
-	DatagramPacket sendPacket, receivePacket;
-	DatagramSocket sendReceiveSocket;
-
+	DatagramPacket sendPacket;			// datagram packet to send data to server 
+	DatagramPacket receivePacket;		// datagram packet to receive data in
+	DatagramSocket sendReceiveSocket;	// datagram socket to send and receive packets from
+	private static Scanner input;		// scans user input in the simple console ui of main()
+	
+	/**
+	 * opcodes for the different datagram packets in TFTP
+	 */
+	public enum Opcode {
+		RRQ ((byte)1),
+		WRQ ((byte)2),
+		DATA ((byte)3),
+		ACK ((byte)4),
+		ERROR ((byte)5);
+		
+		private final byte op;
+		
+		Opcode (byte op) {
+			this.op = op;
+		}
+		
+		private byte op () { return op; }		
+	}
 	
 	public Client() {
 		try {
@@ -30,18 +51,61 @@ public class Client {
 			System.exit(1);
 		}
 	}
-
-	public static void main(String[] args) {
-		// TODO 
-
+	
+	/**
+	 * Creates a new Client, and starts the user interface.
+	 * 
+	 * @param args	command line arguments
+	 */
+	public static void main (String args[]) {
+		Client c = new Client();
+		c.ui();	// start the user interface
 	}
 	
 	/**
 	 * The simple console text user interface for the client program.
 	 */
 	public void ui() {
-		// TODO 
-
+		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
+		
+		// determine if user wants to send a read request or a write request
+		Opcode op;	// the user's choice of request to send
+		input = new Scanner(System.in);		// scans user input
+		while(true) {
+			System.out.println("Would you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
+			String choice = input.nextLine();	// user's choice
+			if (choice.equalsIgnoreCase("R")) {			// read request
+				op = Opcode.RRQ;
+				System.out.println("Client: You have chosen to send a read request.");
+				break;
+			} else if (choice.equalsIgnoreCase("W")) {	// write request
+				op = Opcode.WRQ;
+				System.out.println("Client: You have chosen to send a write request.");
+				break;
+			} else if (choice.equalsIgnoreCase("Q")) {	// quit
+				System.out.println("Goodbye!");
+				System.exit(0);
+			} else {
+				System.out.println("I'm sorry, that is not a valid choice.  Please try again...");
+			}
+		}
+		
+		// determine which file the user wants to modify		
+		String fileName = "test0.txt";	// the file to be sent/received
+		String mode = "netascii";		// the mode in which to send/receive the file
+		System.out.println("Please choose a file to modify.  Type in a file name: ");
+		fileName = input.nextLine();	// user's choice
+		
+		// deal with user's choice of request
+		if (op == Opcode.RRQ) {
+			System.out.println("Client: You have chosen the file: " + fileName + ", to be received in " + 
+					mode + " mode.\n");			
+		} else if (op == Opcode.WRQ) {
+			System.out.println("Client: You have chosen the file: " + fileName + ", to be sent in " + 
+					mode + " mode.\n");
+		}
+		byte[] request = createRequest(op.op(), fileName, mode);	// get the request byte[] to send
+		   
 	}
 	
 	/**
@@ -52,7 +116,7 @@ public class Client {
 	 * @param mode		mode of file transfer in TFTP
 	 * @return			the read/write request byte[]
 	 */
-	public byte[] createRequest(byte opcode, String filename, String mode) {
+	public static byte[] createRequest(byte opcode, String filename, String mode) {
 		// TODO return byte[]
 		return null;
 	}
