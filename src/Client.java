@@ -4,6 +4,17 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 
+/**
+ * The Client part of the SYSC3303 TFTP Group Project.
+ * 
+ * @author	Adhiraj Chakraborty
+ * @author	Anuj Dalal
+ * @author	Hidara Abdallah
+ * @author	Matthew Pepers
+ * @author	Mohammed Hamza
+ * @author	Scott Savage
+ * @version	2
+ */
 public class Client {
 	
 	DatagramPacket sendPacket, receivePacket;
@@ -24,7 +35,10 @@ public class Client {
 		// TODO 
 
 	}
-
+	
+	/**
+	 * The simple console text user interface for the client program.
+	 */
 	public void ui() {
 		// TODO 
 
