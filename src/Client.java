@@ -30,7 +30,7 @@ public class Client {
 	DatagramSocket sendReceiveSocket;		// to send to and receive packets from server
 	private static Scanner input;			// scans user input in the simple console ui()
 	String filename = "test0.txt";			// the file to be sent/received
-	String mode = "octet";				// the mode in which to send/receive the file
+	String mode = "octet";					// the mode in which to send/receive the file
 	private BufferedInputStream in;			// input stream to read data from file
 	public static final int MAX_DATA = 512;	// max number of bytes for data field in packet
 	
@@ -161,10 +161,11 @@ public class Client {
 		DatagramPacket datagram = receive();	// gets received DatagramPacket
 		byte[] received = process(datagram);	// received packet turned into byte[]
 		
-		in = new BufferedInputStream(new FileInputStream(filename));
+		in = new BufferedInputStream(new FileInputStream(filename));	// stream to read data from file
 		
 		// parse received packet, based on opcode
-		if (received[1] == Opcode.ACK.op()) {			// Acknowledge packet received (response to WRQ)
+		// Acknowledge packet received (response to WRQ)
+		if (received[1] == Opcode.ACK.op()) {			
 			parseAck(received);						// parse the acknowledgment and print info to user
 			byte[] fileData = new byte[MAX_DATA];	// data to read in from file
 			
@@ -183,18 +184,38 @@ public class Client {
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
 					parseError(received);	
-				} else {
+				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
 			}			
-		} else if (received[1] == Opcode.DATA.op()) {	// Data packet received (response to RRQ)
-			byte[] data = parseData(received);	// parse the DATA packet and print info to user
-			writeToFile(filename, data);		// write the received data to file
-			// create and send ACK packet
-			byte[] ack = createAck(received[3]);
-			send(ack, datagram.getAddress(), datagram.getPort());
-		} else if (received[1] == Opcode.ERROR.op()) {	// Error packet received
+			
+		// Data packet received (response to RRQ)	
+		} else if (received[1] == Opcode.DATA.op()) {	
+			byte[] data = null;	// new byte[] to hold data portion of DATA packet
+			
+			// do while there is still another DATA packet to receive
+			do {
+				data = parseData(received);		// parse the DATA packet and print info to user
+				writeToFile(filename, data);	// write the received data to file
+				// create and send ACK packet
+				byte[] ack = createAck(received[3]);
+				send(ack, datagram.getAddress(), datagram.getPort());
+				if(data.length < MAX_DATA) {	// if last DATA packet was received
+					break;
+				}
+				datagram = receive();			// gets received DatagramPacket
+				received = process(datagram);	// received packet turned into byte[]
+				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
+					parseError(received);	
+				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
+					throw new Exception ("Improperly formatted packet received.");
+				}
+			} while (!(data.length < MAX_DATA));
+			
+		// Error packet received	
+		} else if (received[1] == Opcode.ERROR.op()) {	
 			parseError(received);
+			
 		} else {
 			throw new Exception ("Improperly formatted packet received.");
 		}
