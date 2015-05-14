@@ -1,11 +1,15 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Scanner;
 
 /**
@@ -25,7 +29,7 @@ public class Client {
 	DatagramPacket receivePacket;			// to receive data in
 	DatagramSocket sendReceiveSocket;		// to send to and receive packets from server
 	private static Scanner input;			// scans user input in the simple console ui()
-	String fileName = "test0.txt";			// the file to be sent/received
+	String filename = "test0.txt";			// the file to be sent/received
 	String mode = "octet";				// the mode in which to send/receive the file
 	private BufferedInputStream in;			// input stream to read data from file
 	public static final int MAX_DATA = 512;	// max number of bytes for data field in packet
@@ -127,17 +131,17 @@ public class Client {
 		
 		// determine which file the user wants to modify		
 		System.out.println("Please choose a file to modify.  Type in a file name: ");
-		fileName = input.nextLine();	// user's choice
+		filename = input.nextLine();	// user's choice
 		
 		// deal with user's choice of request
 		if (op == Opcode.RRQ) {
-			System.out.println("\nClient: You have chosen the file: " + fileName + ", to be received in " + 
+			System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
 					mode + " mode.");			
 		} else if (op == Opcode.WRQ) {
-			System.out.println("\nClient: You have chosen the file: " + fileName + ", to be sent in " + 
+			System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
 					mode + " mode.");
 		}
-		byte[] request = createRequest(op.op(), fileName, mode);	// get the request byte[] to send
+		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
 		
 		// send request to correct port destination
 		try {
@@ -157,11 +161,11 @@ public class Client {
 		DatagramPacket datagram = receive();	// gets received DatagramPacket
 		byte[] received = process(datagram);	// received packet turned into byte[]
 		
-		in = new BufferedInputStream(new FileInputStream(fileName));
+		in = new BufferedInputStream(new FileInputStream(filename));
 		
 		// parse received packet, based on opcode
 		if (received[1] == Opcode.ACK.op()) {			// Acknowledge packet received (response to WRQ)
-			parseAck(received);	// parse the acknowledgment and print info to user
+			parseAck(received);						// parse the acknowledgment and print info to user
 			byte[] fileData = new byte[MAX_DATA];	// data to read in from file
 			
 			// reads the file in 512 byte chunks
@@ -184,7 +188,8 @@ public class Client {
 				}
 			}			
 		} else if (received[1] == Opcode.DATA.op()) {	// Data packet received (response to RRQ)
-			parseData(received);	// parse the DATA packet and print info to user
+			byte[] data = parseData(received);	// parse the DATA packet and print info to user
+			writeToFile(filename, data);		// write the received data to file
 			// create and send ACK packet
 			byte[] ack = createAck(received[3]);
 			send(ack, datagram.getAddress(), datagram.getPort());
@@ -257,18 +262,19 @@ public class Client {
 	 * 
 	 * @param ack	the acknowledge byte[]
 	 */
-	public byte[] parseAck (byte[] ack) {
-		// TODO return 
-		return null;
+	public void parseAck (byte[] ack) {
+		// TODO
 	}
 	
 	/**
 	 * Parse the data byte[] and display info to user.
 	 * 
-	 * @param data	the data byte[]
+	 * @param data	the DATA byte[]
+	 * @return		just the data portion of a DATA packet byte[]
 	 */
-	public void parseData (byte[] data) {
-		// TODO 
+	public byte[] parseData (byte[] data) {
+		// TODO return byte[] with just the data portion
+		return null;
 	}
 	
 	/**
@@ -310,6 +316,18 @@ public class Client {
 	public byte[] process (DatagramPacket received) {
 		// TODO return byte[] contained in received DatagramPacket
 		return null;
+	}
+	
+	/**
+	 * Writes the received data to a file.
+	 * 
+	 * @param filename	name of file to write data to
+	 * @param data		data to be written to file			
+	 * @throws IOException 
+	 */
+	public void writeToFile (String filename, byte[] data) throws IOException {
+		Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+		System.out.println("\nClient: reading data to file: " + filename);
 	}
 
 }
