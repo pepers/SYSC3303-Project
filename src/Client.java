@@ -270,15 +270,6 @@ public class Client {
 	}
 	
 	/**
-	 * Parse the request byte[] and display info to user.
-	 * 
-	 * @param request	the request byte[]
-	 */
-	public void parseRequest (byte[] request) {
-		// TODO 
-	}
-	
-	/**
 	 * Parse the acknowledgment byte[] and display info to user.
 	 * 
 	 * @param ack	the acknowledge byte[]
