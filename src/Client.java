@@ -183,7 +183,7 @@ public class Client {
 						break; 				
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-					parseError(received);	
+					byte ErrorCode = parseError(received);	
 				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -206,7 +206,7 @@ public class Client {
 				datagram = receive();			// gets received DatagramPacket
 				received = process(datagram);	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
-					parseError(received);	
+					byte ErrorCode = parseError(received);	
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -214,7 +214,7 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
-			parseError(received);
+			byte ErrorCode = parseError(received);
 			
 		} else {
 			throw new Exception ("Improperly formatted packet received.");
@@ -293,9 +293,11 @@ public class Client {
 	 * Parse the error byte[] and display info to user.
 	 * 
 	 * @param error	the error byte[]
+	 * @return 		the TFTP Error Code byte value
 	 */
-	public void parseError (byte[] error) {
-		// TODO 
+	public byte parseError (byte[] error) {
+		// TODO return Error Code byte value
+		return (byte)0;
 	}
 	
 	/**
