@@ -1,6 +1,7 @@
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Scanner;
@@ -185,26 +186,81 @@ class ClientConnection implements Runnable {
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
 	
-	byte op;			// opcode from request DatagramPacket
+	Server.Opcode op;			// opcode from request DatagramPacket
 	String filename;	// filename from request DatagramPacket
 	
 	public ClientConnection(DatagramPacket requestPacket) {
-		this.requestPacket = requestPacket;	// get request DatagramPacket
-		this.op = getOpcode(requestPacket);	// get opcode from request packet
-		this.filename = getFilename(requestPacket);
+		this.requestPacket = requestPacket;			// get request DatagramPacket
+		this.op = getOpcode(requestPacket);			// get opcode from request packet
+		this.filename = getFilename(requestPacket);	// get filename from request packet
 	}
 	
 	public void run() {
-		
+		if (op == Server.Opcode.RRQ) {			// received a RRQ
+			if (fileExist()) {	// file exists
+				
+			} else {			// file does not exist
+				// create and send error response packet for "File not found."
+				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+				send(error, requestPacket.getAddress(), requestPacket.getPort());
+			}
+		} else if (op == Server.Opcode.WRQ) {	// received a WRQ
+			
+		}
 	}
 	
-	public byte getOpcode(DatagramPacket requestPacket) {
+	/**
+	 * Gets the opcode from the request packet.
+	 * 
+	 * @param requestPacket	the DatagramPacket that was received by the server
+	 * @return				the opcode of the request packet
+	 */
+	public Server.Opcode getOpcode(DatagramPacket requestPacket) {
 		// TODO return the requestPacket opcode as a single byte
-		return (byte)0;
+		return null;
 	}
 	
+	/**
+	 * Gets the filename from the request packet.
+	 * 
+	 * @param requestPacket	the DatagramPacket that was received by the server.
+	 * @return				the filename from the request packet as a String
+	 */
 	public String getFilename(DatagramPacket requestPacket) {
 		// TODO return the requestPacket filename as a string
+		return null;
+	}
+	
+	/**
+	 * Checks if a file exists by the name of filename.
+	 * 
+	 * @return			true if file exists, false if file does not exist
+	 */
+	public boolean fileExist() {
+		// TODO return true if filename exists, false if it doesn't
+		return false;
+	}
+	
+	/**
+	 * Sends DatagramPacket.
+	 * 
+	 * @param data	data byte[] to be included in DatagramPacket
+	 * @param addr	internet address to send DatagramPacket to 
+	 * @param port	port number to send DatagramPacket to
+	 */
+	public void send (byte[] data, InetAddress addr, int port) {
+		// TODO
+	}
+	
+	/**
+	 * Creates the byte[] to be sent as an error DatagramPacket.
+	 * 
+	 * @param errorCode	the code signifying what type of error
+	 * @param errorMsg	the message string that will give more detail on the error
+	 * @return			the error byte[]
+	 */
+	public byte[] createError (byte errorCode, String errorMsg) {
+		// TODO return byte[]
 		return null;
 	}
 }
