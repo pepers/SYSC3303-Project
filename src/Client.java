@@ -324,10 +324,10 @@ public class Client {
 	/**
 	 * Gets byte[] from DatagramPacket.
 	 * 
-	 * @param received	DatagramPacket received
-	 * @return			byte[] containing the data from the DatagramPacket
+	 * @param receivePacket	DatagramPacket received
+	 * @return				byte[] containing the data from the DatagramPacket
 	 */
-	public byte[] process (DatagramPacket received) {
+	public byte[] process (DatagramPacket receivePacket) {
 		// TODO return byte[] contained in received DatagramPacket
 		return null;
 	}
