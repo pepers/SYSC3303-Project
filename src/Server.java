@@ -2,12 +2,25 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.util.Scanner;
 
-
+/**
+ * The server program for the SYSC3303 TFTP Group Project.
+ * 
+ * @author	Adhiraj Chakraborty
+ * @author	Anuj Dalal
+ * @author	Hidara Abdallah
+ * @author	Matthew Pepers
+ * @author	Mohammed Hamza
+ * @author	Scott Savage
+ * @version	2
+ */
 public class Server {
 	
 	DatagramPacket receivePacket;	// to receive DatagramPackets from Client
 	DatagramSocket receiveSocket;	// Client sends to port 69
+	private Scanner input;			// scans user input when determining if Server should shut down
 	
 	/**
 	 * opcodes for the different DatagramPackets packets in TFTP
@@ -32,6 +45,7 @@ public class Server {
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
+			receiveSocket.setSoTimeout(5000);		// socket timeout in 5 seconds
 		} catch (SocketException se) {
 			se.printStackTrace();
 			System.exit(1);
@@ -50,7 +64,13 @@ public class Server {
 	 */
 	public void listener() throws Exception {
 		while (true) {	// keep listening on port 69 for new requests 
-			DatagramPacket datagram = receive();	// gets received DatagramPacket
+			DatagramPacket datagram = null;	// DatagramPacket to eventually receive
+			try {
+				datagram = receive();	// gets received DatagramPacket
+			} catch (SocketTimeoutException e) {	// haven't received packet in 5 seconds
+				serverQuit();			// find out if user wants to quit	
+				datagram = receive();	// tries to receive DatagramPackets again
+			}	
 			byte[] request = process(datagram);		// received request packet turned into byte[]
 			Opcode op = parse(request);				// check type and validity of request
 			
@@ -80,8 +100,32 @@ public class Server {
 		// pass it DatagramPacket that was received				
 		Thread clientConnectionThread = new Thread(
 				new ClientConnection(receivePacket), "Client Connection Thread");
-		System.out.println("\nServer: Packet Sent for Processing: ");
+		System.out.println("\nServer: New File Transfer Connection Started ");
 		clientConnectionThread.start();	// start new connection thread
+	}
+	
+	/**
+	 * Determines if user wants to quit, and performs actions accordingly.
+	 * 
+	 * @throws SocketException	when checking the socket timeout
+	 */
+	public void serverQuit() throws SocketException {
+		input = new Scanner(System.in);
+		int seconds = receiveSocket.getSoTimeout()/1000;	// seconds until socket timeout
+		while (true) {
+			System.out.println("\nServer: Have not received new packet in the last " +
+					seconds + " seconds: ");
+			System.out.println("Would you like to (Q)uit?  Or would you like to (C)ontinue?");
+			String choice = input.nextLine();			// user's choice
+			if (choice.equalsIgnoreCase("Q")) {			// Quit
+				receiveSocket.close();	// close socket listening for requests
+				System.exit(0);			// exit server
+			} else if (choice.equalsIgnoreCase("C")) {	// Continue
+				break;
+			} else {									// invalid user choice
+				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+			}
+		}
 	}
 	
 	/**
@@ -128,14 +172,40 @@ public class Server {
 	}
 }
 
+/**
+ * A thread to deal with a specific file transfer request.
+ *
+ */
 class ClientConnection implements Runnable {
 	
-	public ClientConnection(DatagramPacket receivePacket) {
-		// TODO
+	public static final int MAX_DATA = 512;	//maximum number of bytes in data block
+	
+	DatagramPacket requestPacket;			// request received on port69 from Client
+	DatagramPacket sendPacket;				// DatagramPacket to send in response to the Client
+	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
+	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
+	
+	byte op;			// opcode from request DatagramPacket
+	String filename;	// filename from request DatagramPacket
+	
+	public ClientConnection(DatagramPacket requestPacket) {
+		this.requestPacket = requestPacket;	// get request DatagramPacket
+		this.op = getOpcode(requestPacket);	// get opcode from request packet
+		this.filename = getFilename(requestPacket);
 	}
 	
 	public void run() {
-		// TODO
+		
+	}
+	
+	public byte getOpcode(DatagramPacket requestPacket) {
+		// TODO return the requestPacket opcode as a single byte
+		return (byte)0;
+	}
+	
+	public String getFilename(DatagramPacket requestPacket) {
+		// TODO return the requestPacket filename as a string
+		return null;
 	}
 }
 	

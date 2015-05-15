@@ -22,6 +22,10 @@ public DatagramPacket receive()
 public Opcode parse(byte[])
 public byte parseError(byte[])
 public void makeConnection(DatagramPacket)-matt
+public void serverQuit()-matt
 
-----------Methods to be created on the client connection thread-----------------
-TODO
+----------Methods to be created on the client connection thread
+public ClientConnection(DatagramPacket)-matt
+public void run()-matt
+public byte getOpcode(DatagramPacket)
+public String getFilename(DatagramPacket)
