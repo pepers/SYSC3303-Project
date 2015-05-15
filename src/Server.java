@@ -38,16 +38,35 @@ public class Server {
 		}   
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		Server s = new Server();		
 		s.listener();	// start listening for DatagramPackets
 	}
 	
 	/**
 	 * Listens for new DatagramPackets on port 69, and verifies them.
+	 * 
+	 * @throws Exception	invalid packet received 
 	 */
-	public void listener() {
-		// TODO
+	public void listener() throws Exception {
+		while (true) {	// keep listening on port 69 for new requests 
+			DatagramPacket datagram = receive();	// gets received DatagramPacket
+			byte[] request = process(datagram);		// received request packet turned into byte[]
+			Opcode op = parse(request);				// check type and validity of request
+			
+			// deal with request based on opcode
+			if (op == Opcode.RRQ || op == Opcode.WRQ) {	// request was RRQ or WRQ
+				makeConnection(datagram);				// set up new connection thread to transfer file
+			} else if (op == Opcode.ERROR) {			// ERROR packet was received instead
+				byte errorCode = parseError(request);	// determine Error Code
+				// deal with ERROR based on Error Code
+				if (errorCode == 1) {
+					
+				}
+			} else {									// invalid packet received
+				throw new Exception ("Improperly formatted packet received.");
+			}
+		}		
 	}
 	
 	/**
@@ -57,7 +76,12 @@ public class Server {
 	 * @param receivePacket	DatagramPacket received by server on port 69
 	 */
 	public void makeConnection (DatagramPacket receivePacket) {
-		// TODO
+		// create new thread to communicate with Client and transfer file
+		// pass it DatagramPacket that was received				
+		Thread clientConnectionThread = new Thread(
+				new ClientConnection(receivePacket), "Client Connection Thread");
+		System.out.println("\nServer: Packet Sent for Processing: ");
+		clientConnectionThread.start();	// start new connection thread
 	}
 	
 	/**
