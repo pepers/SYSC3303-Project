@@ -186,13 +186,21 @@ class ClientConnection implements Runnable {
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
 	
-	Server.Opcode op;			// opcode from request DatagramPacket
-	String filename;	// filename from request DatagramPacket
+	Server.Opcode op;						// opcode from request DatagramPacket
+	String filename;						// filename from request DatagramPacket
 	
 	public ClientConnection(DatagramPacket requestPacket) {
 		this.requestPacket = requestPacket;			// get request DatagramPacket
 		this.op = getOpcode(requestPacket);			// get opcode from request packet
 		this.filename = getFilename(requestPacket);	// get filename from request packet
+		
+		// open new socket to send and receive responses
+		try {
+			sendReceiveSocket = new DatagramSocket();
+		} catch (SocketException se) {
+			se.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 	public void run() {
@@ -203,10 +211,27 @@ class ClientConnection implements Runnable {
 				// create and send error response packet for "File not found."
 				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
 				send(error, requestPacket.getAddress(), requestPacket.getPort());
+				closeConnection();	// quit client connection thread
 			}
 		} else if (op == Server.Opcode.WRQ) {	// received a WRQ
-			
+			if (fileExist()) {	// file exists
+				// create and send error response packet for "File already exists."
+				byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
+				send(error, requestPacket.getAddress(), requestPacket.getPort());
+				closeConnection();	// quit client connection thread
+			} else {			// file does not exist
+				
+			}
 		}
+	}
+	
+	/**
+	 * Shut down this client connection thread.
+	 */
+	public void closeConnection() {
+		System.out.println("\n" + Thread.currentThread() + ": closing connection and shutting down thread.");
+		sendReceiveSocket.close();	// close socket, we are done
+		System.exit(0);				// quit thread
 	}
 	
 	/**
