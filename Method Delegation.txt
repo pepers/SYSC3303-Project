@@ -2,16 +2,26 @@
 public static void main (string args[])-matt
 public void ui()-matt
 public void connection()-matt
-public createRequest(Byte opcode, String filename, Byte mode):byte[]-Raj
-public createACK(Byte blockNumber):byte[4]-Scott
-public createData(Byte blockNUmber,Byte data[512]):byte[]-Scott
-public createError (Byte errorCode, Byte errorMsg):byte[]-Hyde
+public byte[] createRequest(Byte opcode, String filename, Byte mode)-Raj
+public byte[] createACK(Byte blockNumber)-Scott
+public byte[] createData(Byte blockNUmber,Byte data[])-Scott
+public byte[] createError (Byte errorCode, Byte errorMsg)-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
-public receive():DatagramPacket-Raj
-public process(DatagramPacket):byte[]-Raj
-public parseRequest (byte[])-Anuj 
-public parseACK (byte[])-Anuj
-public parseData (byte[]):byte[]-Mohammed
-public parseError (byte[])-Mohammed
+public DatagramPacket receive()-Raj
+public byte[] process(DatagramPacket)-Raj
+public void parseACK (byte[])-Anuj
+public byte[] parseData (byte[])-Mohammed
+public byte parseError (byte[])-Mohammed
 public void writeToFile(String,byte[])-Matt
 
+----------Methods to be created on the server-----------------
+public static void main (string args[])
+public void listener()
+public byte[] process(DatagramPacket)
+public DatagramPacket receive()
+public Opcode parse(byte[])
+public byte parseError(byte[])
+public void makeConnection(DatagramPacket)
+
+----------Methods to be created on the client connection thread-----------------
+TODO
