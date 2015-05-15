@@ -1,9 +1,13 @@
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Scanner;
 
 /**
@@ -205,22 +209,29 @@ class ClientConnection implements Runnable {
 	
 	public void run() {
 		if (op == Server.Opcode.RRQ) {			// received a RRQ
-			if (fileExist()) {	// file exists
-				
-			} else {			// file does not exist
+			if (Files.exists(Paths.get(filename))) {			// file exists
+				if (Files.isReadable(Paths.get(filename))) {	// file is readable
+					// TODO read from file on server
+				} else {										// file is not readable
+					// create and send error response packet for "Access violation."
+					byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
+					send(error, requestPacket.getAddress(), requestPacket.getPort());
+					closeConnection();	// quit client connection thread
+				}
+			} else {											// file does not exist
 				// create and send error response packet for "File not found."
 				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
 				send(error, requestPacket.getAddress(), requestPacket.getPort());
 				closeConnection();	// quit client connection thread
 			}
 		} else if (op == Server.Opcode.WRQ) {	// received a WRQ
-			if (fileExist()) {	// file exists
+			if (Files.exists(Paths.get(filename))) {	// file exists
 				// create and send error response packet for "File already exists."
 				byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
 				send(error, requestPacket.getAddress(), requestPacket.getPort());
 				closeConnection();	// quit client connection thread
-			} else {			// file does not exist
-				
+			} else {									// file does not exist
+				// TODO write to file on server
 			}
 		}
 	}
@@ -257,16 +268,6 @@ class ClientConnection implements Runnable {
 	}
 	
 	/**
-	 * Checks if a file exists by the name of filename.
-	 * 
-	 * @return			true if file exists, false if file does not exist
-	 */
-	public boolean fileExist() {
-		// TODO return true if filename exists, false if it doesn't
-		return false;
-	}
-	
-	/**
 	 * Sends DatagramPacket.
 	 * 
 	 * @param data	data byte[] to be included in DatagramPacket
@@ -287,6 +288,30 @@ class ClientConnection implements Runnable {
 	public byte[] createError (byte errorCode, String errorMsg) {
 		// TODO return byte[]
 		return null;
+	}
+	
+	/**
+	 * Writes the received data to a file.
+	 * 
+	 * @param filename	name of file to write data to
+	 * @param data		data to be written to file			
+	 * @throws IOException 
+	 */
+	public void writeToFile (byte[] data) throws IOException {		
+		// gets space left on the drive that we can use
+		long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+		
+		// checks if there is enough usable space on the disk
+		if (spaceOnDrive < filename.length() + 1024) { // +1024 bytes for safety
+			// writes data to file (creates file first, if it doesn't exist yet)
+			Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+			System.out.println("\nClient: reading data to file: " + filename);
+		} else {
+			// create and send error response packet for "Disk full or allocation exceeded."
+			byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+			send(error, requestPacket.getAddress(), requestPacket.getPort());
+			closeConnection();	// quit client connection thread
+		}
 	}
 }
 	
