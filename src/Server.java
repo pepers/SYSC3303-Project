@@ -9,6 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Scanner;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * The server program for the SYSC3303 TFTP Group Project.
@@ -192,11 +194,20 @@ class ClientConnection implements Runnable {
 	
 	Server.Opcode op;						// opcode from request DatagramPacket
 	String filename;						// filename from request DatagramPacket
+	InetAddress addr;						// InetAddress of client that sent request
+	int port;								// port number of client that sent request
+	
+	// ReadWriteLock in case multiple threads try to read/write from/to the same file
+	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+	private final Lock read  = readWriteLock.readLock();
+	private final Lock write = readWriteLock.writeLock();
 	
 	public ClientConnection(DatagramPacket requestPacket) {
 		this.requestPacket = requestPacket;			// get request DatagramPacket
 		this.op = getOpcode(requestPacket);			// get opcode from request packet
 		this.filename = getFilename(requestPacket);	// get filename from request packet
+		this.addr = requestPacket.getAddress();		// get the InetAddress of client
+		this.port = requestPacket.getPort();		// get the port number of client
 		
 		// open new socket to send and receive responses
 		try {
@@ -209,29 +220,55 @@ class ClientConnection implements Runnable {
 	
 	public void run() {
 		if (op == Server.Opcode.RRQ) {			// received a RRQ
-			if (Files.exists(Paths.get(filename))) {			// file exists
-				if (Files.isReadable(Paths.get(filename))) {	// file is readable
-					// TODO read from file on server
-				} else {										// file is not readable
-					// create and send error response packet for "Access violation."
-					byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
-					send(error, requestPacket.getAddress(), requestPacket.getPort());
+			read.lock();		// gets read lock
+			try {
+				if (Files.exists(Paths.get(filename))) {			// file exists
+					if (Files.isReadable(Paths.get(filename))) {	// file is readable
+						// TODO read from file on server
+					} else {										// file is not readable
+						// create and send error response packet for "Access violation."
+						byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
+						send(error);
+						closeConnection();	// quit client connection thread
+					}
+				} else {											// file does not exist
+					// create and send error response packet for "File not found."
+					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+					send(error);
 					closeConnection();	// quit client connection thread
 				}
-			} else {											// file does not exist
-				// create and send error response packet for "File not found."
-				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-				send(error, requestPacket.getAddress(), requestPacket.getPort());
-				closeConnection();	// quit client connection thread
+			} finally {
+				read.unlock();	// gives up read lock
 			}
 		} else if (op == Server.Opcode.WRQ) {	// received a WRQ
-			if (Files.exists(Paths.get(filename))) {	// file exists
-				// create and send error response packet for "File already exists."
-				byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
-				send(error, requestPacket.getAddress(), requestPacket.getPort());
-				closeConnection();	// quit client connection thread
-			} else {									// file does not exist
-				// TODO write to file on server
+			read.lock();		// gets read lock
+			try {
+				if (Files.exists(Paths.get(filename))) {	// file exists
+					// create and send error response packet for "File already exists."
+					byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
+					send(error);
+					closeConnection();	// quit client connection thread
+				} else {									// file does not exist
+					byte blockNumber = 0;					// block number for ACK and DATA during transfer
+					byte[] ack = createAck(blockNumber);	// create initial ACK
+					send(ack);								// send initial ACK
+					byte[] data = new byte[0];				// to hold received data portion of DATA packet
+					do {	// DATA transfer from client
+						DatagramPacket receivePacket = receive();	// receive the DatagramPacket
+						byte[] dataPacket = process(receivePacket);	// read the DatagramPacket
+						blockNumber = dataPacket[1];				// get the data block number
+						data = parseData(dataPacket);				// get data from packet
+						try {
+							writeToFile(data);						// write data to file
+						} catch (IOException e) {
+							e.printStackTrace();
+						}							
+						ack = createAck(blockNumber);				// create ACK
+						send(ack);									// send ACK
+					} while (data.length < MAX_DATA);
+				}
+			} finally {
+				read.unlock();	// gives up read lock
 			}
 		}
 	}
@@ -271,11 +308,73 @@ class ClientConnection implements Runnable {
 	 * Sends DatagramPacket.
 	 * 
 	 * @param data	data byte[] to be included in DatagramPacket
-	 * @param addr	internet address to send DatagramPacket to 
-	 * @param port	port number to send DatagramPacket to
 	 */
-	public void send (byte[] data, InetAddress addr, int port) {
+	public void send (byte[] data) {
+		// TODO use InetAddress addr, and int port - both declared above at ClientConnection
+	}
+	
+	/**
+	 * Receives DatagramPacket.
+	 * 
+	 * @return DatagramPacket received
+	 */
+	public DatagramPacket receive () {
+		// TODO return DatagramPacket that was received
+		return null;
+	}
+	
+	/**
+	 * Gets byte[] from DatagramPacket.
+	 * 
+	 * @param receivePacket	DatagramPacket received
+	 * @return				byte[] containing the data from the DatagramPacket
+	 */
+	public byte[] process (DatagramPacket receivePacket) {
+		// TODO return byte[] contained in received DatagramPacket
+		return null;
+	}
+	
+	/**
+	 * Parse the acknowledgment byte[] and display info to user.
+	 * 
+	 * @param ack	the acknowledge byte[]
+	 */
+	public void parseAck (byte[] ack) {
 		// TODO
+	}
+	
+	/**
+	 * Parse the data byte[] and display info to user.
+	 * 
+	 * @param data	the DATA byte[]
+	 * @return		just the data portion of a DATA packet byte[]
+	 */
+	public byte[] parseData (byte[] data) {
+		// TODO return byte[] with just the data portion
+		return null;
+	}
+	
+	/**
+	 * Creates the byte[] to be sent as an ACK DatagramPacket.
+	 * 
+	 * @param blockNumber	the data block number that is being acknowledged
+	 * @return				the acknowledgment byte[]
+	 */
+	public byte[] createAck (byte blockNumber) {
+		// TODO return byte[4]
+		return null;
+	}
+	
+	/**
+	 * Creates the byte[] to be sent as a DATA DatagramPacket.
+	 * 
+	 * @param blockNumber	the data block number 
+	 * @param data			the data to be sent
+	 * @return				the data byte[]
+	 */
+	public byte[] createData (byte blockNumber, byte[] data) {
+		// TODO return byte[]
+		return null;
 	}
 	
 	/**
@@ -301,16 +400,26 @@ class ClientConnection implements Runnable {
 		// gets space left on the drive that we can use
 		long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
 		
-		// checks if there is enough usable space on the disk
-		if (spaceOnDrive < filename.length() + 1024) { // +1024 bytes for safety
-			// writes data to file (creates file first, if it doesn't exist yet)
-			Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-			System.out.println("\nClient: reading data to file: " + filename);
-		} else {
-			// create and send error response packet for "Disk full or allocation exceeded."
-			byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
-			send(error, requestPacket.getAddress(), requestPacket.getPort());
-			closeConnection();	// quit client connection thread
+		read.lock();	// gets read lock
+		try {
+			// checks if there is enough usable space on the disk
+			if (spaceOnDrive < filename.length() + 1024) { // +1024 bytes for safety
+				write.lock();		// gets write lock
+				try {
+					// writes data to file (creates file first, if it doesn't exist yet)
+					Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+					System.out.println("\nClient: reading data to file: " + filename);
+				} finally {
+					write.unlock();	// gives up write lock
+				}
+			} else {
+				// create and send error response packet for "Disk full or allocation exceeded."
+				byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+				send(error);
+				closeConnection();	// quit client connection thread
+			}
+		} finally {
+			read.unlock();	// gives up read lock
 		}
 	}
 }
