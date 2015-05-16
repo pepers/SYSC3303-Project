@@ -47,8 +47,14 @@ INSTALL/RUN
 
 
 USE
+	CLIENT
 	- follow onscreen console prompts from the Client
 	- first choose whether you want to send a (R)ead 
 	Request, a (W)rite Request, or (Q)uit
 	- if you chose to read/write, next type in the name
 	of the file that you want to read/write
+
+	SERVER
+	- when the Server doesn't receive any Datagram Packets
+	for 5 seconds, it will ask the user if they want to 
+	(Q)uit or (C)ontinue
