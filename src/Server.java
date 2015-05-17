@@ -3,6 +3,7 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -317,8 +318,30 @@ class ClientConnection implements Runnable {
 	 * @return				the filename from the request packet as a String
 	 */
 	public String getFilename(DatagramPacket requestPacket) {
-		// TODO return the requestPacket filename as a string
-		return null;
+		// byte[] to copy packet data into
+		byte[] received = new byte[requestPacket.getLength()];	
+		System.arraycopy(requestPacket.getData(), 0, received, 0, requestPacket.getLength());
+		
+		// find the end of filename
+		int end = 2;	// end index of filename bytes
+		for (int i = 2; i < received.length - 1; i++) {
+			if  (received[i] == (byte)0) {
+				end = i;
+			}
+		}
+		
+		// byte[] to copy filename into
+		byte[] file = new byte[end - 2];
+		System.arraycopy(received, 2, file, 0, end - 2);
+		
+		String filename = null;
+		try {
+			filename = new String(file, "US-ASCII"); // make a String out of byte[] for filename
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}	
+		
+		return filename;
 	}
 	
 	/**
