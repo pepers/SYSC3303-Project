@@ -307,8 +307,20 @@ class ClientConnection implements Runnable {
 	 * @return				the opcode of the request packet
 	 */
 	public Server.Opcode getOpcode(DatagramPacket requestPacket) {
-		// TODO return the requestPacket opcode as a single byte
-		return null;
+		// byte[] to copy packet data into
+		byte[] received = new byte[1];	
+		System.arraycopy(requestPacket.getData(), 1, received, 0, 1);
+		
+		Server.Opcode opcode = null;	// opcode to return
+		
+		// determine opcode of request packet
+		if (received[0] == (byte)1) {
+			opcode = Server.Opcode.RRQ;
+		} else if (received[0] == (byte)2) {
+			opcode = Server.Opcode.WRQ;
+		}
+		
+		return opcode;
 	}
 	
 	/**
@@ -334,9 +346,10 @@ class ClientConnection implements Runnable {
 		byte[] file = new byte[end - 2];
 		System.arraycopy(received, 2, file, 0, end - 2);
 		
+		// make a String out of byte[] for filename
 		String filename = null;
 		try {
-			filename = new String(file, "US-ASCII"); // make a String out of byte[] for filename
+			filename = new String(file, "US-ASCII"); 
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}	

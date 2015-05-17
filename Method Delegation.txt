@@ -27,7 +27,7 @@ public void serverQuit()-matt
 --Methods to be created on the Server's client connection thread--
 public ClientConnection(DatagramPacket)-matt
 public void run()-matt
-public Server.Opcode getOpcode(DatagramPacket)
+public Server.Opcode getOpcode(DatagramPacket)-matt
 public String getFilename(DatagramPacket)-matt
 public void send(byte data[])-matt
 public DatagramPacket receive()-Raj
