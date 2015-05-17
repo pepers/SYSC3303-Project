@@ -370,8 +370,17 @@ class ClientConnection implements Runnable {
 	 * @return				the acknowledgment byte[]
 	 */
 	public byte[] createAck (byte blockNumber) {
-		// TODO return byte[4]
-		return null;
+		byte[] ack = new byte[4];	// new byte[] to be sent in ACK packet
+		
+		// add opcode
+		ack[0] = (byte)0;
+		ack[1] = (byte)4;
+				
+		// add block number
+		ack[2] = (byte)0;
+		ack[3] = blockNumber;		
+		
+		return ack;
 	}
 	
 	/**
