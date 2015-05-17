@@ -1,6 +1,7 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -80,9 +81,10 @@ public class Client {
 	/**
 	 * The simple console text user interface for the client program.  User navigates 
 	 * through menus to send request datagram packet.
+	 * @throws FileNotFoundException 
 	 * 
 	 */
-	public void ui() {		
+	public void ui() throws FileNotFoundException {		
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input
@@ -141,6 +143,13 @@ public class Client {
 			System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
 					mode + " mode.");
 		}
+		else //if file name was not recognized.
+		{
+			op = Opcode.ERROR;
+			createError((byte)1,(filename+" does not exist").getBytes()); //send error params 
+			throw new FileNotFoundException("File not found: "+filename); //throw exception 
+			
+		}
 		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
 		
 		// send request to correct port destination
@@ -149,7 +158,7 @@ public class Client {
 		} catch (UnknownHostException e) {
 			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
 			System.exit(1);			
-		}	
+		}
 	}
 	
 	/**
@@ -264,10 +273,39 @@ public class Client {
 	 * @param errorMsg	the message string that will give more detail on the error
 	 * @return			the error byte[]
 	 */
-	public byte[] createError (byte errorCode, String errorMsg) {
-		// TODO return byte[]
-		return null;
-	}
+	   //must create exceptions for access violation 
+	   //create exception for disk full
+	   /*create error function must be created here*/
+	   /*Error Codes
+
+	   Value     Meaning
+	   1         File not found.
+	   2         Access violation.
+	   3         Disk full or allocation exceeded.
+	   6         File already exists.
+	   */
+	  public byte[] createError(byte errorCode,byte[]errMsg)
+	  {
+		   byte error[] = new byte[50];
+		   if(errorCode == (byte)1) //file not found
+		   {
+			   error[0] = (byte)1;
+			   System.arraycopy(errMsg,0,error,1,errMsg.length); //create one byte array containing the error message and code
+		   }
+		   else if(errorCode == (byte)2) // access violation
+		   {
+			   
+		   }
+		   else if(errorCode == (byte)3) //disk full 
+		   {
+			   
+		   }
+		   else //file already exists
+		   {
+			   
+		   }
+		   return error; //return to be sent as an error message
+	   }
 	
 	/**
 	 * Parse the acknowledgment byte[] and display info to user.
@@ -343,5 +381,7 @@ public class Client {
 		Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 		System.out.println("\nClient: reading data to file: " + filename);
 	}
+	  
+
 
 }
