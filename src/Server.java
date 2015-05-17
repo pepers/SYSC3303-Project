@@ -487,8 +487,10 @@ class ClientConnection implements Runnable {
 		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg
 		
 		// convert errorMsg to byte[]
-		for (int i=0; i<message.length; i++) {
-			message[i] = (byte)errorMsg.charAt(i);
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
 		}
 		
 		// add error message to error byte[]
