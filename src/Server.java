@@ -35,21 +35,7 @@ public class Server {
 	/**
 	 * opcodes for the different DatagramPackets packets in TFTP
 	 */
-	public enum Opcode {
-		RRQ ((byte)1),
-		WRQ ((byte)2),
-		DATA ((byte)3),
-		ACK ((byte)4),
-		ERROR ((byte)5);
-		
-		private final byte op;
-		
-		Opcode (byte op) {
-			this.op = op;
-		}
-		
-		private byte op () { return op; }		
-	}
+	public enum Opcode { RRQ, WRQ, DATA, ACK, ERROR }
 	
 	public Server() {
 		// create new socket to receive TFTP packets from Client
@@ -195,8 +181,8 @@ class ClientConnection implements Runnable {
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
 	
-	Server.Opcode op;						// opcode from request DatagramPacket
-	String filename;						// filename from request DatagramPacket
+	private Server.Opcode op;						// opcode from request DatagramPacket
+	private String filename;						// filename from request DatagramPacket
 	InetAddress addr;						// InetAddress of client that sent request
 	int port;								// port number of client that sent request
 	
@@ -395,9 +381,21 @@ class ClientConnection implements Runnable {
 	 * @param data			the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] data) {
-		// TODO return byte[]
-		return null;
+	public byte[] createData (byte blockNumber, byte[] passedData) {
+		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
+		
+		// add opcode
+		data[0] = (byte)0;
+		data[1] = (byte)3;
+				
+		// add block number
+		data[2] = (byte)0;
+		data[3] = blockNumber;
+		
+		// copy data, being passed in, to data byte[]
+		System.arraycopy(passedData, 0, data, 4, passedData.length);
+		
+		return data;
 	}
 	
 	/**
@@ -408,7 +406,7 @@ class ClientConnection implements Runnable {
 	 * @return			the error byte[]
 	 */
 	public byte[] createError (byte errorCode, String errorMsg) {
-		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
+		byte[] error = new byte[4 + errorMsg.length() + 1];	// new byte[] to be sent in ERROR packet
 		
 		// add opcode
 		error[0] = (byte)0;
