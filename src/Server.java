@@ -1,4 +1,7 @@
 
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -197,6 +200,8 @@ class ClientConnection implements Runnable {
 	InetAddress addr;						// InetAddress of client that sent request
 	int port;								// port number of client that sent request
 	
+	private BufferedInputStream in;			// stream to read from file when RRQ received
+	
 	// ReadWriteLock in case multiple threads try to read/write from/to the same file
 	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 	private final Lock read  = readWriteLock.readLock();
@@ -224,7 +229,25 @@ class ClientConnection implements Runnable {
 			try {
 				if (Files.exists(Paths.get(filename))) {			// file exists
 					if (Files.isReadable(Paths.get(filename))) {	// file is readable
-						// TODO read from file on server
+						byte blockNumber = 1;		// block number for DATA during transfer
+						byte[] read = new byte[0];	// to hold received data portion of DATA packet
+						int offset = 0;				// position to start reading file at
+						// do while there is more data to read from the file
+						do {
+							read = readFromFile(offset);					// up to 512 bytes read from file
+							offset = read.length;							// increase position in file
+							byte[] data = createData(blockNumber, read);	// create DATA packet of file being read
+							send(data);										// send DATA
+							blockNumber++;									// increment DATA block number
+							// blockNumber goes from 0-127, and then wraps to back to 0
+							if (blockNumber < 0) { blockNumber = 0; }	
+						} while (read.length > 0);
+						// check if file was a multiple of 512 bytes in size, send 0 byte DATA
+						if (read.length == MAX_DATA) {
+							read = new byte[0];								// create 0 byte read file data
+							byte[] data = createData(blockNumber, read);	// create 0 byte DATA 
+							send(data);										// send 0 byte DATA
+						}
 					} else {										// file is not readable
 						// create and send error response packet for "Access violation."
 						byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
@@ -421,6 +444,29 @@ class ClientConnection implements Runnable {
 		} finally {
 			read.unlock();	// gives up read lock
 		}
+	}
+	
+	/**
+	 * Reads data from file (filename) to byte[] in 512 byte chunks.
+	 * 
+	 * @return	512 byte chunk of data from file
+	 */
+	public byte[] readFromFile(int offset) {
+		byte[] read = new byte[0]; 	// to hold bytes read
+		try {
+			in = new BufferedInputStream(new FileInputStream(filename));	// to read from file
+			int bytes = in.read(read, offset, 512);	// read up to 512 bytes from file starting at offset
+			System.out.println("/n" + Thread.currentThread() + ": Read " + bytes + " bytes, from " + filename);
+		} catch (FileNotFoundException e) {
+			// create and send error response packet for "File not found."
+			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+			send(error);
+			closeConnection();	// quit client connection thread
+		} catch (IOException e) {
+			System.out.println("\nError: could not read from BufferedInputStream.");
+			System.exit(1);
+		}
+		return read;	// return bytes read
 	}
 }
 	
