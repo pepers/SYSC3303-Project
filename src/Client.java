@@ -164,7 +164,7 @@ public class Client {
 	 */
 	public void connection () throws Exception {
 		DatagramPacket datagram = receive();	// gets received DatagramPacket
-		byte[] received = process(datagram);	// received packet turned into byte[]
+		byte[] received = datagram.getData();	// received packet turned into byte[]
 		
 		in = new BufferedInputStream(new FileInputStream(filename));	// stream to read data from file
 		
@@ -179,7 +179,7 @@ public class Client {
 				byte[] data = createData(received[3], fileData);		// create DATA packet
 				send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
 				datagram = receive();									// gets received DatagramPacket
-				received = process(datagram);							// received packet turned into byte[]
+				received = datagram.getData();							// received packet turned into byte[]
 				
 				// check response 
 				if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
@@ -216,7 +216,7 @@ public class Client {
 					break;
 				}
 				datagram = receive();			// gets received DatagramPacket
-				received = process(datagram);	// received packet turned into byte[]
+				received = datagram.getData();	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
 					byte errorCode = parseError(received);	
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
@@ -362,16 +362,6 @@ public class Client {
 		return null;
 	}
 	
-	/**
-	 * Gets byte[] from DatagramPacket.
-	 * 
-	 * @param receivePacket	DatagramPacket received
-	 * @return				byte[] containing the data from the DatagramPacket
-	 */
-	public byte[] process (DatagramPacket receivePacket) {
-		// TODO return byte[] contained in received DatagramPacket
-		return null;
-	}
 	
 	/**
 	 * Writes the received data to a file.
