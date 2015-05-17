@@ -74,8 +74,11 @@ public class Client {
 	public static void main (String args[]) throws Exception {
 		Client c = new Client();
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
-		c.ui();	// start the user interface to send request
-		c.connection();	// receive and send packets with Server or ErrorSim
+		// loop until user chooses to not send another request and quit
+		while(true) {
+			c.ui();	// start the user interface to send request
+			c.connection();	// receive and send packets with Server or ErrorSim
+		}
 	}
 	
 	/**
@@ -198,7 +201,14 @@ public class Client {
 			// do while there is still another DATA packet to receive
 			do {
 				data = parseData(received);		// parse the DATA packet and print info to user
-				writeToFile(filename, data);	// write the received data to file
+				try {
+					writeToFile(filename, data);	// write the received data to file
+				} catch (IOException e) {
+					// create and send error response packet for "Access violation."
+					byte[] error = createError((byte)2, "File (" + filename + ") can not be written to.");
+					send(error, datagram.getAddress(), datagram.getPort());	// send ERROR packet
+					return;
+				}
 				// create and send ACK packet
 				byte[] ack = createAck(received[3]);
 				send(ack, datagram.getAddress(), datagram.getPort());
@@ -277,13 +287,13 @@ public class Client {
 	   3         Disk full or allocation exceeded.
 	   6         File already exists.
 	   */
-	  public byte[] createError(byte errorCode,byte[]errMsg)
+	  public byte[] createError(byte errorCode, String errMsg)
 	  {
 		   byte error[] = new byte[50];
 		   if(errorCode == (byte)1) //file not found
 		   {
 			   error[0] = (byte)1;
-			   System.arraycopy(errMsg,0,error,1,errMsg.length); //create one byte array containing the error message and code
+			   System.arraycopy(errMsg,0,error,1,errMsg.length()); //create one byte array containing the error message and code
 		   }
 		   else if(errorCode == (byte)2) // access violation
 		   {
