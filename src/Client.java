@@ -36,7 +36,7 @@ public class Client {
 	public static final int MAX_DATA = 512;	// max number of bytes for data field in packet
 	
 	/**
-	 * opcodes for the different datagram packets in TFTP
+	 * opcodes for the different DatagramPackets in TFTP
 	 */
 	public enum Opcode {
 		RRQ ((byte)1),
@@ -80,11 +80,10 @@ public class Client {
 	
 	/**
 	 * The simple console text user interface for the client program.  User navigates 
-	 * through menus to send request datagram packet.
-	 * @throws FileNotFoundException 
+	 * through menus to send request DatagramPacket.
 	 * 
 	 */
-	public void ui() throws FileNotFoundException {		
+	public void ui() {		
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input
@@ -143,13 +142,7 @@ public class Client {
 			System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
 					mode + " mode.");
 		}
-		else //if file name was not recognized.
-		{
-			op = Opcode.ERROR;
-			createError((byte)1,(filename+" does not exist").getBytes()); //send error params 
-			throw new FileNotFoundException("File not found: "+filename); //throw exception 
-			
-		}
+		
 		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
 		
 		// send request to correct port destination
@@ -162,7 +155,7 @@ public class Client {
 	}
 	
 	/**
-	 * Continues connection with Server or ErrorSim, to transfer datagram packets.
+	 * Continues connection with Server or ErrorSim, to transfer DatagramPackets.
 	 * 
 	 * @throws Exception 
 	 */
@@ -192,7 +185,7 @@ public class Client {
 						break; 				
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-					byte ErrorCode = parseError(received);	
+					byte errorCode = parseError(received);	
 				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -215,7 +208,7 @@ public class Client {
 				datagram = receive();			// gets received DatagramPacket
 				received = process(datagram);	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
-					byte ErrorCode = parseError(received);	
+					byte errorCode = parseError(received);	
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -223,7 +216,7 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
-			byte ErrorCode = parseError(received);
+			byte errorCode = parseError(received);
 			
 		} else {
 			throw new Exception ("Improperly formatted packet received.");
@@ -231,7 +224,7 @@ public class Client {
 	}
 	
 	/**
-	 * Creates the request byte[] to be later sent as a datagram packet.
+	 * Creates the request byte[] to be later sent as a DatagramPacket.
 	 * 
 	 * @param opcode	differentiates between read (1) and write (2) requests
 	 * @param filename	name of file to be sent/requested to/from server
@@ -244,7 +237,7 @@ public class Client {
 	}
 	
 	/**
-	 * Creates the byte[] to be sent as an acknowledgment datagram packet.
+	 * Creates the byte[] to be sent as an acknowledgment DatagramPacket.
 	 * 
 	 * @param blockNumber	the data block number that is being acknowledged
 	 * @return				the acknowledgment byte[]
@@ -255,7 +248,7 @@ public class Client {
 	}
 	
 	/**
-	 * Creates the byte[] to be sent as a data datagram packet.
+	 * Creates the byte[] to be sent as a data DatagramPacket.
 	 * 
 	 * @param blockNumber	the data block number 
 	 * @param data			the data to be sent
@@ -267,7 +260,7 @@ public class Client {
 	}
 	
 	/**
-	 * Creates the byte[] to be sent as an error datagram packet.
+	 * Creates the byte[] to be sent as an error DatagramPacket.
 	 * 
 	 * @param errorCode	the code signifying what type of error
 	 * @param errorMsg	the message string that will give more detail on the error
