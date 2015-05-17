@@ -24,7 +24,7 @@ public byte parseError(byte[])
 public void makeConnection(DatagramPacket)-matt
 public void serverQuit()-matt
 
-----------Methods to be created on the client connection thread
+--Methods to be created on the Server's client connection thread--
 public ClientConnection(DatagramPacket)-matt
 public void run()-matt
 public Server.Opcode getOpcode(DatagramPacket)
@@ -36,7 +36,7 @@ public void parseACK (byte[])-Anuj
 public byte[] parseData (byte[])-Mohammed
 public byte[] createACK(Byte blockNumber)
 public byte[] createData(Byte blockNUmber,Byte data[])
-public byte[] createError (Byte errorCode, Byte errorMsg)
+public byte[] createError (Byte errorCode, Byte errorMsg)-matt
 public void closeConnection()-matt
 public void writeToFile(byte[])-matt
 public byte[] readFromFile(int offset)-matt

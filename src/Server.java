@@ -408,8 +408,28 @@ class ClientConnection implements Runnable {
 	 * @return			the error byte[]
 	 */
 	public byte[] createError (byte errorCode, String errorMsg) {
-		// TODO return byte[]
-		return null;
+		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
+		
+		// add opcode
+		error[0] = (byte)0;
+		error[1] = (byte)5;
+		
+		// add error code
+		error[2] = (byte)0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg
+		
+		// convert errorMsg to byte[]
+		for (int i=0; i<message.length; i++) {
+			message[i] = (byte)errorMsg.charAt(i);
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error;
 	}
 	
 	/**
