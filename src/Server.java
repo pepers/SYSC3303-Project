@@ -11,6 +11,7 @@ import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -223,6 +224,7 @@ class ClientConnection implements Runnable {
 							read = readFromFile(offset);					// up to 512 bytes read from file
 							offset = read.length;							// increase position in file
 							byte[] data = createData(blockNumber, read);	// create DATA packet of file being read
+							System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 							send(data);										// send DATA
 							blockNumber++;									// increment DATA block number
 							// blockNumber goes from 0-127, and then wraps to back to 0
@@ -232,17 +234,20 @@ class ClientConnection implements Runnable {
 						if (read.length == MAX_DATA) {
 							read = new byte[0];								// create 0 byte read file data
 							byte[] data = createData(blockNumber, read);	// create 0 byte DATA 
+							System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 							send(data);										// send 0 byte DATA
 						}
 					} else {										// file is not readable
 						// create and send error response packet for "Access violation."
 						byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
+						System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 						send(error);
 						closeConnection();	// quit client connection thread
 					}
 				} else {											// file does not exist
 					// create and send error response packet for "File not found."
 					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 					send(error);
 					closeConnection();	// quit client connection thread
 				}
@@ -255,11 +260,13 @@ class ClientConnection implements Runnable {
 				if (Files.exists(Paths.get(filename))) {	// file exists
 					// create and send error response packet for "File already exists."
 					byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
+					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 					send(error);
 					closeConnection();	// quit client connection thread
 				} else {									// file does not exist
 					byte blockNumber = 0;					// block number for ACK and DATA during transfer
 					byte[] ack = createAck(blockNumber);	// create initial ACK
+					System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 					send(ack);								// send initial ACK
 					byte[] data = new byte[0];				// to hold received data portion of DATA packet
 					do {	// DATA transfer from client
@@ -273,6 +280,7 @@ class ClientConnection implements Runnable {
 							e.printStackTrace();
 						}							
 						ack = createAck(blockNumber);				// create ACK
+						System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 						send(ack);									// send ACK
 					} while (data.length < MAX_DATA);
 				}
@@ -319,7 +327,22 @@ class ClientConnection implements Runnable {
 	 * @param data	data byte[] to be included in DatagramPacket
 	 */
 	public void send (byte[] data) {
-		// TODO use InetAddress addr, and int port - both declared above at ClientConnection
+		// create new DatagramPacket to send to client
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
+		
+		// send the packet
+		try {
+			sendReceiveSocket.send(sendPacket);
+			// print out thread and port info, from which the packet was sent to Client
+			System.out.println("\n" + Thread.currentThread() + ": packet sent using port " + 
+					sendReceiveSocket.getLocalPort());
+			// print byte info on packet being sent to Client
+			System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+			System.out.println(Arrays.toString(data));
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 	/**
