@@ -244,11 +244,6 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
-
-			byte errorCode = parseError(received);
-			byte[] error = createError();
-			
-
 			parseError(received);	
 			return;
 
