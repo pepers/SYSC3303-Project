@@ -371,6 +371,9 @@ public class Client {
 		//this is just the error code
 		System.arraycopy(receivePacket, 2, error, 0, 2);
 		System.arraycopy(receivePacket, 4,ErrorMsg,0,(receivePacket.getLength()-5));
+		
+		System.out.println("Error Code: " + error);
+		System.out.println("Error message:"+ErrorMsg);
 	
 		return (byte)0;
 	}
