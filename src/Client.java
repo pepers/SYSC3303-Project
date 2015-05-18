@@ -411,7 +411,6 @@ public class Client {
 	      return receivePacket;
 	}
 	
-<<<<<<< HEAD
 	/**
 	 * Gets byte[] from DatagramPacket.
 	 * 
@@ -425,9 +424,7 @@ public class Client {
 		System.arraycopy(data, 0, received, 0, receivePacket.getLength());
 		return data;
 	}
-=======
->>>>>>> origin/master
-	
+
 	/**
 	 * Writes the received data to a file.
 	 * 
