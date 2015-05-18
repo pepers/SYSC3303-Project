@@ -30,9 +30,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class Server {
 	
-	DatagramPacket receivePacket;	// to receive DatagramPackets from Client
-	DatagramSocket receiveSocket;	// Client sends to port 69
-	private Scanner input;			// scans user input when determining if Server should shut down
+	DatagramPacket receivePacket;				// to receive DatagramPackets from Client
+	DatagramSocket receiveSocket;				// Client sends to port 69
+	private Scanner input;						// scans user input when determining if Server should shut down
+	public static final int TIMEOUT = 10000;	// number of milliseconds before receiveSocket timeout;
 	
 	/**
 	 * opcodes for the different DatagramPackets packets in TFTP
@@ -43,7 +44,7 @@ public class Server {
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
-			receiveSocket.setSoTimeout(5000);		// socket timeout in 5 seconds
+			receiveSocket.setSoTimeout(TIMEOUT);		// socket timeout in TIMEOUT milliseconds
 		} catch (SocketException se) {
 			se.printStackTrace();
 			System.exit(1);

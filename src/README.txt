@@ -56,5 +56,5 @@ USE
 
 	SERVER
 	- when the Server doesn't receive any Datagram Packets
-	for 5 seconds, it will ask the user if they want to 
+	for 10 seconds, it will ask the user if they want to 
 	(Q)uit or (C)ontinue
