@@ -135,34 +135,40 @@ public class Client {
 		}
 		
 		// determine which file the user wants to modify
-		try
-		{
-				System.out.println("Please choose a file to modify.  Type in a file name: ");
-				filename = input.nextLine();	// user's choice
-				
-				// deal with user's choice of request
-				if (op == Opcode.RRQ) {
-					System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
-							mode + " mode.");			
-				} else if (op == Opcode.WRQ) {
+		while(true) {
+			System.out.println("Please choose a file to modify.  Type in a file name: ");
+			filename = input.nextLine();	// user's choice
+			
+			// deal with user's choice of request
+			if (op == Opcode.RRQ) {
+				System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
+						mode + " mode.");	
+				break;
+			} else if (op == Opcode.WRQ) {					
+				if (Files.isWritable(Paths.get(filename))) {	// file exists and is writable
 					System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
 							mode + " mode.");
+					break;
+				} else {									// file does not exist
+					System.out.println("\nClient: I'm sorry, " + filename + " does not exist:");
+					System.out.println("Please (T)ry again, or (Q)uit: ");
+					String choice = input.nextLine();	// user's choice
+					if (choice.equalsIgnoreCase("Q")) {	// quit
+						System.out.println("\nGoodbye!");
+						System.exit(0);
+					}
 				}
-				
-				byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
-				
-				// send request to correct port destination
-				try{
-					send(request, InetAddress.getLocalHost(), dest);
-					
-				} catch (UnknownHostException e) {
-					System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
-					System.exit(1);			
-				}
-			catch(FileNotFoundException f)
-			{
-				 createError((byte)1,filename + " does not exist");
 			}
+		}
+		
+		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
+				
+		// send request to correct port destination
+		try{
+			send(request, InetAddress.getLocalHost(), dest);			
+		} catch (UnknownHostException e) {
+			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
+			System.exit(1);			
 		}
 	}
 	
