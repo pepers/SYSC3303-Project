@@ -339,8 +339,11 @@ public class Client {
 	 * @return		just the data portion of a DATA packet byte[]
 	 */
 	public byte[] parseData (byte[] data) {
-		// TODO return byte[] with just the data portion
-		return null;
+		
+		//Copies the bytes from receivePacket starting from position 4(skips the Opcode and block #)
+		//Copies that byte array into the data byte array
+		System.arraycopy(receivePacket, 4, data, 0, (receivePacket.getLength()-4));
+		return data;
 	}
 	
 	/**
@@ -350,7 +353,13 @@ public class Client {
 	 * @return 		the TFTP Error Code byte value
 	 */
 	public byte parseError (byte[] error) {
-		// TODO return Error Code byte value
+		String ErrorMsg = null;
+
+		//Copies the errorcode from the received packet to the error byte array
+		//this is just the error code
+		System.arraycopy(receivePacket, 2, error, 0, 2);
+		System.arraycopy(receivePacket, 4,ErrorMsg,0,(receivePacket.getLength()-5));
+	
 		return (byte)0;
 	}
 	
