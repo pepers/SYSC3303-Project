@@ -31,6 +31,7 @@ public void send(byte data[])-matt
 public DatagramPacket receive()-Raj
 public byte[] process(DatagramPacket)-Raj
 public void parseACK (byte[])-Anuj
+public void parseError (byte[])-matt
 public byte[] parseData (byte[])-Mohammed
 public byte[] createACK(Byte blockNumber)-matt
 public byte[] createData(Byte blockNUmber,Byte data[])-matt

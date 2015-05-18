@@ -279,6 +279,7 @@ class ClientConnection implements Runnable {
 					do {	// DATA transfer from client
 						DatagramPacket receivePacket = receive();		// receive the DatagramPacket
 						byte[] dataPacket = receivePacket.getData();	// read the DatagramPacket
+						parseError(dataPacket);							// check if ERROR was received instead
 						blockNumber = dataPacket[1];					// get the data block number
 						data = parseData(dataPacket);					// get data from packet
 						try {
@@ -302,8 +303,7 @@ class ClientConnection implements Runnable {
 	 */
 	public void closeConnection() {
 		System.out.println("\n" + Thread.currentThread() + ": closing connection and shutting down thread.");
-		sendReceiveSocket.close();	// close socket, we are done
-		System.exit(0);				// quit thread
+		Thread.currentThread().interrupt();	// close ClientConnection thread to stop transfer
 	}
 	
 	/**
@@ -433,6 +433,51 @@ class ClientConnection implements Runnable {
 	}
 	
 	/**
+	 * Checks if an ERROR packet was received, and deals with it.
+	 * 
+	 * @param data	the data from the received DatagramPacket
+	 */
+	public void parseError (byte[] data) {
+		if (data[1] == (byte)5) {	// packet is an ERROR packet
+			byte errorCode = data[3];								// get the error code
+			byte[] errMsg = new byte[data.length - 5];				// byte[] for error message
+			System.arraycopy(data, 4, errMsg, 0, data.length - 5);	// get the error message
+			
+			// convert error message to String
+			String message = "no message";
+			try {
+				message = new String(errMsg, "US-ASCII");
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}		
+			
+			System.out.println("/n" + Thread.currentThread() + ": ERROR received: ");
+			System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+			
+			// display error to user and deal with it
+			if (errorCode == (byte)0) {				
+				System.out.print("ERROR 0: " + message);
+			} else if (errorCode == (byte)1) {
+				System.out.print("ERROR 1: File not found: " + message);
+			} else if (errorCode == (byte)2) {
+				System.out.print("ERROR 2: Access violation: " + message);
+			} else if (errorCode == (byte)3) {
+				System.out.print("ERROR 3: Disk full or allocation exceeded: " + message);
+			} else if (errorCode == (byte)4) {
+				System.out.print("ERROR 4: Illegal TFTP operation: " + message);
+			} else if (errorCode == (byte)5) {
+				System.out.print("ERROR 5: Unkown transfer ID: " + message);
+			} else if (errorCode == (byte)6) {
+				System.out.print("ERROR 6: File already exists: " + message);
+			} else if (errorCode == (byte)7) {
+				System.out.print("ERROR 7: No such user: " + message);
+			}	
+			
+			closeConnection();	// close ClientConnection thread to stop transfer
+		}
+	}
+	
+	/**
 	 * Creates the byte[] to be sent as an ACK DatagramPacket.
 	 * 
 	 * @param blockNumber	the data block number that is being acknowledged
@@ -529,7 +574,7 @@ class ClientConnection implements Runnable {
 				try {
 					// writes data to file (creates file first, if it doesn't exist yet)
 					Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-					System.out.println("\nClient: reading data to file: " + filename);
+					System.out.println("/n" + Thread.currentThread() + ": writing data to file: " + filename);
 				} finally {
 					write.unlock();	// gives up write lock
 				}
