@@ -237,7 +237,7 @@ public class Client {
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
 			byte errorCode = parseError(received);
-			byte[] error = createError()
+			byte[] error = createError();
 			
 		}
 		else {
@@ -352,7 +352,10 @@ public class Client {
 	 * @param ack	the acknowledge byte[]
 	 */
 	public void parseAck (byte[] ack) {
-		// TODO
+		System.arraycopy(receivePacket, 0, ack, 0, (receivePacket.getLength()));
+		System.out.println("Recieved Ack with Opcode " + ack[0] + ack[1]);
+		
+		
 	}
 	
 	/**
