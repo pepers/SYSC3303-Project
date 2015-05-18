@@ -569,7 +569,7 @@ class ClientConnection implements Runnable {
 		read.lock();	// gets read lock
 		try {
 			// checks if there is enough usable space on the disk
-			if (spaceOnDrive < filename.length() + 1024) { // +1024 bytes for safety
+			if (spaceOnDrive > filename.length() + 1024) { // +1024 bytes for safety
 				write.lock();		// gets write lock
 				try {
 					// writes data to file (creates file first, if it doesn't exist yet)

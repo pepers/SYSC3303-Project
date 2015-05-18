@@ -2,6 +2,7 @@
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -295,28 +296,32 @@ public class Client {
 	   3         Disk full or allocation exceeded.
 	   6         File already exists.
 	   */
-	  public byte[] createError(byte errorCode, String errMsg)
-	  {
-		   byte error[] = new byte[50];
-		   if(errorCode == (byte)1) //file not found
-		   {
-			   error[0] = (byte)1;
-			   System.arraycopy(errMsg,0,error,1,errMsg.length()); //create one byte array containing the error message and code
-		   }
-		   else if(errorCode == (byte)2) // access violation
-		   {
-			   
-		   }
-		   else if(errorCode == (byte)3) //disk full 
-		   {
-			   
-		   }
-		   else //file already exists
-		   {
-			   
-		   }
-		   return error; //return to be sent as an error message
-	   }
+	public byte[] createError (byte errorCode, String errorMsg) {
+		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = (byte)0;
+		error[1] = (byte)5;
+		
+		// add error code
+		error[2] = (byte)0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+	}
 	
 	/**
 	 * Parse the acknowledgment byte[] and display info to user.
