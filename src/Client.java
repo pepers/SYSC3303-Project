@@ -1,6 +1,7 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
@@ -133,27 +134,35 @@ public class Client {
 			}
 		}
 		
-		// determine which file the user wants to modify		
-		System.out.println("Please choose a file to modify.  Type in a file name: ");
-		filename = input.nextLine();	// user's choice
-		
-		// deal with user's choice of request
-		if (op == Opcode.RRQ) {
-			System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
-					mode + " mode.");			
-		} else if (op == Opcode.WRQ) {
-			System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
-					mode + " mode.");
-		}
-		
-		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
-		
-		// send request to correct port destination
-		try {
-			send(request, InetAddress.getLocalHost(), dest);
-		} catch (UnknownHostException e) {
-			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
-			System.exit(1);			
+		// determine which file the user wants to modify
+		try
+		{
+				System.out.println("Please choose a file to modify.  Type in a file name: ");
+				filename = input.nextLine();	// user's choice
+				
+				// deal with user's choice of request
+				if (op == Opcode.RRQ) {
+					System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
+							mode + " mode.");			
+				} else if (op == Opcode.WRQ) {
+					System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
+							mode + " mode.");
+				}
+				
+				byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
+				
+				// send request to correct port destination
+				try{
+					send(request, InetAddress.getLocalHost(), dest);
+					
+				} catch (UnknownHostException e) {
+					System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
+					System.exit(1);			
+				}
+			catch(FileNotFoundException f)
+			{
+				 createError((byte)1,filename + " does not exist");
+			}
 		}
 	}
 	
@@ -188,8 +197,7 @@ public class Client {
 						break; 				
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-					parseError(received);	
-					return;
+					byte errorCode = parseError(received);	
 				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -210,6 +218,7 @@ public class Client {
 					send(error, datagram.getAddress(), datagram.getPort());	// send ERROR packet
 					return;
 				}
+				
 				// create and send ACK packet
 				byte[] ack = createAck(received[3]);
 				send(ack, datagram.getAddress(), datagram.getPort());
@@ -219,8 +228,7 @@ public class Client {
 				datagram = receive();			// gets received DatagramPacket
 				received = datagram.getData();	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
-					parseError(received);
-					return;
+					byte errorCode = parseError(received);	
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -228,10 +236,11 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
-			parseError(received);
-			return;
+			byte errorCode = parseError(received);
+			byte[] error = createError()
 			
-		} else {
+		}
+		else {
 			throw new Exception ("Improperly formatted packet received.");
 		}
 	}
@@ -355,7 +364,7 @@ public class Client {
 	 * @param error	the error byte[]
 	 * @return 		the TFTP Error Code byte value
 	 */
-	public void parseError (byte[] error) {
+	public byte parseError (byte[] error) {
 		String ErrorMsg = null;
 
 		//Copies the errorcode from the received packet to the error byte array
@@ -363,6 +372,7 @@ public class Client {
 		System.arraycopy(receivePacket, 2, error, 0, 2);
 		System.arraycopy(receivePacket, 4,ErrorMsg,0,(receivePacket.getLength()-5));
 	
+		return (byte)0;
 	}
 	
 	/**
