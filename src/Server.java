@@ -419,7 +419,9 @@ class ClientConnection implements Runnable {
 	 * @param ack	the acknowledge byte[]
 	 */
 	public void parseAck (byte[] ack) {
-		// TODO
+		System.arraycopy(receivePacket, 0, ack, 0, (receivePacket.getLength()));
+		System.out.println("Recieved ACK from client, Opcode: " + ack[0] + ack[1]);
+		System.out.println("Block #: " + ack[3] + ack[4]);
 	}
 	
 	/**

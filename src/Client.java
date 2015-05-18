@@ -244,14 +244,14 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
-<<<<<<< HEAD
+
 			byte errorCode = parseError(received);
 			byte[] error = createError();
 			
-=======
+
 			parseError(received);	
 			return;
->>>>>>> origin/master
+
 		}
 		else {
 			throw new Exception ("Improperly formatted packet received.");
@@ -355,9 +355,8 @@ public class Client {
 	 */
 	public void parseAck (byte[] ack) {
 		System.arraycopy(receivePacket, 0, ack, 0, (receivePacket.getLength()));
-		System.out.println("Recieved Ack with Opcode " + ack[0] + ack[1]);
-		
-		
+		System.out.println("Recieved ACK from server, Opcode: " + ack[0] + ack[1]);
+		System.out.println("Block #: " + ack[3] + ack[4]);
 	}
 	
 	/**
