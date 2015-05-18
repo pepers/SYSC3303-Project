@@ -8,6 +8,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -320,6 +321,29 @@ class ClientConnection implements Runnable {
 	 */
 	public void send (byte[] data) {
 		// TODO use InetAddress addr, and int port - both declared above at ClientConnection
+		 try {
+	         sendPacket = new DatagramPacket(data, data.length,
+	                                         addr.getLocalHost(), port);
+	      } catch (UnknownHostException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }
+
+	      System.out.println("Client: Sending packet:");
+	      System.out.println("To host: " + sendPacket.getAddress());
+	      System.out.println("Destination host port: " + sendPacket.getPort());
+	      System.out.println("Length: " + sendPacket.getLength());
+	      System.out.print("Containing: ");
+	      System.out.println(new String(sendPacket.getData())); // or could print "s"
+
+	      // Send the datagram packet to the server via the send/receive socket. 
+
+	      try {
+	         sendReceiveSocket.send(sendPacket);
+	      } catch (IOException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }		
 	}
 	
 	/**
@@ -329,7 +353,24 @@ class ClientConnection implements Runnable {
 	 */
 	public DatagramPacket receive () {
 		// TODO return DatagramPacket that was received
-		return null;
+		byte data[] = new byte[100]; 
+		receivePacket = new DatagramPacket(data, data.length);
+
+	      try {
+	         // Block until a datagram is received via sendReceiveSocket.  
+	         sendReceiveSocket.receive(receivePacket);
+	      } catch(IOException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }
+	      
+	      System.out.println("Client: Packet received:");
+	      System.out.println("From host: " + receivePacket.getAddress());
+	      System.out.println("Host port: " + receivePacket.getPort());
+	      System.out.println("Length: " + receivePacket.getLength());
+	      System.out.print("Containing: ");
+	      
+	      return receivePacket;
 	}
 	
 	/**
@@ -340,7 +381,10 @@ class ClientConnection implements Runnable {
 	 */
 	public byte[] process (DatagramPacket receivePacket) {
 		// TODO return byte[] contained in received DatagramPacket
-		return null;
+		byte data[] = new byte[100];
+		byte received[] = new byte[receivePacket.getLength()];
+		System.arraycopy(data, 0, received, 0, receivePacket.getLength());
+		return data;
 	}
 	
 	/**
