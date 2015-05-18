@@ -135,34 +135,40 @@ public class Client {
 		}
 		
 		// determine which file the user wants to modify
-		try
-		{
-				System.out.println("Please choose a file to modify.  Type in a file name: ");
-				filename = input.nextLine();	// user's choice
-				
-				// deal with user's choice of request
-				if (op == Opcode.RRQ) {
-					System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
-							mode + " mode.");			
-				} else if (op == Opcode.WRQ) {
+		while(true) {
+			System.out.println("Please choose a file to modify.  Type in a file name: ");
+			filename = input.nextLine();	// user's choice
+			
+			// deal with user's choice of request
+			if (op == Opcode.RRQ) {
+				System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
+						mode + " mode.");	
+				break;
+			} else if (op == Opcode.WRQ) {					
+				if (Files.isWritable(Paths.get(filename))) {	// file exists and is writable
 					System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
 							mode + " mode.");
+					break;
+				} else {									// file does not exist
+					System.out.println("\nClient: I'm sorry, " + filename + " does not exist:");
+					System.out.println("Please (T)ry again, or (Q)uit: ");
+					String choice = input.nextLine();	// user's choice
+					if (choice.equalsIgnoreCase("Q")) {	// quit
+						System.out.println("\nGoodbye!");
+						System.exit(0);
+					}
 				}
-				
-				byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
-				
-				// send request to correct port destination
-				try{
-					send(request, InetAddress.getLocalHost(), dest);
-					
-				} catch (UnknownHostException e) {
-					System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
-					System.exit(1);			
-				}
-			catch(FileNotFoundException f)
-			{
-				 createError((byte)1,filename + " does not exist");
 			}
+		}
+		
+		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
+				
+		// send request to correct port destination
+		try{
+			send(request, InetAddress.getLocalHost(), dest);			
+		} catch (UnknownHostException e) {
+			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
+			System.exit(1);			
 		}
 	}
 	
@@ -197,7 +203,8 @@ public class Client {
 						break; 				
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-					byte errorCode = parseError(received);	
+					parseError(received);
+					return;
 				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -228,7 +235,8 @@ public class Client {
 				datagram = receive();			// gets received DatagramPacket
 				received = datagram.getData();	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
-					byte errorCode = parseError(received);	
+					parseError(received);	
+					return;
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
@@ -236,9 +244,14 @@ public class Client {
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
+<<<<<<< HEAD
 			byte errorCode = parseError(received);
 			byte[] error = createError();
 			
+=======
+			parseError(received);	
+			return;
+>>>>>>> origin/master
 		}
 		else {
 			throw new Exception ("Improperly formatted packet received.");
@@ -308,17 +321,6 @@ public class Client {
 	 * @param errorMsg	the message string that will give more detail on the error
 	 * @return			the error byte[]
 	 */
-	   //must create exceptions for access violation 
-	   //create exception for disk full
-	   /*create error function must be created here*/
-	   /*Error Codes
-
-	   Value     Meaning
-	   1         File not found.
-	   2         Access violation.
-	   3         Disk full or allocation exceeded.
-	   6         File already exists.
-	   */
 	public byte[] createError (byte errorCode, String errorMsg) {
 		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
 		
@@ -369,6 +371,7 @@ public class Client {
 		//Copies the bytes from receivePacket starting from position 4(skips the Opcode and block #)
 		//Copies that byte array into the data byte array
 		System.arraycopy(receivePacket, 4, data, 0, (receivePacket.getLength()-4));
+		System.out.println("Length of data: "+ (receivePacket.getLength()-4));
 		return data;
 	}
 	
@@ -378,7 +381,7 @@ public class Client {
 	 * @param error	the error byte[]
 	 * @return 		the TFTP Error Code byte value
 	 */
-	public byte parseError (byte[] error) {
+	public void parseError (byte[] error) {
 		String ErrorMsg = null;
 
 		//Copies the errorcode from the received packet to the error byte array
@@ -388,8 +391,6 @@ public class Client {
 		
 		System.out.println("Error Code: " + error);
 		System.out.println("Error message:"+ErrorMsg);
-	
-		return (byte)0;
 	}
 	
 	/**
