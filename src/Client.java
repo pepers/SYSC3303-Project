@@ -372,6 +372,7 @@ public class Client {
 		//Copies the bytes from receivePacket starting from position 4(skips the Opcode and block #)
 		//Copies that byte array into the data byte array
 		System.arraycopy(receivePacket, 4, data, 0, (receivePacket.getLength()-4));
+		System.out.println("Length of data: "+ (receivePacket.getLength()-4));
 		return data;
 	}
 	
