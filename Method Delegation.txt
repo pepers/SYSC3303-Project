@@ -17,8 +17,8 @@ public void writeToFile(String,byte[])-Matt
 public static void main (string args[])-matt
 public void listener()-matt
 public DatagramPacket receive()-Raj
-public Opcode parse(byte[])
-public byte parseError(byte[])
+public Opcode parse(byte[])- Hyde
+public byte parseError(byte[])- Hyde
 public void makeConnection(DatagramPacket)-matt
 public void serverQuit()-matt
 
