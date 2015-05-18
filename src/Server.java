@@ -35,21 +35,7 @@ public class Server {
 	/**
 	 * opcodes for the different DatagramPackets packets in TFTP
 	 */
-	public enum Opcode {
-		RRQ ((byte)1),
-		WRQ ((byte)2),
-		DATA ((byte)3),
-		ACK ((byte)4),
-		ERROR ((byte)5);
-		
-		private final byte op;
-		
-		Opcode (byte op) {
-			this.op = op;
-		}
-		
-		private byte op () { return op; }		
-	}
+	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }
 	
 	public Server() {
 		// create new socket to receive TFTP packets from Client

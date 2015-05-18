@@ -1,7 +1,6 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -242,7 +241,6 @@ public class Client {
 	 * @return			the read/write request byte[]
 	 */
 	public static byte[] createRequest(byte opcode, String filename, String mode) {
-		// TODO return byte[]
 		byte data[]=new byte[100];
 		data[1]=opcode;
 		byte[] fn;
@@ -359,13 +357,7 @@ public class Client {
 	 * @param port	port number to send DatagramPacket to
 	 */
 	public void send (byte[] data, InetAddress addr, int port) {
-		 try {
-	         sendPacket = new DatagramPacket(data, data.length,
-	                                         addr.getLocalHost(), port);
-	      } catch (UnknownHostException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }
+		 sendPacket = new DatagramPacket(data, data.length, addr, port);
 
 	      System.out.println("Client: Sending packet:");
 	      System.out.println("To host: " + sendPacket.getAddress());
@@ -409,20 +401,6 @@ public class Client {
 	      System.out.print("Containing: ");
 	      
 	      return receivePacket;
-	}
-	
-	/**
-	 * Gets byte[] from DatagramPacket.
-	 * 
-	 * @param receivePacket	DatagramPacket received
-	 * @return				byte[] containing the data from the DatagramPacket
-	 */
-	public byte[] process (DatagramPacket receivePacket) {
-		// TODO return byte[] contained in received DatagramPacket
-		byte data[] = new byte[100];
-		byte received[] = new byte[receivePacket.getLength()];
-		System.arraycopy(data, 0, received, 0, receivePacket.getLength());
-		return data;
 	}
 
 	/**

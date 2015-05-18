@@ -8,7 +8,6 @@ public byte[] createData(Byte blockNUmber,Byte data[])-Scott
 public byte[] createError (Byte errorCode, Byte errorMsg)-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
 public DatagramPacket receive()-Raj
-public byte[] process(DatagramPacket)-Raj
 public void parseACK (byte[])-Anuj
 public byte[] parseData (byte[])-Mohammed
 public byte parseError (byte[])-Mohammed
