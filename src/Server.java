@@ -9,7 +9,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -63,13 +62,8 @@ public class Server {
 	 */
 	public void listener() throws Exception {
 		while (true) {	// keep listening on port 69 for new requests 
-			DatagramPacket datagram = null;	// DatagramPacket to eventually receive
-			try {
-				datagram = receive();	// gets received DatagramPacket
-			} catch (SocketTimeoutException e) {	// haven't received packet in 5 seconds
-				serverQuit();			// find out if user wants to quit	
-				datagram = receive();	// tries to receive DatagramPackets again
-			}	
+			DatagramPacket datagram = null;			// DatagramPacket to eventually receive
+			datagram = receive();					// gets received DatagramPacket
 			byte[] request = process(datagram);		// received request packet turned into byte[]
 			Opcode op = parse(request);				// check type and validity of request
 			
@@ -117,6 +111,7 @@ public class Server {
 			System.out.println("Would you like to (Q)uit?  Or would you like to (C)ontinue?");
 			String choice = input.nextLine();			// user's choice
 			if (choice.equalsIgnoreCase("Q")) {			// Quit
+				System.out.println("\nServer: Goodbye!");
 				receiveSocket.close();	// close socket listening for requests
 				System.exit(0);			// exit server
 			} else if (choice.equalsIgnoreCase("C")) {	// Continue
@@ -131,10 +126,31 @@ public class Server {
 	 * Receives DatagramPacket.
 	 * 
 	 * @return DatagramPacket received
+	 * @throws SocketException 
 	 */
-	public DatagramPacket receive() {
-		// TODO
-		return null;
+	public DatagramPacket receive() throws SocketException {
+		byte data[] = new byte[100]; 
+		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+		
+		while (true){
+			try {
+				// block until a DatagramPacket is received via sendReceiveSocket 
+				receiveSocket.receive(receivePacket);
+				// print out thread and port info, from which the packet was sent to Client
+				System.out.println("\nServer: packet received: ");
+				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+				System.out.println(Arrays.toString(data));
+				break;
+			} catch (SocketTimeoutException e) {	// haven't received packet in 5 seconds
+				serverQuit();	// find out if user wants to quit, if not while loop will re-try
+			} catch(IOException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+		}
+		
+		return receivePacket;
 	}
 	
 	/**
@@ -272,12 +288,12 @@ class ClientConnection implements Runnable {
 					send(ack);								// send initial ACK
 					byte[] data = new byte[0];				// to hold received data portion of DATA packet
 					do {	// DATA transfer from client
-						DatagramPacket receivePacket = receive();	// receive the DatagramPacket
-						byte[] dataPacket = process(receivePacket);	// read the DatagramPacket
-						blockNumber = dataPacket[1];				// get the data block number
-						data = parseData(dataPacket);				// get data from packet
+						DatagramPacket receivePacket = receive();		// receive the DatagramPacket
+						byte[] dataPacket = receivePacket.getData();	// read the DatagramPacket
+						blockNumber = dataPacket[1];					// get the data block number
+						data = parseData(dataPacket);					// get data from packet
 						try {
-							writeToFile(data);						// write data to file
+							writeToFile(data);							// write data to file
 						} catch (IOException e) {
 							e.printStackTrace();
 						}							
@@ -387,40 +403,24 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @return DatagramPacket received
 	 */
-	public DatagramPacket receive () {
-		// TODO return DatagramPacket that was received
+	public DatagramPacket receive() {
 		byte data[] = new byte[100]; 
-		receivePacket = new DatagramPacket(data, data.length);
-
-	      try {
-	         // Block until a datagram is received via sendReceiveSocket.  
-	         sendReceiveSocket.receive(receivePacket);
-	      } catch(IOException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }
-	      
-	      System.out.println("Client: Packet received:");
-	      System.out.println("From host: " + receivePacket.getAddress());
-	      System.out.println("Host port: " + receivePacket.getPort());
-	      System.out.println("Length: " + receivePacket.getLength());
-	      System.out.print("Containing: ");
-	      
-	      return receivePacket;
-	}
-	
-	/**
-	 * Gets byte[] from DatagramPacket.
-	 * 
-	 * @param receivePacket	DatagramPacket received
-	 * @return				byte[] containing the data from the DatagramPacket
-	 */
-	public byte[] process (DatagramPacket receivePacket) {
-		// TODO return byte[] contained in received DatagramPacket
-		byte data[] = new byte[100];
-		byte received[] = new byte[receivePacket.getLength()];
-		System.arraycopy(data, 0, received, 0, receivePacket.getLength());
-		return data;
+		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+		
+		try {
+			// block until a DatagramPacket is received via sendReceiveSocket 
+			sendReceiveSocket.receive(receivePacket);
+			// print out thread and port info, from which the packet was sent to Client
+			System.out.println("\n" + Thread.currentThread() + ": packet received: ");
+			System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+			System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+			System.out.println(Arrays.toString(data));
+		} catch(IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		return receivePacket;
 	}
 	
 	/**
