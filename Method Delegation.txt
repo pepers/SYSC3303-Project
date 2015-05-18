@@ -26,16 +26,16 @@ public void serverQuit()-matt
 ----------Methods to be created on the client connection thread
 public ClientConnection(DatagramPacket)-matt
 public void run()-matt
-public Server.Opcode getOpcode(DatagramPacket)
-public String getFilename(DatagramPacket)
-public void send(byte data[])
+public Server.Opcode getOpcode(DatagramPacket)-matt
+public String getFilename(DatagramPacket)-matt
+public void send(byte data[])-matt
 public DatagramPacket receive()-Raj
 public byte[] process(DatagramPacket)-Raj
 public void parseACK (byte[])-Anuj
 public byte[] parseData (byte[])-Mohammed
-public byte[] createACK(Byte blockNumber)
-public byte[] createData(Byte blockNUmber,Byte data[])
-public byte[] createError (Byte errorCode, Byte errorMsg)
+public byte[] createACK(Byte blockNumber)-matt
+public byte[] createData(Byte blockNUmber,Byte data[])-matt
+public byte[] createError (Byte errorCode, Byte errorMsg)-matt
 public void closeConnection()-matt
 public void writeToFile(byte[])-matt
 public byte[] readFromFile(int offset)-matt

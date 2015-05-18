@@ -3,6 +3,7 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -12,6 +13,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -224,6 +226,7 @@ class ClientConnection implements Runnable {
 							read = readFromFile(offset);					// up to 512 bytes read from file
 							offset = read.length;							// increase position in file
 							byte[] data = createData(blockNumber, read);	// create DATA packet of file being read
+							System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 							send(data);										// send DATA
 							blockNumber++;									// increment DATA block number
 							// blockNumber goes from 0-127, and then wraps to back to 0
@@ -233,17 +236,20 @@ class ClientConnection implements Runnable {
 						if (read.length == MAX_DATA) {
 							read = new byte[0];								// create 0 byte read file data
 							byte[] data = createData(blockNumber, read);	// create 0 byte DATA 
+							System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 							send(data);										// send 0 byte DATA
 						}
 					} else {										// file is not readable
 						// create and send error response packet for "Access violation."
 						byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
+						System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 						send(error);
 						closeConnection();	// quit client connection thread
 					}
 				} else {											// file does not exist
 					// create and send error response packet for "File not found."
 					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 					send(error);
 					closeConnection();	// quit client connection thread
 				}
@@ -256,11 +262,13 @@ class ClientConnection implements Runnable {
 				if (Files.exists(Paths.get(filename))) {	// file exists
 					// create and send error response packet for "File already exists."
 					byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
+					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 					send(error);
 					closeConnection();	// quit client connection thread
 				} else {									// file does not exist
 					byte blockNumber = 0;					// block number for ACK and DATA during transfer
 					byte[] ack = createAck(blockNumber);	// create initial ACK
+					System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 					send(ack);								// send initial ACK
 					byte[] data = new byte[0];				// to hold received data portion of DATA packet
 					do {	// DATA transfer from client
@@ -274,6 +282,7 @@ class ClientConnection implements Runnable {
 							e.printStackTrace();
 						}							
 						ack = createAck(blockNumber);				// create ACK
+						System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 						send(ack);									// send ACK
 					} while (data.length < MAX_DATA);
 				}
@@ -299,8 +308,20 @@ class ClientConnection implements Runnable {
 	 * @return				the opcode of the request packet
 	 */
 	public Server.Opcode getOpcode(DatagramPacket requestPacket) {
-		// TODO return the requestPacket opcode as a single byte
-		return null;
+		// byte[] to copy packet data into
+		byte[] received = new byte[1];	
+		System.arraycopy(requestPacket.getData(), 1, received, 0, 1);
+		
+		Server.Opcode opcode = null;	// opcode to return
+		
+		// determine opcode of request packet
+		if (received[0] == (byte)1) {
+			opcode = Server.Opcode.RRQ;
+		} else if (received[0] == (byte)2) {
+			opcode = Server.Opcode.WRQ;
+		}
+		
+		return opcode;
 	}
 	
 	/**
@@ -310,8 +331,31 @@ class ClientConnection implements Runnable {
 	 * @return				the filename from the request packet as a String
 	 */
 	public String getFilename(DatagramPacket requestPacket) {
-		// TODO return the requestPacket filename as a string
-		return null;
+		// byte[] to copy packet data into
+		byte[] received = new byte[requestPacket.getLength()];	
+		System.arraycopy(requestPacket.getData(), 0, received, 0, requestPacket.getLength());
+		
+		// find the end of filename
+		int end = 2;	// end index of filename bytes
+		for (int i = 2; i < received.length - 1; i++) {
+			if  (received[i] == (byte)0) {
+				end = i;
+			}
+		}
+		
+		// byte[] to copy filename into
+		byte[] file = new byte[end - 2];
+		System.arraycopy(received, 2, file, 0, end - 2);
+		
+		// make a String out of byte[] for filename
+		String filename = null;
+		try {
+			filename = new String(file, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}	
+		
+		return filename;
 	}
 	
 	/**
@@ -320,30 +364,22 @@ class ClientConnection implements Runnable {
 	 * @param data	data byte[] to be included in DatagramPacket
 	 */
 	public void send (byte[] data) {
-		// TODO use InetAddress addr, and int port - both declared above at ClientConnection
-		 try {
-	         sendPacket = new DatagramPacket(data, data.length,
-	                                         addr.getLocalHost(), port);
-	      } catch (UnknownHostException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }
-
-	      System.out.println("Client: Sending packet:");
-	      System.out.println("To host: " + sendPacket.getAddress());
-	      System.out.println("Destination host port: " + sendPacket.getPort());
-	      System.out.println("Length: " + sendPacket.getLength());
-	      System.out.print("Containing: ");
-	      System.out.println(new String(sendPacket.getData())); // or could print "s"
-
-	      // Send the datagram packet to the server via the send/receive socket. 
-
-	      try {
-	         sendReceiveSocket.send(sendPacket);
-	      } catch (IOException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }		
+		// create new DatagramPacket to send to client
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
+		
+		// send the packet
+		try {
+			sendReceiveSocket.send(sendPacket);
+			// print out thread and port info, from which the packet was sent to Client
+			System.out.println("\n" + Thread.currentThread() + ": packet sent using port " + 
+					sendReceiveSocket.getLocalPort());
+			// print byte info on packet being sent to Client
+			System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+			System.out.println(Arrays.toString(data));
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 	/**
@@ -414,8 +450,17 @@ class ClientConnection implements Runnable {
 	 * @return				the acknowledgment byte[]
 	 */
 	public byte[] createAck (byte blockNumber) {
-		// TODO return byte[4]
-		return null;
+		byte[] ack = new byte[4];	// new byte[] to be sent in ACK packet
+		
+		// add opcode
+		ack[0] = (byte)0;
+		ack[1] = (byte)4;
+				
+		// add block number
+		ack[2] = (byte)0;
+		ack[3] = blockNumber;		
+		
+		return ack;
 	}
 	
 	/**
@@ -425,9 +470,21 @@ class ClientConnection implements Runnable {
 	 * @param data			the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] data) {
-		// TODO return byte[]
-		return null;
+	public byte[] createData (byte blockNumber, byte[] passedData) {
+		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
+		
+		// add opcode
+		data[0] = (byte)0;
+		data[1] = (byte)3;
+				
+		// add block number
+		data[2] = (byte)0;
+		data[3] = blockNumber;
+		
+		// copy data, being passed in, to data byte[]
+		System.arraycopy(passedData, 0, data, 4, passedData.length);
+		
+		return data;
 	}
 	
 	/**
@@ -438,8 +495,30 @@ class ClientConnection implements Runnable {
 	 * @return			the error byte[]
 	 */
 	public byte[] createError (byte errorCode, String errorMsg) {
-		// TODO return byte[]
-		return null;
+		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
+		
+		// add opcode
+		error[0] = (byte)0;
+		error[1] = (byte)5;
+		
+		// add error code
+		error[2] = (byte)0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg
+		
+		// convert errorMsg to byte[]
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error;
 	}
 	
 	/**
