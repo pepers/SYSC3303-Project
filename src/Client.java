@@ -273,9 +273,13 @@ public class Client {
 	 * @param blockNumber	the data block number that is being acknowledged
 	 * @return				the acknowledgment byte[]
 	 */
-	public byte[] createAck (byte blockNumber) {
-		// TODO return byte[4]
-		return null;
+	public byte[] createAck (int blockNumber) {
+		byte[] temp = new byte[4];
+		temp[0] = (byte) 0;
+		temp[1] = (byte) 4;
+		temp[2] = (byte) (blockNumber / 256);
+		temp[3] = (byte) (blockNumber % 256);
+		return temp;
 	}
 	
 	/**
@@ -285,9 +289,16 @@ public class Client {
 	 * @param data			the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] data) {
-		// TODO return byte[]
-		return null;
+	public byte[] createData (int blockNumber, byte[] data) {
+		byte[] temp = new byte[4+data.length];
+		temp[0] = (byte) 0;
+		temp[1] = (byte) 3;
+		temp[2] = (byte) (blockNumber / 256);
+		temp[3] = (byte) (blockNumber % 256);
+		for(int i=0; i < data.length; i++) {
+			temp[i+4] = data[i];
+		}
+		return temp;
 	}
 	
 	/**
