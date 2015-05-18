@@ -16,8 +16,7 @@ public void writeToFile(String,byte[])-Matt
 ----------Methods to be created on the server-----------------
 public static void main (string args[])-matt
 public void listener()-matt
-public byte[] process(DatagramPacket)
-public DatagramPacket receive()
+public DatagramPacket receive()-Raj
 public Opcode parse(byte[])
 public byte parseError(byte[])
 public void makeConnection(DatagramPacket)-matt

@@ -64,7 +64,7 @@ public class Server {
 		while (true) {	// keep listening on port 69 for new requests 
 			DatagramPacket datagram = null;			// DatagramPacket to eventually receive
 			datagram = receive();					// gets received DatagramPacket
-			byte[] request = process(datagram);		// received request packet turned into byte[]
+			byte[] request = datagram.getData();	// received request packet turned into byte[]
 			Opcode op = parse(request);				// check type and validity of request
 			
 			// deal with request based on opcode
@@ -151,17 +151,6 @@ public class Server {
 		}
 		
 		return receivePacket;
-	}
-	
-	/**
-	 * Gets byte[] from DatagramPacket.
-	 * 
-	 * @param receivePacket	DatagramPacket received
-	 * @return				byte[] containing the data from the DatagramPacket
-	 */
-	public byte[] process (DatagramPacket receivePacket) {
-		// TODO return contents of DatagramPacket as byte[]
-		return null;
 	}
 	
 	/**
