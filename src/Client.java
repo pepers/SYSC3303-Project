@@ -240,7 +240,17 @@ public class Client {
 	 */
 	public static byte[] createRequest(byte opcode, String filename, String mode) {
 		// TODO return byte[]
-		return null;
+		byte data[]=new byte[100];
+		data[1]=opcode;
+		byte[] fn;
+		fn = filename.getBytes();
+		System.arraycopy(fn,0,data,2,fn.length);
+		byte[] md;
+		md = mode.getBytes();
+		System.arraycopy(md,0,data,fn.length+3,md.length);
+		int len = fn.length+md.length+4; 
+		data[len-1] = 0;
+		return data;
 	}
 	
 	/**
@@ -346,7 +356,30 @@ public class Client {
 	 * @param port	port number to send DatagramPacket to
 	 */
 	public void send (byte[] data, InetAddress addr, int port) {
-		// TODO
+		 try {
+	         sendPacket = new DatagramPacket(data, data.length,
+	                                         addr.getLocalHost(), port);
+	      } catch (UnknownHostException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }
+
+	      System.out.println("Client: Sending packet:");
+	      System.out.println("To host: " + sendPacket.getAddress());
+	      System.out.println("Destination host port: " + sendPacket.getPort());
+	      System.out.println("Length: " + sendPacket.getLength());
+	      System.out.print("Containing: ");
+	      System.out.println(new String(sendPacket.getData())); // or could print "s"
+
+	      // Send the datagram packet to the server via the send/receive socket. 
+
+	      try {
+	         sendReceiveSocket.send(sendPacket);
+	      } catch (IOException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }		
+		
 	}
 	
 	/**
@@ -355,8 +388,24 @@ public class Client {
 	 * @return DatagramPacket received
 	 */
 	public DatagramPacket receive () {
-		// TODO return DatagramPacket that was received
-		return null;
+		byte data[] = new byte[100]; 
+		receivePacket = new DatagramPacket(data, data.length);
+
+	      try {
+	         // Block until a datagram is received via sendReceiveSocket.  
+	         sendReceiveSocket.receive(receivePacket);
+	      } catch(IOException e) {
+	         e.printStackTrace();
+	         System.exit(1);
+	      }
+	      
+	      System.out.println("Client: Packet received:");
+	      System.out.println("From host: " + receivePacket.getAddress());
+	      System.out.println("Host port: " + receivePacket.getPort());
+	      System.out.println("Length: " + receivePacket.getLength());
+	      System.out.print("Containing: ");
+	      
+	      return receivePacket;
 	}
 	
 	/**
@@ -367,7 +416,10 @@ public class Client {
 	 */
 	public byte[] process (DatagramPacket receivePacket) {
 		// TODO return byte[] contained in received DatagramPacket
-		return null;
+		byte data[] = new byte[100];
+		byte received[] = new byte[receivePacket.getLength()];
+		System.arraycopy(data, 0, received, 0, receivePacket.getLength());
+		return data;
 	}
 	
 	/**
