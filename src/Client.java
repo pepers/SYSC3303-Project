@@ -491,7 +491,7 @@ public class Client {
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
-		System.out.println(Arrays.toString(data) + "\n");
+		System.out.println("\n" + Arrays.toString(data));
 		
 		return data;
 	}

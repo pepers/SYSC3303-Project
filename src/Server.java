@@ -496,7 +496,7 @@ class ClientConnection implements Runnable {
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
-		System.out.println(Arrays.toString(data) + "\n");
+		System.out.println(Arrays.toString(data));
 		
 		return data;
 	}
@@ -699,6 +699,13 @@ class ClientConnection implements Runnable {
 			int bytes = in.read(read, 0, MAX_DATA);	// read up to 512 bytes from file starting at offset
 			if (bytes != -1) {
 				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes + " bytes, from " + filename);
+				
+				// get rid of extra buffer
+				byte[] temp = new byte[bytes];
+				System.arraycopy(read, 0, temp, 0, bytes);
+				read = temp;
+			} else {	// if nothing was read from file
+				read = new byte[0];
 			}
 		} catch (FileNotFoundException e) {
 			// create and send error response packet for "File not found."
