@@ -8,6 +8,7 @@ public byte[] createData(Byte blockNUmber,Byte data[])-Scott
 public byte[] createError (Byte errorCode, Byte errorMsg)-Hyde
 public void send(byte data[],InetAddress,int port)-Raj
 public DatagramPacket receive()-Raj
+public byte[] processDatagram(DatagramPacket)-matt
 public void parseACK (byte[])-Anuj
 public byte[] parseData (byte[])-Mohammed
 public byte parseError (byte[])-Mohammed
@@ -17,6 +18,7 @@ public void writeToFile(String,byte[])-Matt
 public static void main (string args[])-matt
 public void listener()-matt
 public DatagramPacket receive()-Raj
+public byte[] processDatagram(DatagramPacket)-matt
 public Opcode parse(byte[])- Hyde
 public byte parseError(byte[])- Hyde
 public void makeConnection(DatagramPacket)-matt
@@ -29,7 +31,7 @@ public Server.Opcode getOpcode(DatagramPacket)-matt
 public String getFilename(DatagramPacket)-matt
 public void send(byte data[])-matt
 public DatagramPacket receive()-Raj
-public byte[] process(DatagramPacket)-Raj
+public byte[] processDatagram(DatagramPacket)-matt
 public void parseACK (byte[])-Anuj
 public void parseError (byte[])-matt
 public byte[] parseData (byte[])-Mohammed
