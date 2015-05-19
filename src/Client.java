@@ -1,6 +1,7 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
@@ -198,7 +199,29 @@ public class Client {
 			byte blockNumber = 1;					// DATA block number
 			
 			// reads the file in 512 byte chunks
-			while ((in.read(fileData)) != -1) {
+			while (true) {
+				try {
+					int bytes = in.read(fileData);							// read file
+					if (bytes != -1) {
+						System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
+						
+						// get rid of extra buffer
+						byte[] temp = new byte[bytes];
+						System.arraycopy(fileData, 0, temp, 0, bytes);
+						fileData = temp;
+					} else {	// if nothing was read from file
+						fileData = new byte[0];
+					}
+				} catch (FileNotFoundException e) {
+					// create and send error response packet for "File not found."
+					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+					send(error, datagram.getAddress(), datagram.getPort() );
+					return;	// stop transfer
+				} catch (IOException e) {
+					System.out.println("\nError: could not read from BufferedInputStream.");
+					System.exit(1);
+				}
+				
 				byte[] data = createData(blockNumber, fileData);		// create DATA packet
 				send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
 				datagram = receive();									// gets received DatagramPacket
@@ -208,7 +231,7 @@ public class Client {
 				if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
 					parseAck(received);		
 					if (data.length < (MAX_DATA + 4)) {	// done sending file
-						break; 				
+						return;				
 					}	
 				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
 					parseError(received);

@@ -336,7 +336,7 @@ class ClientConnection implements Runnable {
 					byte[] ack = createAck(blockNumber);	// create initial ACK
 					System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 					send(ack);								// send initial ACK
-					byte[] data = new byte[0];				// to hold received data portion of DATA packet
+					byte[] data = new byte[0];		// to hold received data portion of DATA packet
 					do {	// DATA transfer from client
 						DatagramPacket receivePacket = receive();			// receive the DatagramPacket
 						byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
@@ -354,7 +354,7 @@ class ClientConnection implements Runnable {
 						} else if (dataPacket[1] == 5) {				// ERROR received instead of DATA
 							parseError(dataPacket);			// print ERROR info
 						}						
-					} while (data.length < MAX_DATA);
+					} while (data.length == MAX_DATA);
 				}
 			} finally {
 				read.unlock();	// gives up read lock
