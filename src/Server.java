@@ -623,8 +623,8 @@ class ClientConnection implements Runnable {
 	 */
 	public byte[] createError (byte errorCode, String errorMsg) {
 		// inform user
-		System.out.println("/n" + Thread.currentThread() + ": 0" + errorCode + " Error: informing host: ");
-		System.out.println("Error Messag: " + errorMsg);
+		System.out.println("\n" + Thread.currentThread() + ": 0" + errorCode + " Error: informing host: ");
+		System.out.println("Error Message: " + errorMsg);
 		
 		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
 		
