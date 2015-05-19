@@ -144,15 +144,31 @@ public class Client {
 			
 			// deal with user's choice of request
 			if (op == Opcode.RRQ) {
-				System.out.println("\nClient: You have chosen the file: " + filename + 
-						", to be received in " + mode + " mode.");	
-				break;
+				if (!(Files.exists(Paths.get(fileDirectory + filename)))) {	// file doesn't exist
+					System.out.println("\nClient: You have chosen the file: " + filename + 
+							", to be received in " + mode + " mode.");	
+					break;
+				} else{														// file already exists
+					System.out.println("\nClient: I'm sorry, " + fileDirectory + filename + " already exists:");
+					while(true) {
+						System.out.println("(T)ry another file, or (Q)uit: ");
+						String choice = input.nextLine();	// user's choice
+						if (choice.equalsIgnoreCase("Q")) {			// quit
+							System.out.println("\nGoodbye!");
+							System.exit(0);
+						} else if (choice.equalsIgnoreCase("T")) {	// try another file
+							break;
+						} else {									// invalid choice
+							System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+						}
+					}
+				}
 			} else if (op == Opcode.WRQ) {					
 				if (Files.isWritable(Paths.get(fileDirectory + filename))) {	// file exists and is writable
 					System.out.println("\nClient: You have chosen the file: " + fileDirectory + filename + ", to be sent in " + 
 							mode + " mode.");
 					break;
-				} else {									// file does not exist
+				} else {														// file does not exist
 					System.out.println("\nClient: I'm sorry, " + fileDirectory + filename + " does not exist:");
 					while(true) {
 						System.out.println("(T)ry another file, or (Q)uit: ");
@@ -210,6 +226,7 @@ public class Client {
 						byte[] temp = new byte[bytes];
 						System.arraycopy(fileData, 0, temp, 0, bytes);
 						fileData = temp;
+						System.out.println(Arrays.toString(fileData));
 					} else {	// if nothing was read from file
 						fileData = new byte[0];
 					}

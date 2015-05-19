@@ -297,8 +297,10 @@ class ClientConnection implements Runnable {
 							byte[] ackPacket = processDatagram(receivePacket);	// read the expected ACK
 							if (ackPacket[1] == 5) {						// ERROR received instead of ACK
 								parseError(ackPacket);	// print ERROR info
+							} else if (ackPacket[1] == 4) {
+								parseAck(ackPacket);	// print ACK info
 							}
-						} while (read.length > 0 && read.length < MAX_DATA);
+						} while (!(read.length < MAX_DATA));
 						// check if file was a multiple of 512 bytes in size, send 0 byte DATA
 						if (read.length == MAX_DATA) {
 							read = new byte[0];								// create 0 byte read file data
@@ -306,6 +308,7 @@ class ClientConnection implements Runnable {
 							System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 							send(data);										// send 0 byte DATA
 						}
+						closeConnection();	// we are done sending DATA
 					} else {										// file is not readable
 						// create and send error response packet for "Access violation."
 						byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
@@ -505,7 +508,7 @@ class ClientConnection implements Runnable {
 	 */
 	public void parseAck (byte[] ack) {
 		System.out.println("\n" + Thread.currentThread() + ": Recieved packet is ACK: ");
-		System.out.println("Block#: " + ack[3] + ack[4]);
+		System.out.println("Block#: " + ack[2] + ack[3]);
 	}
 	
 	/**
@@ -702,8 +705,7 @@ class ClientConnection implements Runnable {
 		}		
 		
 		try {	
-			in.skip(offset);
-			int bytes = in.read(read, 0, MAX_DATA);	// read up to 512 bytes from file starting at offset
+			int bytes = in.read(read, offset, MAX_DATA);	// read up to 512 bytes from file starting at offset
 			if (bytes != -1) {
 				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
 						+ " bytes, from " + fileDirectory + filename);
