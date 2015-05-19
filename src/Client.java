@@ -1,5 +1,6 @@
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -187,9 +188,7 @@ public class Client {
 	 */
 	public void connection () throws Exception {
 		DatagramPacket datagram = receive();			// gets received DatagramPacket
-		byte[] received = processDatagram(datagram);	// received packet turned into byte[]
-		
-		in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// stream to read data from file
+		byte[] received = processDatagram(datagram);	// received packet turned into byte[]		
 		
 		// parse received packet, based on opcode
 		// Acknowledge packet received (response to WRQ)
@@ -201,7 +200,9 @@ public class Client {
 			// reads the file in 512 byte chunks
 			while (true) {
 				try {
-					int bytes = in.read(fileData);							// read file
+					// stream to read data from file
+					in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	
+					int bytes = in.read(fileData);	// read file
 					if (bytes != -1) {
 						System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
 						
@@ -535,6 +536,10 @@ public class Client {
 	 * @throws IOException 
 	 */
 	public void writeToFile (String filename, byte[] data) throws IOException {
+		File file = new File(filename);
+		if (!(file.exists())) {
+			file.createNewFile();
+		}
 		Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 		System.out.println("\nClient: reading data to file: " + filename);
 	}
