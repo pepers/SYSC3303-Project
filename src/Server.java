@@ -703,28 +703,32 @@ class ClientConnection implements Runnable {
 			send(error);
 			closeConnection();	// quit client connection thread
 		}		
-		
+		int bytes = -1; // number of bytes read
 		try {	
-			int bytes = in.read(read, offset, MAX_DATA);	// read up to 512 bytes from file starting at offset
-			if (bytes != -1) {
-				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
-						+ " bytes, from " + fileDirectory + filename);
-				
-				// get rid of extra buffer
-				byte[] temp = new byte[bytes];
-				System.arraycopy(read, 0, temp, 0, bytes);
-				read = temp;
-			} else {	// if nothing was read from file
-				read = new byte[0];
-			}
+			bytes = in.read(read, offset, 512);	// read up to 512 bytes from file starting at offset
 		} catch (FileNotFoundException e) {
 			// create and send error response packet for "File not found."
 			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
 			send(error);
 			closeConnection();	// quit client connection thread
+		} catch (IndexOutOfBoundsException e) {
+			System.out.println("bytes: " + bytes + " -offset: " + offset);
+			System.out.println(Arrays.toString(read));
 		} catch (IOException e) {
 			System.out.println("\nError: could not read from BufferedInputStream.");
 			System.exit(1);
+		}
+		
+		if (!(bytes == -1)) {
+			System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
+					+ " bytes, from " + fileDirectory + filename);
+			
+			// get rid of extra buffer
+			byte[] temp = new byte[bytes];
+			System.arraycopy(read, 0, temp, 0, bytes);
+			read = temp;
+		} else {	// if nothing was read from file
+			read = new byte[0];
 		}
 		
 		return read;	// return bytes read

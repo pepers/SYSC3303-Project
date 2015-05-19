@@ -554,10 +554,17 @@ public class Client {
 	 */
 	public void writeToFile (String filename, byte[] data) throws IOException {
 		File file = new File(filename);
+		// create new file if file doesn't exist
 		if (!(file.exists())) {
 			file.createNewFile();
 		}
-		Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-		System.out.println("\nClient: reading data to file: " + filename);
+		
+		// if data received was not an empty block
+		if (!(data.length < MAX_DATA)) {
+			Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+			System.out.println("\nClient: reading data to file: " + filename);
+		} else {
+			System.out.println("\nClient: receiving " + filename + " complete");
+		}
 	}
 }
