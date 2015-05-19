@@ -184,8 +184,8 @@ public class Client {
 	 * @throws Exception 
 	 */
 	public void connection () throws Exception {
-		DatagramPacket datagram = receive();	// gets received DatagramPacket
-		byte[] received = datagram.getData();	// received packet turned into byte[]
+		DatagramPacket datagram = receive();			// gets received DatagramPacket
+		byte[] received = processDatagram(datagram);	// received packet turned into byte[]
 		
 		in = new BufferedInputStream(new FileInputStream(filename));	// stream to read data from file
 		
@@ -411,7 +411,9 @@ public class Client {
 				
 		// display error code to user
 		byte errorCode = error[3];	// get error code
-		if (errorCode == 1) {
+		if (errorCode == 0) {
+			System.out.println("Error Code: 00: Not defined, see error message (if any). ");
+		} else if (errorCode == 1) {
 			System.out.println("Error Code: 01: File not found. ");
 		} else if (errorCode == 2) {
 			System.out.println("Error Code: 02: Access violation. ");
@@ -458,22 +460,40 @@ public class Client {
 	 * @return DatagramPacket received
 	 */
 	public DatagramPacket receive () {
-		byte data[] = new byte[100]; 
+		// no packet will be larger than DATA packet
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
+		byte data[] = new byte[MAX_DATA + 4];
 		receivePacket = new DatagramPacket(data, data.length);
-
-	      try {
-	         // block until a DatagramPacket is received via sendReceiveSocket
-	         sendReceiveSocket.receive(receivePacket);
-	      } catch(IOException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }
-	      
-	      System.out.println("\nClient: DatagramPacket received:");
-	      System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-	      System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-	      
-	      return receivePacket;
+		
+		try {
+			// block until a DatagramPacket is received via sendReceiveSocket
+			sendReceiveSocket.receive(receivePacket);
+		} catch(IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		System.out.println("\nClient: DatagramPacket received:");
+		System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+		System.out.print("Containing " + receivePacket.getLength() + " bytes");
+		
+		return receivePacket;
+	}
+	
+	/**
+	 * Makes an appropriately sized byte[] from a DatagramPacket
+	 * 
+	 * @param packet	the received DatagramPacket
+	 * @return			the data from the DatagramPacket
+	 */
+	public byte[] processDatagram (DatagramPacket packet) {
+		byte[] data = new byte[receivePacket.getLength()];
+		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
+		
+		// display info to user
+		System.out.println(Arrays.toString(data) + "\n");
+		
+		return data;
 	}
 
 	/**
