@@ -1,7 +1,6 @@
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
@@ -151,11 +150,17 @@ public class Client {
 					break;
 				} else {									// file does not exist
 					System.out.println("\nClient: I'm sorry, " + filename + " does not exist:");
-					System.out.println("Please (T)ry again, or (Q)uit: ");
-					String choice = input.nextLine();	// user's choice
-					if (choice.equalsIgnoreCase("Q")) {	// quit
-						System.out.println("\nGoodbye!");
-						System.exit(0);
+					while(true) {
+						System.out.println("(T)ry another file, or (Q)uit: ");
+						String choice = input.nextLine();	// user's choice
+						if (choice.equalsIgnoreCase("Q")) {	// quit
+							System.out.println("\nGoodbye!");
+							System.exit(0);
+						} else if (choice.equalsIgnoreCase("T")) {
+							break;
+						} else {
+							System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+						}
 					}
 				}
 			}
