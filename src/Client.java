@@ -27,14 +27,15 @@ import java.util.Scanner;
  */
 public class Client {
 	
-	DatagramPacket sendPacket;				// to send data to server 
-	DatagramPacket receivePacket;			// to receive data in
-	DatagramSocket sendReceiveSocket;		// to send to and receive packets from server
-	private static Scanner input;			// scans user input in the simple console ui()
-	String filename = "test0.txt";			// the file to be sent/received
-	String mode = "octet";					// the mode in which to send/receive the file
-	private BufferedInputStream in;			// input stream to read data from file
-	public static final int MAX_DATA = 512;	// max number of bytes for data field in packet
+	DatagramPacket sendPacket;										// to send data to server 
+	DatagramPacket receivePacket;									// to receive data in
+	DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
+	private static Scanner input;									// scans user input in the simple console ui()
+	String filename = "test0.txt";									// the file to be sent/received
+	public static final String fileDirectory = "files\\client\\";	// directory for test files
+	String mode = "octet";											// the mode in which to send/receive the file
+	private BufferedInputStream in;									// input stream to read data from file
+	public static final int MAX_DATA = 512;							// max number of bytes for data field in packet
 	
 	/**
 	 * opcodes for the different DatagramPackets in TFTP
@@ -141,16 +142,16 @@ public class Client {
 			
 			// deal with user's choice of request
 			if (op == Opcode.RRQ) {
-				System.out.println("\nClient: You have chosen the file: " + filename + ", to be received in " + 
-						mode + " mode.");	
+				System.out.println("\nClient: You have chosen the file: " + filename + 
+						", to be received in " + mode + " mode.");	
 				break;
 			} else if (op == Opcode.WRQ) {					
-				if (Files.isWritable(Paths.get(filename))) {	// file exists and is writable
-					System.out.println("\nClient: You have chosen the file: " + filename + ", to be sent in " + 
+				if (Files.isWritable(Paths.get(fileDirectory + filename))) {	// file exists and is writable
+					System.out.println("\nClient: You have chosen the file: " + fileDirectory + filename + ", to be sent in " + 
 							mode + " mode.");
 					break;
 				} else {									// file does not exist
-					System.out.println("\nClient: I'm sorry, " + filename + " does not exist:");
+					System.out.println("\nClient: I'm sorry, " + fileDirectory + filename + " does not exist:");
 					while(true) {
 						System.out.println("(T)ry another file, or (Q)uit: ");
 						String choice = input.nextLine();	// user's choice
@@ -187,17 +188,18 @@ public class Client {
 		DatagramPacket datagram = receive();			// gets received DatagramPacket
 		byte[] received = processDatagram(datagram);	// received packet turned into byte[]
 		
-		in = new BufferedInputStream(new FileInputStream(filename));	// stream to read data from file
+		in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// stream to read data from file
 		
 		// parse received packet, based on opcode
 		// Acknowledge packet received (response to WRQ)
 		if (received[1] == Opcode.ACK.op()) {			
 			parseAck(received);						// parse the acknowledgment and print info to user
 			byte[] fileData = new byte[MAX_DATA];	// data to read in from file
+			byte blockNumber = 1;					// DATA block number
 			
 			// reads the file in 512 byte chunks
 			while ((in.read(fileData)) != -1) {
-				byte[] data = createData(received[3], fileData);		// create DATA packet
+				byte[] data = createData(blockNumber, fileData);		// create DATA packet
 				send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
 				datagram = receive();									// gets received DatagramPacket
 				received = datagram.getData();							// received packet turned into byte[]
@@ -214,6 +216,12 @@ public class Client {
 				} else {										// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
+				
+				blockNumber++;	// increase blockNumber for next DATA packet to be sent
+				// blockNumber goes from 0-127, and then wraps to back to 0
+				if (blockNumber < 0) { 
+					blockNumber = 0;
+				}
 			}			
 			
 		// Data packet received (response to RRQ)	
@@ -224,7 +232,7 @@ public class Client {
 			do {
 				data = parseData(received);		// parse the DATA packet and print info to user
 				try {
-					writeToFile(filename, data);	// write the received data to file
+					writeToFile(fileDirectory + filename, data);	// write the received data to file
 				} catch (IOException e) {
 					// create and send error response packet for "Access violation."
 					byte[] error = createError((byte)2, "File (" + filename + ") can not be written to.");
@@ -368,7 +376,7 @@ public class Client {
 	 */
 	public void parseAck (byte[] ack) {
 		System.out.println("\nClient: Recieved packet is ACK: ");
-		System.out.println("Block#: " + ack[3] + ack[4]);
+		System.out.println("Block#: " + ack[2] + ack[3]);
 	}
 	
 	/**

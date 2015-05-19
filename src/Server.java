@@ -243,10 +243,11 @@ class ClientConnection implements Runnable {
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
 	
-	Server.Opcode op;						// opcode from request DatagramPacket
-	String filename;						// filename from request DatagramPacket
-	InetAddress addr;						// InetAddress of client that sent request
-	int port;								// port number of client that sent request
+	Server.Opcode op;												// opcode from request DatagramPacket
+	String filename;												// filename from request DatagramPacket
+	public static final String fileDirectory = "files\\server\\";	// directory for test files
+	InetAddress addr;												// InetAddress of client that sent request
+	int port;														// port number of client that sent request
 	
 	// ReadWriteLock in case multiple threads try to read/write from/to the same file
 	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -256,17 +257,6 @@ class ClientConnection implements Runnable {
 	private BufferedInputStream in;	
 	
 	public ClientConnection(DatagramPacket requestPacket) {
-		this.requestPacket = requestPacket;			// get request DatagramPacket
-		this.op = getOpcode(requestPacket);			// get opcode from request packet
-		this.filename = getFilename(requestPacket);	// get filename from request packet
-		this.addr = requestPacket.getAddress();		// get the InetAddress of client
-		this.port = requestPacket.getPort();		// get the port number of client
-		try {
-			in = new BufferedInputStream(new FileInputStream(filename));	// reads from file during RRQ
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}	
-		
 		// open new socket to send and receive responses
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -274,14 +264,20 @@ class ClientConnection implements Runnable {
 			se.printStackTrace();
 			System.exit(1);
 		}
+		
+		this.requestPacket = requestPacket;			// get request DatagramPacket
+		this.op = getOpcode(requestPacket);			// get opcode from request packet
+		this.filename = getFilename(requestPacket);	// get filename from request packet
+		this.addr = requestPacket.getAddress();		// get the InetAddress of client
+		this.port = requestPacket.getPort();		// get the port number of client
 	}
 	
 	public void run() {
 		if (op == Server.Opcode.RRQ) {			// received a RRQ
 			read.lock();		// gets read lock
 			try {
-				if (Files.exists(Paths.get(filename))) {			// file exists
-					if (Files.isReadable(Paths.get(filename))) {	// file is readable
+				if (Files.exists(Paths.get(fileDirectory + filename))) {	// file exists
+					if (Files.isReadable(Paths.get(fileDirectory + filename))) {	// file is readable
 						byte blockNumber = 1;		// block number for DATA during transfer
 						byte[] read = new byte[0];	// to hold received data portion of DATA packet
 						int offset = 0;				// position to start reading file at
@@ -294,7 +290,9 @@ class ClientConnection implements Runnable {
 							send(data);										// send DATA
 							blockNumber++;									// increment DATA block number
 							// blockNumber goes from 0-127, and then wraps to back to 0
-							if (blockNumber < 0) { blockNumber = 0; }
+							if (blockNumber < 0) { 
+								blockNumber = 0;
+							}
 							DatagramPacket receivePacket = receive();			// receive the DatagramPacket							
 							byte[] ackPacket = processDatagram(receivePacket);	// read the expected ACK
 							if (ackPacket[1] == 5) {						// ERROR received instead of ACK
@@ -315,10 +313,9 @@ class ClientConnection implements Runnable {
 						send(error);
 						closeConnection();	// quit client connection thread
 					}
-				} else {											// file does not exist
+				} else {
 					// create and send error response packet for "File not found."
 					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 					send(error);
 					closeConnection();	// quit client connection thread
 				}
@@ -328,7 +325,7 @@ class ClientConnection implements Runnable {
 		} else if (op == Server.Opcode.WRQ) {	// received a WRQ
 			read.lock();		// gets read lock
 			try {
-				if (Files.exists(Paths.get(filename))) {	// file exists
+				if (Files.exists(Paths.get(fileDirectory + filename))) {	// file exists
 					// create and send error response packet for "File already exists."
 					byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
 					System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
@@ -659,18 +656,18 @@ class ClientConnection implements Runnable {
 	 * @param data		data to be written to file			
 	 * @throws IOException 
 	 */
-	public void writeToFile (byte[] data) throws IOException {		
-		// gets space left on the drive that we can use
-		long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
-		
+	public void writeToFile (byte[] data) throws IOException {	
 		read.lock();	// gets read lock
 		try {
+			// gets space left on the drive that we can use
+			long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+			
 			// checks if there is enough usable space on the disk
-			if (spaceOnDrive > filename.length() + 1024) { // +1024 bytes for safety
+			if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
 				write.lock();		// gets write lock
 				try {
 					// writes data to file (creates file first, if it doesn't exist yet)
-					Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+					Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 					System.out.println("/n" + Thread.currentThread() + ": writing data to file: " + filename);
 				} finally {
 					write.unlock();	// gives up write lock
@@ -694,11 +691,22 @@ class ClientConnection implements Runnable {
 	public byte[] readFromFile(int offset) {
 		byte[] read = new byte[MAX_DATA]; 	// to hold bytes read
 		
+		try {
+			in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// reads from file during RRQ
+		} catch (FileNotFoundException e) {
+			// create and send error response packet for "File not found."
+			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+			System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
+			send(error);
+			closeConnection();	// quit client connection thread
+		}		
+		
 		try {	
 			in.skip(offset);
 			int bytes = in.read(read, 0, MAX_DATA);	// read up to 512 bytes from file starting at offset
 			if (bytes != -1) {
-				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes + " bytes, from " + filename);
+				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
+						+ " bytes, from " + fileDirectory + filename);
 				
 				// get rid of extra buffer
 				byte[] temp = new byte[bytes];
