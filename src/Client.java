@@ -11,6 +11,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -153,12 +154,12 @@ public class Client {
 					while(true) {
 						System.out.println("(T)ry another file, or (Q)uit: ");
 						String choice = input.nextLine();	// user's choice
-						if (choice.equalsIgnoreCase("Q")) {	// quit
+						if (choice.equalsIgnoreCase("Q")) {			// quit
 							System.out.println("\nGoodbye!");
 							System.exit(0);
-						} else if (choice.equalsIgnoreCase("T")) {
+						} else if (choice.equalsIgnoreCase("T")) {	// try another file
 							break;
-						} else {
+						} else {									// invalid choice
 							System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 						}
 					}
@@ -267,16 +268,28 @@ public class Client {
 	 * @return			the read/write request byte[]
 	 */
 	public static byte[] createRequest(byte opcode, String filename, String mode) {
-		byte data[]=new byte[100];
-		data[1]=opcode;
-		byte[] fn;
-		fn = filename.getBytes();
+		byte data[]=new byte[filename.length() + mode.length() + 4];
+		
+		// request opcode
+		data[0] = 0;
+		data[1] = opcode;
+		
+		// convert filename and mode to byte[], with proper encoding
+		byte[] fn = null;	// filename
+		byte[] md = null;	// mode
+		try {
+			fn = filename.getBytes("US-ASCII");
+			md = mode.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add filename and mode to request 
+		data[fn.length + 3] = 0;		
 		System.arraycopy(fn,0,data,2,fn.length);
-		byte[] md;
-		md = mode.getBytes();
 		System.arraycopy(md,0,data,fn.length+3,md.length);
-		int len = fn.length+md.length+4; 
-		data[len-1] = 0;
+		data[data.length-1] = 0;
+		
 		return data;
 	}
 	
@@ -304,12 +317,12 @@ public class Client {
 	 */
 	public byte[] createData (byte blockNumber, byte[] data) {
 		byte[] temp = new byte[4+data.length];
-		temp[0] = (byte) 0;
-		temp[1] = (byte) 3;
-		temp[2] = (byte)0;
+		temp[0] = 0;
+		temp[1] = 3;
+		temp[2] = 0;
 		temp[3] = blockNumber;
-		for(int i=0; i < data.length; i++) {
-			temp[i+4] = data[i];
+		for(int i=4; i < data.length; i++) {
+			temp[i] = data[i];
 		}
 		return temp;
 	}
@@ -325,11 +338,11 @@ public class Client {
 		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
 		
 		// add opcode
-		error[0] = (byte)0;
-		error[1] = (byte)5;
+		error[0] = 0;
+		error[1] = 5;
 		
 		// add error code
-		error[2] = (byte)0;
+		error[2] = 0;
 		error[3] = errorCode;
 		
 		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
@@ -354,9 +367,8 @@ public class Client {
 	 * @param ack	the acknowledge byte[]
 	 */
 	public void parseAck (byte[] ack) {
-		System.arraycopy(receivePacket, 0, ack, 0, (receivePacket.getLength()));
-		System.out.println("Recieved ACK from server, Opcode: " + ack[0] + ack[1]);
-		System.out.println("Block #: " + ack[3] + ack[4]);
+		System.out.println("\nClient: Recieved packet is ACK: ");
+		System.out.println("Block#: " + ack[3] + ack[4]);
 	}
 	
 	/**
@@ -366,12 +378,16 @@ public class Client {
 	 * @return		just the data portion of a DATA packet byte[]
 	 */
 	public byte[] parseData (byte[] data) {
+		// byte[] for the data portion of DATA packet byte[]
+		byte[] justData = new byte[data.length - 4];	
+		System.arraycopy(data, 4, justData, 0, data.length-4);
 		
-		//Copies the bytes from receivePacket starting from position 4(skips the Opcode and block #)
-		//Copies that byte array into the data byte array
-		System.arraycopy(receivePacket, 4, data, 0, (receivePacket.getLength()-4));
-		System.out.println("Length of data: "+ (receivePacket.getLength()-4));
-		return data;
+		// print info to user
+		System.out.println("\nClient: Recieved packet is DATA: ");
+		System.out.println("Block#: " + data[2] + data[3] + ", and containing data: ");
+		System.out.println(Arrays.toString(justData));
+		
+		return justData;
 	}
 	
 	/**
@@ -381,15 +397,34 @@ public class Client {
 	 * @return 		the TFTP Error Code byte value
 	 */
 	public void parseError (byte[] error) {
-		String ErrorMsg = null;
+		System.out.println("\nClient: Recieved packet is ERROR: ");		
 
-		//Copies the errorcode from the received packet to the error byte array
-		//this is just the error code
-		System.arraycopy(receivePacket, 2, error, 0, 2);
-		System.arraycopy(receivePacket, 4,ErrorMsg,0,(receivePacket.getLength()-5));
+		// get the error message
+		byte[] errorMsg = new byte[error.length - 5];
+		System.arraycopy(error, 4, errorMsg , 0, error.length - 5);
+		String message = null;
+		try {
+			message = new String(errorMsg, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}		
+				
+		// display error code to user
+		byte errorCode = error[3];	// get error code
+		if (errorCode == 1) {
+			System.out.println("Error Code: 01: File not found. ");
+		} else if (errorCode == 2) {
+			System.out.println("Error Code: 02: Access violation. ");
+		} else if (errorCode == 3) {
+			System.out.println("Error Code: 03: Disk full or allocation exceeded. ");
+		} else if (errorCode == 6) {
+			System.out.println("Error Code: 06: File already exists. ");
+		} else {
+			System.out.println("Error Code: " + errorCode);
+		}
 		
-		System.out.println("Error Code: " + error);
-		System.out.println("Error message:"+ErrorMsg);
+		// display error message to user
+		System.out.println("Error message:" + message);
 	}
 	
 	/**
@@ -400,24 +435,21 @@ public class Client {
 	 * @param port	port number to send DatagramPacket to
 	 */
 	public void send (byte[] data, InetAddress addr, int port) {
-		 sendPacket = new DatagramPacket(data, data.length, addr, port);
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
 
-	      System.out.println("Client: Sending packet:");
-	      System.out.println("To host: " + sendPacket.getAddress());
-	      System.out.println("Destination host port: " + sendPacket.getPort());
-	      System.out.println("Length: " + sendPacket.getLength());
-	      System.out.print("Containing: ");
-	      System.out.println(new String(sendPacket.getData())); // or could print "s"
-
-	      // Send the datagram packet to the server via the send/receive socket. 
-
-	      try {
-	         sendReceiveSocket.send(sendPacket);
-	      } catch (IOException e) {
-	         e.printStackTrace();
-	         System.exit(1);
-	      }		
+		System.out.println("\nClient: Sending packet:");
+		System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
+		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+		System.out.println(Arrays.toString(data) + "\n"); 
 		
+		// send the DatagramPacket to the server via the send/receive socket
+		try {
+			sendReceiveSocket.send(sendPacket);
+			System.out.println("Client: Packet sent");
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}		
 	}
 	
 	/**
@@ -430,18 +462,16 @@ public class Client {
 		receivePacket = new DatagramPacket(data, data.length);
 
 	      try {
-	         // Block until a datagram is received via sendReceiveSocket.  
+	         // block until a DatagramPacket is received via sendReceiveSocket
 	         sendReceiveSocket.receive(receivePacket);
 	      } catch(IOException e) {
 	         e.printStackTrace();
 	         System.exit(1);
 	      }
 	      
-	      System.out.println("Client: Packet received:");
-	      System.out.println("From host: " + receivePacket.getAddress());
-	      System.out.println("Host port: " + receivePacket.getPort());
-	      System.out.println("Length: " + receivePacket.getLength());
-	      System.out.print("Containing: ");
+	      System.out.println("\nClient: DatagramPacket received:");
+	      System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+	      System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
 	      
 	      return receivePacket;
 	}
@@ -457,7 +487,4 @@ public class Client {
 		Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 		System.out.println("\nClient: reading data to file: " + filename);
 	}
-	  
-
-
 }

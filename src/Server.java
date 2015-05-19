@@ -373,15 +373,16 @@ class ClientConnection implements Runnable {
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
+		// print out packet info to user
+		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+		System.out.println("To host: " + addr + " : " + port);
+		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+		System.out.println(Arrays.toString(data) + "\n");
+		
 		// send the packet
 		try {
 			sendReceiveSocket.send(sendPacket);
-			// print out thread and port info, from which the packet was sent to Client
-			System.out.println("\n" + Thread.currentThread() + ": packet sent using port " + 
-					sendReceiveSocket.getLocalPort());
-			// print byte info on packet being sent to Client
-			System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-			System.out.println(Arrays.toString(data));
+			System.out.println(Thread.currentThread() + ": Packet sent ");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -400,11 +401,12 @@ class ClientConnection implements Runnable {
 		try {
 			// block until a DatagramPacket is received via sendReceiveSocket 
 			sendReceiveSocket.receive(receivePacket);
+			
 			// print out thread and port info, from which the packet was sent to Client
 			System.out.println("\n" + Thread.currentThread() + ": packet received: ");
 			System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
 			System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-			System.out.println(Arrays.toString(data));
+			System.out.println(Arrays.toString(data) + "\n");
 		} catch(IOException e) {
 			e.printStackTrace();
 			System.exit(1);
