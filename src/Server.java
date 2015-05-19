@@ -52,7 +52,8 @@ public class Server {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Server s = new Server();		
+		Server s = new Server();
+		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Server Program *****\n");
 		s.listener();	// start listening for DatagramPackets
 	}
 	
@@ -162,7 +163,7 @@ public class Server {
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
-		System.out.println(Arrays.toString(data) + "\n");
+		System.out.println(Arrays.toString(data));
 		
 		return data;
 	}
@@ -247,12 +248,12 @@ class ClientConnection implements Runnable {
 	InetAddress addr;						// InetAddress of client that sent request
 	int port;								// port number of client that sent request
 	
-	private BufferedInputStream in;			// stream to read from file when RRQ received
-	
 	// ReadWriteLock in case multiple threads try to read/write from/to the same file
 	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 	private final Lock read  = readWriteLock.readLock();
 	private final Lock write = readWriteLock.writeLock();
+
+	private BufferedInputStream in;	
 	
 	public ClientConnection(DatagramPacket requestPacket) {
 		this.requestPacket = requestPacket;			// get request DatagramPacket
@@ -260,6 +261,11 @@ class ClientConnection implements Runnable {
 		this.filename = getFilename(requestPacket);	// get filename from request packet
 		this.addr = requestPacket.getAddress();		// get the InetAddress of client
 		this.port = requestPacket.getPort();		// get the port number of client
+		try {
+			in = new BufferedInputStream(new FileInputStream(filename));	// reads from file during RRQ
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}	
 		
 		// open new socket to send and receive responses
 		try {
@@ -294,7 +300,7 @@ class ClientConnection implements Runnable {
 							if (ackPacket[1] == 5) {						// ERROR received instead of ACK
 								parseError(ackPacket);	// print ERROR info
 							}
-						} while (read.length > 0);
+						} while (read.length > 0 && read.length < MAX_DATA);
 						// check if file was a multiple of 512 bytes in size, send 0 byte DATA
 						if (read.length == MAX_DATA) {
 							read = new byte[0];								// create 0 byte read file data
@@ -486,7 +492,7 @@ class ClientConnection implements Runnable {
 	 * @return			the data from the DatagramPacket
 	 */
 	public byte[] processDatagram (DatagramPacket packet) {
-		byte[] data = new byte[receivePacket.getLength()];
+		byte[] data = new byte[packet.getLength()];
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
@@ -686,11 +692,14 @@ class ClientConnection implements Runnable {
 	 * @return	512 byte chunk of data from file
 	 */
 	public byte[] readFromFile(int offset) {
-		byte[] read = new byte[0]; 	// to hold bytes read
-		try {
-			in = new BufferedInputStream(new FileInputStream(filename));	// to read from file
-			int bytes = in.read(read, offset, 512);	// read up to 512 bytes from file starting at offset
-			System.out.println("/n" + Thread.currentThread() + ": Read " + bytes + " bytes, from " + filename);
+		byte[] read = new byte[MAX_DATA]; 	// to hold bytes read
+		
+		try {	
+			in.skip(offset);
+			int bytes = in.read(read, 0, MAX_DATA);	// read up to 512 bytes from file starting at offset
+			if (bytes != -1) {
+				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes + " bytes, from " + filename);
+			}
 		} catch (FileNotFoundException e) {
 			// create and send error response packet for "File not found."
 			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
@@ -700,6 +709,7 @@ class ClientConnection implements Runnable {
 			System.out.println("\nError: could not read from BufferedInputStream.");
 			System.exit(1);
 		}
+		
 		return read;	// return bytes read
 	}
 }

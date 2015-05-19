@@ -238,15 +238,15 @@ public class Client {
 				if(data.length < MAX_DATA) {	// if last DATA packet was received
 					break;
 				}
-				datagram = receive();			// gets received DatagramPacket
-				received = datagram.getData();	// received packet turned into byte[]
+				datagram = receive();					// gets received DatagramPacket
+				received = processDatagram(datagram);	// received packet turned into byte[]
 				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
 					parseError(received);	
 					return;
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
-			} while (!(data.length < MAX_DATA));
+			} while (data.length == MAX_DATA);
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
@@ -487,7 +487,7 @@ public class Client {
 	 * @return			the data from the DatagramPacket
 	 */
 	public byte[] processDatagram (DatagramPacket packet) {
-		byte[] data = new byte[receivePacket.getLength()];
+		byte[] data = new byte[packet.getLength()];
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
