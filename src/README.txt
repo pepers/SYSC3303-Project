@@ -49,13 +49,15 @@ INSTALL/RUN
 	- run Server.java, then ErrorSim.java, then Client.java
 	from within Eclipse
 
-
-USE
+	- if the .java files are in your project \src\ folder, 
+	put your \files\ folder at the same level as \src\
 	- the Client's files are in '\files\client\'
 	- the Server' files are in '\files\server'
 	- you should put the files that you want to send and 
 	receive in their respective folders
-	
+
+
+USE	
 	CLIENT
 	- follow onscreen console prompts from the Client
 	- first choose whether you want to send a (R)ead 
