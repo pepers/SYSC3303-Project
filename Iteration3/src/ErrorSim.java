@@ -43,7 +43,114 @@ public class ErrorSim {
       byte[] data;
       
       int clientPort, j=0;
-
+      /*
+       * Create a basic UI that will ask the user if they want to generate an error
+       * and what kind of error and if they want to test it on the client or server
+       * See other methods below for what exactly the error codes are and how much the client
+       * will be prompted for
+       */
+      public void UI ()
+      {
+    	  
+      }
+      
+      /*
+       * Receives the packet on a specified port, there are 3 ports on error sim
+       * They are: Port 68,the sendandreceive port on the server side and the
+       * sendandreceive port on the client side
+       */
+      public void receivePacket()
+      {
+    	  
+      }
+      
+      /*
+       * Once the packet has been received(see method receivePacket())
+       * this method will be used to parse it
+       */
+      public void processDatagramPacket()
+      {
+    	  
+      }
+      
+      /*
+       * Method to build the packet and send it
+       */
+      public void sendPacket()
+      {
+    	  
+      }
+      
+      /*
+       * Test to see if the file exists
+       * For this we will have to extract the filename in the original request
+       * then alter it before forwarding along
+       */
+      public void createError1()
+      {
+    	  
+      }
+      
+      /*
+       * Error for Access Violation
+       * Checks for correct opcode, also makes sure the file is writable
+       * for a write request,maybe more scenarios
+       */
+      public void createError2()
+      {
+    	  
+      }
+      
+      /*
+       * Error for disk full or allocation exceeded
+       * Recommend testing this on a full USB
+       */
+      
+      public void createError3()
+      {
+    	  
+      }
+      
+      /*
+       * Error code for Illegal TFTP operation
+       */
+      
+      public void createError4()
+      {
+    	  
+      }
+      
+      /*
+       * Error code for Unknown transfer ID
+       * This is basically if a second client randonly sends a block of
+       * data from an unknown port
+       * 
+       */
+      public void createError5()
+      {
+    	  
+      }
+      
+      /*
+       * Error code for File already exists
+       * Check Client.java and Server.java for how this is implemented
+       */
+      
+      public void createError6()
+      {
+    	  
+      }
+      
+      /*
+       * The other methods were for if the client/server can detect an error during a file transfer
+       * This will just generate an error that the user asks for (in the UI method)
+       * and it will create the packet for it
+       */
+      
+      public void genericError()
+      {
+    	  
+      }
       for(;;) { // loop forever
          // Construct a DatagramPacket for receiving packets up
          // to 100 bytes long (the length of the byte array).
