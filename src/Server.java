@@ -252,7 +252,7 @@ class ClientConnection implements Runnable {
 	// ReadWriteLock in case multiple threads try to read/write from/to the same file
 	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 	private final Lock read  = readWriteLock.readLock();
-	private final Lock write = readWriteLock.writeLock();
+	//private final Lock write = readWriteLock.writeLock();
 
 	private BufferedInputStream in;	
 	
@@ -638,14 +638,9 @@ class ClientConnection implements Runnable {
 			
 			// checks if there is enough usable space on the disk
 			if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
-				write.lock();		// gets write lock
-				try {
-					// writes data to file (creates file first, if it doesn't exist yet)
-					Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-					System.out.println("/n" + Thread.currentThread() + ": writing data to file: " + filename);
-				} finally {
-					write.unlock();	// gives up write lock
-				}
+				// writes data to file (creates file first, if it doesn't exist yet)
+				Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+				System.out.println("/n" + Thread.currentThread() + ": writing data to file: " + filename);
 			} else {
 				// create and send error response packet for "Disk full or allocation exceeded."
 				byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");

@@ -203,7 +203,7 @@ public class Client {
 	 */
 	public void connection () throws Exception {
 		DatagramPacket datagram = receive();			// gets received DatagramPacket
-		byte[] received = processDatagram(datagram);	// received packet turned into byte[]		
+		byte[] received = processDatagram(datagram);	// received packet turned into byte[]
 		
 		// parse received packet, based on opcode
 		// Acknowledge packet received (response to WRQ)
@@ -213,57 +213,53 @@ public class Client {
 			byte blockNumber = 1;					// DATA block number
 			
 			// reads the file in 512 byte chunks
-			while (true) {
-				try {
-					// stream to read data from file
-					in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	
-					int bytes = in.read(fileData);	// read file
-					if (bytes != -1) {
-						System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
-						
-						// get rid of extra buffer
-						byte[] temp = new byte[bytes];
-						System.arraycopy(fileData, 0, temp, 0, bytes);
-						fileData = temp;
-						System.out.println(Arrays.toString(fileData));
-					} else {	// if nothing was read from file
-						fileData = new byte[0];
+			try {
+				// stream to read data from file
+				in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));
+				int bytes = 0;	// number of bytes read from file
+				while ((bytes = in.read(fileData)) != -1) {
+					System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
+					
+					// get rid of extra buffer
+					byte[] temp = new byte[bytes];
+					System.arraycopy(fileData, 0, temp, 0, bytes);
+					fileData = temp;
+					System.out.println(Arrays.toString(fileData));
+					
+					byte[] data = createData(blockNumber, fileData);		// create DATA packet
+					send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
+					datagram = receive();									// gets received DatagramPacket
+					received = datagram.getData();							// received packet turned into byte[]
+					
+					// check response 
+					if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
+						parseAck(received);		
+						if (data.length < (MAX_DATA + 4)) {	// done sending file
+							return;				
+						}	
+					} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
+						parseError(received);
+						return;
+					} else {										// deal with malformed packet
+						throw new Exception ("Improperly formatted packet received.");
 					}
-				} catch (FileNotFoundException e) {
-					// create and send error response packet for "File not found."
-					byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-					send(error, datagram.getAddress(), datagram.getPort() );
-					return;	// stop transfer
-				} catch (IOException e) {
-					System.out.println("\nError: could not read from BufferedInputStream.");
-					System.exit(1);
-				}
-				
-				byte[] data = createData(blockNumber, fileData);		// create DATA packet
-				send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
-				datagram = receive();									// gets received DatagramPacket
-				received = datagram.getData();							// received packet turned into byte[]
-				
-				// check response 
-				if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
-					parseAck(received);		
-					if (data.length < (MAX_DATA + 4)) {	// done sending file
-						return;				
-					}	
-				} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-					parseError(received);
-					return;
-				} else {										// deal with malformed packet
-					throw new Exception ("Improperly formatted packet received.");
-				}
-				
-				blockNumber++;	// increase blockNumber for next DATA packet to be sent
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
-					blockNumber = 0;
-				}
+					
+					blockNumber++;	// increase blockNumber for next DATA packet to be sent
+					// blockNumber goes from 0-127, and then wraps to back to 0
+					if (blockNumber < 0) { 
+						blockNumber = 0;
+					}
+				}	
+			} catch (FileNotFoundException e) {
+				// create and send error response packet for "File not found."
+				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+				send(error, datagram.getAddress(), datagram.getPort() );
+				return;	// stop transfer
+			} catch (IOException e) {
+				System.out.println("\nError: could not read from BufferedInputStream.");
+				System.exit(1);
 			}			
-			
+			return;	// done transferring file
 		// Data packet received (response to RRQ)	
 		} else if (received[1] == Opcode.DATA.op()) {	
 			byte[] data = null;	// new byte[] to hold data portion of DATA packet
