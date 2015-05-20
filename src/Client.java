@@ -1,6 +1,5 @@
 
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -270,7 +269,7 @@ public class Client {
 			byte[] data = null;	// new byte[] to hold data portion of DATA packet
 			
 			// do while there is still another DATA packet to receive
-			do {
+			while (true) {
 				data = parseData(received);		// parse the DATA packet and print info to user
 				try {
 					writeToFile(fileDirectory + filename, data);	// write the received data to file
@@ -295,7 +294,7 @@ public class Client {
 				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
 					throw new Exception ("Improperly formatted packet received.");
 				}
-			} while (data.length == MAX_DATA);
+			}
 			
 		// Error packet received	
 		} else if (received[1] == Opcode.ERROR.op()) {	
@@ -553,12 +552,6 @@ public class Client {
 	 * @throws IOException 
 	 */
 	public void writeToFile (String filename, byte[] data) throws IOException {
-		File file = new File(filename);
-		// create new file if file doesn't exist
-		if (!(file.exists())) {
-			file.createNewFile();
-		}
-		
 		// if data received was not an empty block
 		if (!(data.length < MAX_DATA)) {
 			Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);

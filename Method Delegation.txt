@@ -40,4 +40,4 @@ public byte[] createData(Byte blockNUmber,Byte data[])-matt
 public byte[] createError (Byte errorCode, Byte errorMsg)-matt
 public void closeConnection()-matt
 public void writeToFile(byte[])-matt
-public byte[] readFromFile(int offset)-matt
+public void readFromFile()-matt
