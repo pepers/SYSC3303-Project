@@ -1,0 +1,33 @@
+Prototypes:
+ ------ErrorSim.java----------
+UI()-asks the user if the user wants to generate an error and if so what type
+processDatagramPacket()-finds out what kind of packet thhis is (reads the opcode)
+sendPacket()
+receivePacket()
+createError1CLIENT()
+createError2CLIENT()
+createError3CLIENT()
+createError4CLIENT()
+createError5CLIENT()
+createError6CLIENT()
+createError1SERVER()
+createError2SERVER()
+createError3SERVER()
+createError4SERVER()
+createError5SERVER()
+createError6SERVER()
+***FOR CREATE ERRROR METHODS****
+The user will specify if they want to test the error on the client or server side they will be doing different things depending on where the error is being sent.
+
+main()
+-order for which the methods will be running in main()
+	1.receivePacket()
+	2.
+
+-----Client.Java-------
+Support error 4,5
+
+-----Server.Java-------
+Support error 4,5
+
+

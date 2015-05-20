@@ -3,6 +3,17 @@
 import java.io.*;
 import java.net.*;
 
+/**
+ * The error simulation program for the SYSC3303 TFTP Group Project.
+ * 
+ * @author	Adhiraj Chakraborty
+ * @author	Anuj Dalal
+ * @author	Hidara Abdallah
+ * @author	Matthew Pepers
+ * @author	Mohammed Hamza
+ * @author	Scott Savage
+ * @version	3
+ */
 public class ErrorSim {
    
    // UDP datagram packets and sockets used to send / receive
