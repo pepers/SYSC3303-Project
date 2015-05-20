@@ -24,7 +24,7 @@ import java.util.Scanner;
  * @author	Matthew Pepers
  * @author	Mohammed Hamza
  * @author	Scott Savage
- * @version	2
+ * @version	3
  */
 public class Server {
 	
