@@ -8,7 +8,7 @@
  | |__) | __ ___  _  ___  ___| |_                   
  |  ___/ '__/ _ \| |/ _ \/ __| __|                  
  | |   | | | (_) | |  __/ (__| |_                   
- |_|   |_|  \___/| |\___|\___|\__|   iteration 2                
+ |_|   |_|  \___/| |\___|\___|\__|   iteration 3                
                 _/ |                                
                |__/                                 
         
@@ -36,9 +36,6 @@ FILES
 	Server.java
 	ErrorSim.java
 	README.txt
-	Iteration2ClassDiag.jpg
-	Iteration2TimingDiagram.jpg
-	Iteration 2 Team members and division of tasks.docx
 
 
 INSTALL/RUN
