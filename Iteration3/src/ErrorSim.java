@@ -551,6 +551,7 @@ public class ErrorSim {
          //     so we extract the port that the client used to send us the
          //     datagram, and use that as the destination port for the TFTP
          //     packet.
+         
 
          sendPacket = new DatagramPacket(data, receivePacket.getLength(),
                                receivePacket.getAddress(), receivePacket.getPort());
