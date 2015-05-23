@@ -2,6 +2,7 @@
 
 import java.io.*;
 import java.net.*;
+import java.util.Scanner;
 
 /**
  * The error simulation program for the SYSC3303 TFTP Group Project.
@@ -36,121 +37,302 @@ public class ErrorSim {
          System.exit(1);
       }
    }
-
+   
+   /*
+    * Create a basic UI that will ask the user if they want to generate an error
+    * and what kind of error and if they want to test it on the client or server
+    * See other methods below for what exactly the error codes are and how much the client
+    * will be prompted for
+    * 
+    * HYDE WILL DO THIS SHIT 
+    * 
+    */
+   public void UI()
+   {
+	   String s;
+	   Scanner in = new Scanner(System.in);
+	   System.out.println("Hello, I am an error simulator :) ");
+	   System.out.println("Would you like to generate an error packet? (Y/N) ");
+	   s = in.nextLine();
+	   if(s.equals("Y")||s.equals("y"))
+	   {
+		   
+		   System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
+		   s = in.nextLine();
+		   if(s == "1")
+		   { 
+			   byte[] error = createError1((byte)1, "File  does not exist.");
+		   }
+		   else if(s == "2")
+		   {
+			   byte[] error = createError2((byte)2, "File  can not be written to.");
+		   }
+		   else if(s == "3")
+		   {
+			   byte[] error = createError3((byte)3, "Disk full.");
+		   }
+		   else if(s == "4")
+		   {
+			   byte[] error = createError4((byte) 4, "Illegal TFTP Operation.");
+		   }
+		   else if(s == "5")
+		   {
+			   byte[] error = createError5((byte)5, "Unknown TID");
+		   }
+		   else
+		   {
+			   byte[] error = createError6((byte)6, "File already exists.");
+		   }
+			  
+	   }
+	   else 
+		   System.exit(1);
+ 	 
+   }
+   
+   /*
+    * Receives the packet on a specified port, there are 3 ports on error sim
+    * They are: Port 68,the sendandreceive port on the server side and the
+    * sendandreceive port on the client side
+    */
+   public void receivePacket()
+   {
+ 	  
+   }
+   
+   /*
+    * Once the packet has been received(see method receivePacket())
+    * this method will be used to parse it
+    */
+   public void processDatagramPacket()
+   {
+ 	  
+   }
+   
+   /*
+    * Method to build the packet and send it
+    */
+   public void sendPacket()
+   {
+ 	  
+   }
+   
+   /*
+    * Test to see if the file exists
+    * For this we will have to extract the filename in the original request
+    * then alter it before forwarding along
+    */
+   public byte[] createError1(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+ 	  
+   }
+   
+   /*
+    * Error for Access Violation
+    * Checks for correct opcode, also makes sure the file is writable
+    * for a write request,maybe more scenarios
+    */
+   public byte[] createError2(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+   }
+   
+   /*
+    * Error for disk full or allocation exceeded
+    * Recommend testing this on a full USB
+    */
+   
+   public byte[] createError3(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+   }
+   
+   /*
+    * Error code for Illegal TFTP operation
+    */
+   
+   public byte[] createError4(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+   }
+   
+   /*
+    * Error code for Unknown transfer ID
+    * This is basically if a second client randonly sends a block of
+    * data from an unknown port
+    * 
+    */
+   public byte[] createError5(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+   }
+   
+   /*
+    * Error code for File already exists
+    * Check Client.java and Server.java for how this is implemented
+    */
+   
+   public byte[] createError6(byte errorCode, String errorMsg)
+   {
+	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
+		
+		// add opcode
+		error[0] = 0;
+		error[1] = 5;
+		
+		// add error code
+		error[2] = 0;
+		error[3] = errorCode;
+		
+		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
+		
+		// convert errorMsg to byte[], with proper encoding
+		try {
+			message = errorMsg.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		// add error message to error byte[]
+		System.arraycopy(message, 0, error, 4, message.length);
+		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
+				
+		return error; //return full error message with opcodes and type of error
+   }
+   
+   /*
+    * The other methods were for if the client/server can detect an error during a file transfer
+    * This will just generate an error that the user asks for (in the UI method)
+    * and it will create the packet for it
+    */
+   
+   public void genericError()
+   {
+ 	  
+   }
    public void ForwardPacket()
    {
 
       byte[] data;
       
       int clientPort, j=0;
-      /*
-       * Create a basic UI that will ask the user if they want to generate an error
-       * and what kind of error and if they want to test it on the client or server
-       * See other methods below for what exactly the error codes are and how much the client
-       * will be prompted for
-       */
-      public void UI ()
-      {
-    	  
-      }
-      
-      /*
-       * Receives the packet on a specified port, there are 3 ports on error sim
-       * They are: Port 68,the sendandreceive port on the server side and the
-       * sendandreceive port on the client side
-       */
-      public void receivePacket()
-      {
-    	  
-      }
-      
-      /*
-       * Once the packet has been received(see method receivePacket())
-       * this method will be used to parse it
-       */
-      public void processDatagramPacket()
-      {
-    	  
-      }
-      
-      /*
-       * Method to build the packet and send it
-       */
-      public void sendPacket()
-      {
-    	  
-      }
-      
-      /*
-       * Test to see if the file exists
-       * For this we will have to extract the filename in the original request
-       * then alter it before forwarding along
-       */
-      public void createError1()
-      {
-    	  
-      }
-      
-      /*
-       * Error for Access Violation
-       * Checks for correct opcode, also makes sure the file is writable
-       * for a write request,maybe more scenarios
-       */
-      public void createError2()
-      {
-    	  
-      }
-      
-      /*
-       * Error for disk full or allocation exceeded
-       * Recommend testing this on a full USB
-       */
-      
-      public void createError3()
-      {
-    	  
-      }
-      
-      /*
-       * Error code for Illegal TFTP operation
-       */
-      
-      public void createError4()
-      {
-    	  
-      }
-      
-      /*
-       * Error code for Unknown transfer ID
-       * This is basically if a second client randonly sends a block of
-       * data from an unknown port
-       * 
-       */
-      public void createError5()
-      {
-    	  
-      }
-      
-      /*
-       * Error code for File already exists
-       * Check Client.java and Server.java for how this is implemented
-       */
-      
-      public void createError6()
-      {
-    	  
-      }
-      
-      /*
-       * The other methods were for if the client/server can detect an error during a file transfer
-       * This will just generate an error that the user asks for (in the UI method)
-       * and it will create the packet for it
-       */
-      
-      public void genericError()
-      {
-    	  
-      }
+  
       for(;;) { // loop forever
          // Construct a DatagramPacket for receiving packets up
          // to 100 bytes long (the length of the byte array).
