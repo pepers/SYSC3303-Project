@@ -2,24 +2,27 @@
 
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
  * The error simulation program for the SYSC3303 TFTP Group Project.
  * 
- * @author	Adhiraj Chakraborty
- * @author	Anuj Dalal
- * @author	Hidara Abdallah
- * @author	Matthew Pepers
- * @author	Mohammed Hamza
- * @author	Scott Savage
- * @version	3
+ * @author  Adhiraj Chakraborty
+ * @author  Anuj Dalal
+ * @author  Hidara Abdallah
+ * @author  Matthew Pepers
+ * @author  Mohammed Hamza
+ * @author  Scott Savage
+ * @version 3
  */
 public class ErrorSim {
    
    // UDP datagram packets and sockets used to send / receive
    private DatagramPacket sendPacket, receivePacket;
    private DatagramSocket receiveSocket, sendReceiveSocket;
+   InetAddress addr;                        // InetAddress of client that sent request
+   int port;
    
    public ErrorSim()
    {
@@ -49,72 +52,144 @@ public class ErrorSim {
     */
    public void UI()
    {
-	   String s;
-	   Scanner in = new Scanner(System.in);
-	   System.out.println("Hello, I am an error simulator :) ");
-	   System.out.println("Would you like to generate an error packet? (Y/N) ");
-	   s = in.nextLine();
-	   if(s.equals("Y")||s.equals("y"))
-	   {
-		   
-		   System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
-		   s = in.nextLine();
-		   if(s == "1")
-		   { 
-			   byte[] error = createError1((byte)1, "File  does not exist.");
-		   }
-		   else if(s == "2")
-		   {
-			   byte[] error = createError2((byte)2, "File  can not be written to.");
-		   }
-		   else if(s == "3")
-		   {
-			   byte[] error = createError3((byte)3, "Disk full.");
-		   }
-		   else if(s == "4")
-		   {
-			   byte[] error = createError4((byte) 4, "Illegal TFTP Operation.");
-		   }
-		   else if(s == "5")
-		   {
-			   byte[] error = createError5((byte)5, "Unknown TID");
-		   }
-		   else
-		   {
-			   byte[] error = createError6((byte)6, "File already exists.");
-		   }
-			  
-	   }
-	   else 
-		   System.exit(1);
- 	 
+     while(true)
+     {
+       String s;
+       Scanner in = new Scanner(System.in);
+       System.out.println("Hello, I am an error simulator :) ");
+       System.out.println("Would you like to generate an error packet? (Y/N) ");
+       s = in.nextLine();
+       if(s.equals("Y")||s.equals("y"))
+       {
+         
+         System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
+         s = in.nextLine();
+         if(s == "1")
+         { 
+           byte[] error = createError1((byte)1, "File  does not exist.");
+         }
+         else if(s == "2")
+         {
+           byte[] error = createError2((byte)2, "File  can not be written to.");
+         }
+         else if(s == "3")
+         {
+           byte[] error = createError3((byte)3, "Disk full.");
+         }
+         else if(s == "4")
+         {
+           byte[] error = createError4((byte) 4, "Illegal TFTP Operation.");
+         }
+         else if(s == "5")
+         {
+           byte[] error = createError5((byte)5, "Unknown TID");
+         }
+         else
+         {
+           byte[] error = createError6((byte)6, "File already exists.");
+         }
+          
+       }
+       else 
+         System.exit(1);
+     }
    }
    
    /*
     * Receives the packet on a specified port, there are 3 ports on error sim
     * They are: Port 68,the sendandreceive port on the server side and the
     * sendandreceive port on the client side
+    * 
     */
-   public void receivePacket()
+   
+   public void ErrsimQuit() {
+    Scanner input = new Scanner(System.in); // scan user input
+    int seconds = 0;          // seconds until socket timeout
+    try {
+      seconds = receiveSocket.getSoTimeout()/1000;
+    } catch (SocketException e) {
+      e.printStackTrace();
+    } 
+    while (true) {
+      System.out.println("\nServer: Have not received new packet in the last " +
+          seconds + " seconds: ");
+      System.out.println("Would you like to (Q)uit?  Or would you like to (C)ontinue?");
+      String choice = input.nextLine();     // user's choice
+      if (choice.equalsIgnoreCase("Q")) {     // Quit
+        System.out.println("\nServer: Goodbye!");
+        receiveSocket.close();  // close socket listening for requests
+        System.exit(0);     // exit server
+      } else if (choice.equalsIgnoreCase("C")) {  // Continue
+        break;
+      } else {                  // invalid user choice
+        System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+      }
+    }
+  }
+   public DatagramPacket receivePacket()
    {
- 	  
+     byte data[] = new byte[100]; 
+    DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+    
+    while (true){
+      try {
+        // block until a DatagramPacket is received via sendReceiveSocket 
+        receiveSocket.receive(receivePacket);
+        
+        // print out thread and port info, from which the packet was sent to Client
+        System.out.println("\nServer: packet received: ");
+        System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
+        System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+        
+        break;
+      } catch (SocketTimeoutException e) {  // haven't received packet in 5 seconds
+        ErrsimQuit(); // find out if user wants to quit, if not while loop will re-try
+      } catch(IOException e) {
+        e.printStackTrace();
+        System.exit(1);
+      }
+    }
+    
+    return receivePacket;
    }
    
    /*
     * Once the packet has been received(see method receivePacket())
     * this method will be used to parse it
     */
-   public void processDatagramPacket()
+   public byte[] processDatagramPacket(DatagramPacket packet)
    {
- 	  
+     byte[] data = new byte[packet.getLength()];
+    System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
+    
+    // display info to user
+    System.out.println(Arrays.toString(data));
+    
+    return data;
    }
    
    /*
     * Method to build the packet and send it
     */
-   public void sendPacket()
+   public void sendPacket(byte[] data)
    {
- 	  
+  // create new DatagramPacket to send to client
+      sendPacket = new DatagramPacket(data, data.length, addr, port);
+      
+      // print out packet info to user
+      System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+      System.out.println("To host: " + addr + " : " + port);
+      System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+      System.out.println(Arrays.toString(data) + "\n");
+      
+      // send the packet
+      try {
+        sendReceiveSocket.send(sendPacket);
+        System.out.println(Thread.currentThread() + ": Packet sent ");
+      } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(1);
+      }
    }
    
    /*
@@ -124,31 +199,31 @@ public class ErrorSim {
     */
    public byte[] createError1(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
- 	  
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
+    
    }
    
    /*
@@ -158,30 +233,30 @@ public class ErrorSim {
     */
    public byte[] createError2(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
    }
    
    /*
@@ -191,30 +266,30 @@ public class ErrorSim {
    
    public byte[] createError3(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
    }
    
    /*
@@ -223,30 +298,30 @@ public class ErrorSim {
    
    public byte[] createError4(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
    }
    
    /*
@@ -257,30 +332,30 @@ public class ErrorSim {
     */
    public byte[] createError5(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
    }
    
    /*
@@ -290,41 +365,53 @@ public class ErrorSim {
    
    public byte[] createError6(byte errorCode, String errorMsg)
    {
-	   byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
-		
-		// add opcode
-		error[0] = 0;
-		error[1] = 5;
-		
-		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
-		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
-		
-		// convert errorMsg to byte[], with proper encoding
-		try {
-			message = errorMsg.getBytes("US-ASCII");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		// add error message to error byte[]
-		System.arraycopy(message, 0, error, 4, message.length);
-		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
-				
-		return error; //return full error message with opcodes and type of error
+     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
+    
+    // add opcode
+    error[0] = 0;
+    error[1] = 5;
+    
+    // add error code
+    error[2] = 0;
+    error[3] = errorCode;
+    
+    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
+    
+    // convert errorMsg to byte[], with proper encoding
+    try {
+      message = errorMsg.getBytes("US-ASCII");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    
+    // add error message to error byte[]
+    System.arraycopy(message, 0, error, 4, message.length);
+    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
+        
+    return error; //return full error message with opcodes and type of error
    }
    
    /*
     * The other methods were for if the client/server can detect an error during a file transfer
     * This will just generate an error that the user asks for (in the UI method)
     * and it will create the packet for it
+    * 
+    * ................/´¯/) 
+....................,/¯../ 
+.................../..../ 
+............./´¯/'...'/´¯¯`·¸ 
+........../'/.../..../......./¨¯\ 
+........('(...´...´.... ¯~/'...') 
+.........\.................'...../ 
+..........''...\.......... _.·´ 
+............\..............( 
+..............\.............\...
+    * MOE THIS SHOULDVE BEEN MENTIONED AT THE BEGINNING OF THE UI METHOD
     */
    
    public void genericError()
    {
- 	  
+    
    }
    public void ForwardPacket()
    {
