@@ -441,7 +441,7 @@ public class Client {
 	 * @return 		the TFTP Error Code byte value
 	 */
 	public void parseError (byte[] error) {
-		System.out.println("\nClient: Recieved packet is ERROR: ");		
+		System.out.println("\nClient: Received packet is ERROR: ");		
 
 		// get the error message
 		byte[] errorMsg = new byte[error.length - 5];
@@ -455,22 +455,35 @@ public class Client {
 				
 		// display error code to user
 		byte errorCode = error[3];	// get error code
-		if (errorCode == 0) {
-			System.out.println("Error Code: 00: Not defined, see error message (if any). ");
-		} else if (errorCode == 1) {
-			System.out.println("Error Code: 01: File not found. ");
-		} else if (errorCode == 2) {
-			System.out.println("Error Code: 02: Access violation. ");
-		} else if (errorCode == 3) {
-			System.out.println("Error Code: 03: Disk full or allocation exceeded. ");
-		} else if (errorCode == 6) {
-			System.out.println("Error Code: 06: File already exists. ");
-		} else {
-			System.out.println("Error Code: " + errorCode);
+		switch (errorCode) {
+			case 0:
+				System.out.println("Error Code: 00: Not defined, see error message (if any). ");
+				break;
+			case 1:
+				System.out.println("Error Code: 01: File not found. ");
+				break;
+			case 2:
+				System.out.println("Error Code: 02: Access violation. ");
+				break;
+			case 3:
+				System.out.println("Error Code: 03: Disk full or allocation exceeded. ");
+				break;
+			case 4:
+				System.out.println("Error Code: 04: Illegal TFTP operation. ");
+				break;
+			case 5:
+				System.out.println("Error Code: 05: Unknown transfer ID. ");
+				break;
+			case 6:
+				System.out.println("Error Code: 06: File already exists. ");
+				break;
+			case 7:
+				System.out.println("Error Code: 07: No such user. ");
+				break;
 		}
 		
 		// display error message to user
-		System.out.println("Error message:" + message);
+		System.out.println("Error message: " + message);
 	}
 	
 	/**
