@@ -366,7 +366,7 @@ public class Server {
 	 */
 	public byte[] createError (byte errorCode, String errorMsg) {
 		// inform user
-		System.out.println("\nServer: 0" + errorCode);
+		System.out.println("\nServer: Error Code: 0" + errorCode);
 		System.out.println("Error Message: " + errorMsg);
 		
 		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
@@ -490,7 +490,7 @@ class ClientConnection implements Runnable {
 			}		
 				
 			byte[] read = new byte[MAX_DATA];  // to hold bytes read
-			int bytes;                         // number of bytes read
+			int bytes = 0;                         // number of bytes read
 			byte blockNumber = 1;              // DATA block number
 			
 			// read up to 512 bytes from file starting at offset
@@ -568,7 +568,7 @@ class ClientConnection implements Runnable {
 			if (read.length == MAX_DATA) {
 				read = new byte[0];                         // create 0 byte read file data
 				
-				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+				data = createData(blockNumber, read);  // create DATA packet of file being read
 				System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 				send(data);                                   // send DATA
 				blockNumber++;                                // increment DATA block number
@@ -578,9 +578,9 @@ class ClientConnection implements Runnable {
 					blockNumber = 0;
 				}
 				
-				DatagramPacket receivePacket = receive();           // receive the DatagramPacket
+				receivePacket = receive();           // receive the DatagramPacket
 				
-				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+				ackPacket = processDatagram(receivePacket);  // read the expected ACK
 				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
 					parseError(ackPacket);	// print ERROR info and close connection
 				} else if (ackPacket[1] == 4) {
@@ -766,13 +766,13 @@ class ClientConnection implements Runnable {
 				byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
 				
 				// create new DatagramPacket to send to send error
-				sendPacket = new DatagramPacket(data, data.length, receivePacket.getAddress(), receivePacket.getPort());
+				sendPacket = new DatagramPacket(error, error.length, receivePacket.getAddress(), receivePacket.getPort());
 				
 				// print out packet info to user
 				System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
 				System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
 				System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-				System.out.println(Arrays.toString(data) + "\n");
+				System.out.println(Arrays.toString(error) + "\n");
 				
 				// send the packet
 				try {
@@ -784,7 +784,7 @@ class ClientConnection implements Runnable {
 				}
 			} else {
 				// checks if the received packet is a valid TFTP packet
-				if (!isValid(receivePacket)) {
+				if (!isValidPacket(receivePacket)) {
 					// create and send error response packet for "Illegal TFTP operation."
 					byte[] error = createError((byte)4, "Invalid packet.");
 					send(error);
