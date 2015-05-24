@@ -479,14 +479,118 @@ class ClientConnection implements Runnable {
 	 */
 	public void readReq() {
 		if (Files.exists(Paths.get(fileDirectory + filename))) {	// file exists
-			if (Files.isReadable(Paths.get(fileDirectory + filename))) {	// file is readable
-				readFromFile();						// up to 512 bytes read from file
-			} else {														// file is not readable
+			try {
+				in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// reads from file during RRQ
+			} catch (FileNotFoundException e) {
 				// create and send error response packet for "Access violation."
 				byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
 				System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
 				send(error);
+				closeConnection();	// quit client connection thread
+			}		
+				
+			byte[] read = new byte[MAX_DATA];  // to hold bytes read
+			int bytes;                         // number of bytes read
+			byte blockNumber = 1;              // DATA block number
+			
+			// read up to 512 bytes from file starting at offset
+			try {			
+				while ((bytes = in.read(read)) != -1) {
+					System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
+							+ " bytes, from " + fileDirectory + filename);
+					
+					// get rid of extra buffer
+					byte[] temp = new byte[bytes];
+					System.arraycopy(read, 0, temp, 0, bytes);
+					read = temp;
+					
+					byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+					System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
+					send(data);                                   // send DATA
+					blockNumber++;                                // increment DATA block number
+					
+					// blockNumber goes from 0-127, and then wraps to back to 0
+					if (blockNumber < 0) { 
+						blockNumber = 0;
+					}
+					
+					DatagramPacket receivePacket = receive();           // receive the DatagramPacket
+					
+					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+						parseError(ackPacket);	// print ERROR info and close connection
+					} else if (ackPacket[1] == 4) {
+						parseAck(ackPacket);	// print ACK info
+					}
+				}
+				
+				in.close();  // done reading from file
+				
+			} catch (FileNotFoundException e) {
+				// create and send error response packet for "File not found."
+				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+				send(error);
+				closeConnection(); // quit client connection thread
+			} catch (IOException e) {
+				System.out.println("\nError: could not read from BufferedInputStream.");
+				System.exit(1);
 			}
+			
+			/* last packet */
+			System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
+					+ " bytes, from " + fileDirectory + filename);
+			
+			// get rid of extra buffer
+			byte[] temp = new byte[bytes];
+			System.arraycopy(read, 0, temp, 0, bytes);
+			read = temp;
+			
+			byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+			System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
+			send(data);                                   // send DATA
+			blockNumber++;                                // increment DATA block number
+			
+			// blockNumber goes from 0-127, and then wraps to back to 0
+			if (blockNumber < 0) { 
+				blockNumber = 0;
+			}
+			
+			DatagramPacket receivePacket = receive();           // receive the DatagramPacket
+			
+			byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+			if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+				parseError(ackPacket);	// print ERROR info and close connection
+			} else if (ackPacket[1] == 4) {
+				parseAck(ackPacket);	// print ACK info
+			}
+			
+			// check if file was a multiple of 512 bytes in size, send 0 byte DATA
+			if (read.length == MAX_DATA) {
+				read = new byte[0];                         // create 0 byte read file data
+				
+				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+				System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
+				send(data);                                   // send DATA
+				blockNumber++;                                // increment DATA block number
+				
+				// blockNumber goes from 0-127, and then wraps to back to 0
+				if (blockNumber < 0) { 
+					blockNumber = 0;
+				}
+				
+				DatagramPacket receivePacket = receive();           // receive the DatagramPacket
+				
+				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+					parseError(ackPacket);	// print ERROR info and close connection
+				} else if (ackPacket[1] == 4) {
+					parseAck(ackPacket);	// print ACK info
+				}
+			}
+			
+			/* done sending last packet */
+			
+		/* file doesn't exist */
 		} else {
 			// create and send error response packet for "File not found."
 			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
@@ -634,7 +738,8 @@ class ClientConnection implements Runnable {
 	}
 	
 	/**
-	 * Receives DatagramPacket.
+	 * Receives DatagramPacket, checks that packet came from right place,
+	 * and checks if packet is a valid TFTP packet.
 	 * 
 	 * @return DatagramPacket received
 	 */
@@ -642,14 +747,52 @@ class ClientConnection implements Runnable {
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4];
-		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
 		
-		try {
-			// block until a DatagramPacket is received via sendReceiveSocket 
-			sendReceiveSocket.receive(receivePacket);			
-		} catch(IOException e) {
-			e.printStackTrace();
-			System.exit(1);
+		// loop until packet received from expected host
+		while (true) {
+			DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+		
+			try {
+				// block until a DatagramPacket is received via sendReceiveSocket 
+				sendReceiveSocket.receive(receivePacket);
+			} catch(IOException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+			
+			// check for wrong transfer ID 
+			if ((receivePacket.getAddress() != addr) || (receivePacket.getPort() != port)) {
+				// create and send error response packet for "Unknown transfer ID."
+				byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
+				
+				// create new DatagramPacket to send to send error
+				sendPacket = new DatagramPacket(data, data.length, receivePacket.getAddress(), receivePacket.getPort());
+				
+				// print out packet info to user
+				System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+				System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
+				System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+				System.out.println(Arrays.toString(data) + "\n");
+				
+				// send the packet
+				try {
+					sendReceiveSocket.send(sendPacket);
+					System.out.println(Thread.currentThread() + ": Packet sent ");
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			} else {
+				// checks if the received packet is a valid TFTP packet
+				if (!isValid(receivePacket)) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError((byte)4, "Invalid packet.");
+					send(error);
+					closeConnection();
+				}
+				
+				break;  // correct transfer ID and valid packet
+			}
 		}
 		
 		// print out thread and port info, from which the packet was sent to Client
@@ -936,74 +1079,6 @@ class ClientConnection implements Runnable {
 			send(error);
 			closeConnection();	// quit client connection thread
 		}
-	}
-	
-	/**
-	 * Reads data from file (filename) to byte[] in 512 byte chunks.
-	 * 
-	 */
-	public void readFromFile() {		
-		try {
-			in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// reads from file during RRQ
-		} catch (FileNotFoundException e) {
-			// create and send error response packet for "File not found."
-			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-			System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
-			send(error);
-			closeConnection();	// quit client connection thread
-		}		
-		
-		byte[] read = new byte[MAX_DATA]; 	// to hold bytes read
-		int bytes = -1; 					// number of bytes read
-		byte blockNumber = 1;				// DATA block number
-		
-		// read up to 512 bytes from file starting at offset
-		try {			
-			while ((bytes = in.read(read)) != -1) {
-				System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
-						+ " bytes, from " + fileDirectory + filename);
-				
-				// get rid of extra buffer
-				byte[] temp = new byte[bytes];
-				System.arraycopy(read, 0, temp, 0, bytes);
-				read = temp;
-				
-				byte[] data = createData(blockNumber, read);	// create DATA packet of file being read
-				System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
-				send(data);										// send DATA
-				blockNumber++;									// increment DATA block number
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
-					blockNumber = 0;
-				}
-				DatagramPacket receivePacket = receive();			// receive the DatagramPacket							
-				byte[] ackPacket = processDatagram(receivePacket);	// read the expected ACK
-				if (ackPacket[1] == 5) {						// ERROR received instead of ACK
-					parseError(ackPacket);	// print ERROR info
-				} else if (ackPacket[1] == 4) {
-					parseAck(ackPacket);	// print ACK info
-				}
-			}				
-		} catch (FileNotFoundException e) {
-			// create and send error response packet for "File not found."
-			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-			send(error);
-			closeConnection();	// quit client connection thread
-		} catch (IOException e) {
-			System.out.println("\nError: could not read from BufferedInputStream.");
-			System.exit(1);
-		}
-		
-		// check if file was a multiple of 512 bytes in size, send 0 byte DATA
-		if (read.length == MAX_DATA) {
-			read = new byte[0];								// create 0 byte read file data
-		}
-		
-		// last packet
-		byte[] data = createData(blockNumber, read);	// create 0 byte DATA 
-		System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
-		send(data);										// send 0 byte DATA
-		
 	}
 }
 	
