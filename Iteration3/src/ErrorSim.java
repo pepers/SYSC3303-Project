@@ -55,6 +55,7 @@ public class ErrorSim {
      while(true)
      {
        String s;
+       String answer;
        Scanner in = new Scanner(System.in);
        System.out.println("Hello, I am an error simulator :) ");
        System.out.println("Would you like to generate an error packet? (Y/N) ");
@@ -64,25 +65,42 @@ public class ErrorSim {
          
          System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
          s = in.nextLine();
+         System.out.println("Enter S for server side and C for client side");
+         answer=in.nextLine();
          if(s == "1")
-         { 
-           byte[] error = createError1((byte)1, "File  does not exist.");
+         { if (answer=="C"){
+           byte[] error = createErrorClient1((byte)1, "File  does not exist.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer1((byte)1, "File  does not exist.");
+        			 }
          }
          else if(s == "2")
          {
-           byte[] error = createError2((byte)2, "File  can not be written to.");
+        	 if (answer=="C"){
+           byte[] error = createErrorClient2((byte)2, "File  can not be written to.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer2((byte)2, "File  can not be written to."); 
+         }
          }
          else if(s == "3")
          {
-           byte[] error = createError3((byte)3, "Disk full.");
+        	 if (answer=="C"){
+           byte[] error = createErrorClient3((byte)3, "Disk full.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer3((byte)3, "Disk full."); }
          }
          else if(s == "4")
          {
-           byte[] error = createError4((byte) 4, "Illegal TFTP Operation.");
-         }
+        	 if(answer=="C"){
+        		 byte[] error = createErrorClient4((byte) 4, "Illegal TFTP Operation.");
+         }if (answer=="S"){byte[] error = createErrorServer4((byte) 4, "Illegal TFTP Operation.");}
          else if(s == "5")
          {
-           byte[] error = createError5((byte)5, "Unknown TID");
+        	
+         if (answer=="C"){
+           byte[] error = createErrorClient5((byte)5, "Unknown TID");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer5((byte)5, "Unknown TID"); }
          }
          else
          {
@@ -102,7 +120,57 @@ public class ErrorSim {
     * 
     */
    
-   public void ErrsimQuit() {
+   private byte[] createErrorServer2(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorServer3(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorServer4(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorServer5(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorClient5(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorClient4(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorClient3(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorServer1(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorClient2(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+private byte[] createErrorClient1(byte b, String string) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+public void ErrsimQuit() {
     Scanner input = new Scanner(System.in); // scan user input
     int seconds = 0;          // seconds until socket timeout
     try {
@@ -197,6 +265,8 @@ public class ErrorSim {
     * For this we will have to extract the filename in the original request
     * then alter it before forwarding along
     */
+   
+   
    public byte[] createError1(byte errorCode, String errorMsg)
    {
      byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
