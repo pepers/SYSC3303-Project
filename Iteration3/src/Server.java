@@ -272,11 +272,22 @@ public class Server {
 				if (m == len) {			// didn't find 0 byte after mode
 					return false;
 				}
-				// parses the mode
-				String mode = new String(data, f, m - f - 1);
+				
+				// byte[] to copy mode into
+				byte[] md = new byte[m - f - 1];
+				System.arraycopy(data, f + 1, md, 0, m - f - 1);
+				
+				// make a String out of byte[] for mode
+				String mode = null;
+				try {
+					mode = new String(md, "US-ASCII");
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+				
 				// checks if mode is a valid TFTP mode
-				if ((!mode.equalsIgnoreCase("netascii")) || (!mode.equalsIgnoreCase("octet")) ||
-						(!mode.equalsIgnoreCase("mail"))) {
+				if (!(mode.equalsIgnoreCase("netascii") || mode.equalsIgnoreCase("octet") ||
+						mode.equalsIgnoreCase("mail"))) {
 					return false;
 				}
 				break;
@@ -514,7 +525,7 @@ class ClientConnection implements Runnable {
 						blockNumber = 0;
 					}
 					
-					DatagramPacket receivePacket = receive();           // receive the DatagramPacket
+					receivePacket = receive();  // receive the DatagramPacket
 					
 					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
 					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
@@ -537,38 +548,11 @@ class ClientConnection implements Runnable {
 			}
 			
 			/* last packet */
-			System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
-					+ " bytes, from " + fileDirectory + filename);
-			
-			// get rid of extra buffer
-			byte[] temp = new byte[bytes];
-			System.arraycopy(read, 0, temp, 0, bytes);
-			read = temp;
-			
-			byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
-			System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
-			send(data);                                   // send DATA
-			blockNumber++;                                // increment DATA block number
-			
-			// blockNumber goes from 0-127, and then wraps to back to 0
-			if (blockNumber < 0) { 
-				blockNumber = 0;
-			}
-			
-			DatagramPacket receivePacket = receive();           // receive the DatagramPacket
-			
-			byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-			if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
-				parseError(ackPacket);	// print ERROR info and close connection
-			} else if (ackPacket[1] == 4) {
-				parseAck(ackPacket);	// print ACK info
-			}
-			
 			// check if file was a multiple of 512 bytes in size, send 0 byte DATA
 			if (read.length == MAX_DATA) {
 				read = new byte[0];                         // create 0 byte read file data
 				
-				data = createData(blockNumber, read);  // create DATA packet of file being read
+				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
 				System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 				send(data);                                   // send DATA
 				blockNumber++;                                // increment DATA block number
@@ -580,14 +564,13 @@ class ClientConnection implements Runnable {
 				
 				receivePacket = receive();           // receive the DatagramPacket
 				
-				ackPacket = processDatagram(receivePacket);  // read the expected ACK
+				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
 				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
 					parseError(ackPacket);	// print ERROR info and close connection
 				} else if (ackPacket[1] == 4) {
 					parseAck(ackPacket);	// print ACK info
 				}
-			}
-			
+			}			
 			/* done sending last packet */
 			
 		/* file doesn't exist */
@@ -618,10 +601,23 @@ class ClientConnection implements Runnable {
 				DatagramPacket receivePacket = receive();			// receive the DatagramPacket
 				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 				if (dataPacket[1] == 3) {						// received DATA
-					blockNumber = dataPacket[1];	// get the data block number
+					blockNumber = dataPacket[3];	// get the data block number
 					data = parseData(dataPacket);	// get data from packet
 					try {
-						writeToFile(data);			// write data to file
+						// gets space left on the drive that we can use
+						long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+						
+						// checks if there is enough usable space on the disk
+						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+							// writes data to file (creates file first, if it doesn't exist yet)
+							Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+							System.out.println("\n" + Thread.currentThread() + ": writing data to file: " + filename);
+						} else {
+							// create and send error response packet for "Disk full or allocation exceeded."
+							byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+							send(error);
+							closeConnection();	// quit client connection thread
+						}
 					} catch (IOException e) {
 						e.printStackTrace();
 					}							
@@ -748,25 +744,27 @@ class ClientConnection implements Runnable {
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4];
 		
+		DatagramPacket packet = null;  // new DatagramPacket to be received
+		
 		// loop until packet received from expected host
 		while (true) {
-			DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+			packet = new DatagramPacket(data, data.length);
 		
 			try {
 				// block until a DatagramPacket is received via sendReceiveSocket 
-				sendReceiveSocket.receive(receivePacket);
+				sendReceiveSocket.receive(packet);
 			} catch(IOException e) {
 				e.printStackTrace();
 				System.exit(1);
 			}
 			
 			// check for wrong transfer ID 
-			if ((receivePacket.getAddress() != addr) || (receivePacket.getPort() != port)) {
+			if (!((packet.getAddress().equals(addr)) && (packet.getPort() == port))) {
 				// create and send error response packet for "Unknown transfer ID."
 				byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
 				
 				// create new DatagramPacket to send to send error
-				sendPacket = new DatagramPacket(error, error.length, receivePacket.getAddress(), receivePacket.getPort());
+				sendPacket = new DatagramPacket(error, error.length, packet.getAddress(), packet.getPort());
 				
 				// print out packet info to user
 				System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
@@ -784,23 +782,23 @@ class ClientConnection implements Runnable {
 				}
 			} else {
 				// checks if the received packet is a valid TFTP packet
-				if (!isValidPacket(receivePacket)) {
+				if (!isValidPacket(packet)) {
 					// create and send error response packet for "Illegal TFTP operation."
 					byte[] error = createError((byte)4, "Invalid packet.");
 					send(error);
 					closeConnection();
 				}
 				
+				// print out thread and port info, from which the packet was sent to Client
+				System.out.println("\n" + Thread.currentThread() + ": packet received: ");
+				System.out.println("From host: " + packet.getAddress() + " : " + packet.getPort());
+				System.out.println("Containing " + packet.getLength() + " bytes: ");
+				
 				break;  // correct transfer ID and valid packet
 			}
 		}
 		
-		// print out thread and port info, from which the packet was sent to Client
-		System.out.println("\n" + Thread.currentThread() + ": packet received: ");
-		System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-		System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-		
-		return receivePacket;
+		return packet;
 	}
 	
 	/**
@@ -810,8 +808,9 @@ class ClientConnection implements Runnable {
 	 * @return			the data from the DatagramPacket
 	 */
 	public byte[] processDatagram (DatagramPacket packet) {
-		byte[] data = new byte[packet.getLength()];
-		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
+		int len = packet.getLength();				            // number of data bytes in packet
+		byte[] data = new byte[len];                            // new byte[] for storing received data 
+		System.arraycopy(packet.getData(), 0, data, 0, len);  // copy over data
 		
 		// display info to user
 		System.out.println(Arrays.toString(data));
@@ -990,8 +989,9 @@ class ClientConnection implements Runnable {
 	 * @return			true if valid packet, false if invalid
 	 */
 	public boolean isValidPacket (DatagramPacket received) {
-		byte[] data = received.getData();	// get packet data
-		int len = data.length;				// number of data bytes in packet
+		int len = received.getLength();				            // number of data bytes in packet
+		byte[] data = new byte[len];                            // new byte[] for storing received data 
+		System.arraycopy(received.getData(), 0, data, 0, len);  // copy over data
 		
 		// check size of packet
 		if (len < 4) {
@@ -1021,11 +1021,22 @@ class ClientConnection implements Runnable {
 				if (m == len) {			// didn't find 0 byte after mode
 					return false;
 				}
-				// parses the mode
-				String mode = new String(data, f, m - f - 1);
+			
+				// byte[] to copy mode into
+				byte[] md = new byte[m - f - 1];
+				System.arraycopy(data, f + 1, md, 0, m - f - 1);
+			
+				// make a String out of byte[] for mode
+				String mode = null;
+				try {
+					mode = new String(md, "US-ASCII");
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			
 				// checks if mode is a valid TFTP mode
-				if ((!mode.equalsIgnoreCase("netascii")) || (!mode.equalsIgnoreCase("octet")) ||
-						(!mode.equalsIgnoreCase("mail"))) {
+				if (!(mode.equalsIgnoreCase("netascii") || mode.equalsIgnoreCase("octet") ||
+						mode.equalsIgnoreCase("mail"))) {
 					return false;
 				}
 				break;
@@ -1056,30 +1067,4 @@ class ClientConnection implements Runnable {
 		
 		return true;
 	}
-	
-	/**
-	 * Writes the received data to a file.
-	 * 
-	 * @param filename	name of file to write data to
-	 * @param data		data to be written to file			
-	 * @throws IOException 
-	 */
-	public void writeToFile (byte[] data) throws IOException {	
-		// gets space left on the drive that we can use
-		long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
-		
-		// checks if there is enough usable space on the disk
-		if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
-			// writes data to file (creates file first, if it doesn't exist yet)
-			Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-			System.out.println("/n" + Thread.currentThread() + ": writing data to file: " + filename);
-		} else {
-			// create and send error response packet for "Disk full or allocation exceeded."
-			byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
-			send(error);
-			closeConnection();	// quit client connection thread
-		}
-	}
 }
-	
-	

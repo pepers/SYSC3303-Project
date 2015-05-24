@@ -37,6 +37,8 @@ public class Client {
 	String mode = "octet";											// the mode in which to send/receive the file
 	private BufferedInputStream in;									// input stream to read data from file
 	public static final int MAX_DATA = 512;							// max number of bytes for data field in packet
+	InetAddress addr;												// InetAddress of host responding to request
+	int port;														// port number of host responding to request
 	
 	/**
 	 * opcodes for the different DatagramPackets in TFTP
@@ -163,12 +165,12 @@ public class Client {
 					}
 				}
 			} else if (op == Opcode.WRQ) {					
-				if (Files.isWritable(Paths.get(fileDirectory + filename))) {	// file exists and is writable
+				if (Files.isReadable(Paths.get(fileDirectory + filename))) {	// file exists and is readable
 					System.out.println("\nClient: You have chosen the file: " + fileDirectory + filename + ", to be sent in " + 
 							mode + " mode.");
 					break;
 				} else {														// file does not exist
-					System.out.println("\nClient: I'm sorry, " + fileDirectory + filename + " does not exist:");
+					System.out.println("\nClient: I'm sorry, " + fileDirectory + filename + " does not exist, or is not readable:");
 					while(true) {
 						System.out.println("(T)ry another file, or (Q)uit: ");
 						String choice = input.nextLine();	// user's choice
@@ -199,108 +201,234 @@ public class Client {
 	/**
 	 * Continues connection with Server or ErrorSim, to transfer DatagramPackets.
 	 * 
-	 * @throws Exception 
 	 */
-	public void connection () throws Exception {
-		DatagramPacket datagram = receive();			// gets received DatagramPacket
-		byte[] received = processDatagram(datagram);	// received packet turned into byte[]
+	public void connection () {
+		while (true) {
+			// no packet will be larger than DATA packet
+			// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
+			byte data[] = new byte[MAX_DATA + 4];
 		
-		// parse received packet, based on opcode
-		// Acknowledge packet received (response to WRQ)
-		if (received[1] == Opcode.ACK.op()) {			
-			parseAck(received);						// parse the acknowledgment and print info to user
-			byte[] fileData = new byte[MAX_DATA];	// data to read in from file
-			byte blockNumber = 1;					// DATA block number
-			
-			// reads the file in 512 byte chunks
+			DatagramPacket packet = new DatagramPacket(data, data.length);  // gets received DatagramPacket
+		
 			try {
-				// stream to read data from file
-				in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));
-				int bytes = 0;	// number of bytes read from file
-				while ((bytes = in.read(fileData)) != -1) {
-					System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
-					
-					// get rid of extra buffer
-					byte[] temp = new byte[bytes];
-					System.arraycopy(fileData, 0, temp, 0, bytes);
-					fileData = temp;
-					System.out.println(Arrays.toString(fileData));
-					
-					byte[] data = createData(blockNumber, fileData);		// create DATA packet
-					send(data, datagram.getAddress(), datagram.getPort());	// send DATA packet
-					datagram = receive();									// gets received DatagramPacket
-					received = datagram.getData();							// received packet turned into byte[]
-					
-					// check response 
-					if (received[1] == Opcode.ACK.op()) {			// deal with received ACK
-						parseAck(received);		
-						if (data.length < (MAX_DATA + 4)) {	// done sending file
-							return;				
-						}	
-					} else if (received[1] == Opcode.ERROR.op()) {	// deal with ERROR
-						parseError(received);
-						return;
-					} else {										// deal with malformed packet
-						throw new Exception ("Improperly formatted packet received.");
-					}
-					
-					blockNumber++;	// increase blockNumber for next DATA packet to be sent
-					// blockNumber goes from 0-127, and then wraps to back to 0
-					if (blockNumber < 0) { 
-						blockNumber = 0;
-					}
-				}	
-			} catch (FileNotFoundException e) {
-				// create and send error response packet for "File not found."
-				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
-				send(error, datagram.getAddress(), datagram.getPort() );
-				return;	// stop transfer
-			} catch (IOException e) {
-				System.out.println("\nError: could not read from BufferedInputStream.");
+				// block until a DatagramPacket is received via sendReceiveSocket 
+				sendReceiveSocket.receive(packet);
+			} catch(IOException e) {
+				e.printStackTrace();
 				System.exit(1);
-			}			
-			return;	// done transferring file
-		// Data packet received (response to RRQ)	
-		} else if (received[1] == Opcode.DATA.op()) {	
-			byte[] data = null;	// new byte[] to hold data portion of DATA packet
+			}
+		
+			addr = packet.getAddress();
+			port = packet.getPort();
+		
+			// checks if the received packet is a valid TFTP packet
+			if (!isValidPacket(packet)) {
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError((byte)4, "Invalid packet.");
+				send(error, addr, port);
+			} else {
+				// print out thread and port info, from which the packet was sent
+				System.out.println("\nClient: packet received: ");
+				System.out.println("From host: " + packet.getAddress() + " : " + packet.getPort());
+				System.out.println("Containing " + packet.getLength() + " bytes: ");			
 			
-			// do while there is still another DATA packet to receive
-			while (true) {
-				data = parseData(received);		// parse the DATA packet and print info to user
+				byte[] received = processDatagram(packet);	// received packet turned into byte[]
+			
+				// DATA
+				if (received[1] == 3) {         
+					byte[] justData = parseData(received);  // print DATA info to user		
+					try {
+						// gets space left on the drive that we can use
+						long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+						
+						// checks if there is enough usable space on the disk
+						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+							// writes data to file (creates file first, if it doesn't exist yet)
+							Files.write(Paths.get(fileDirectory + filename), justData, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+							System.out.println("\nClient: writing data to file: " + filename);
+						} else {
+							// create and send error response packet for "Disk full or allocation exceeded."
+							byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+							send(error, addr, port);
+							return;
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					byte[] ack = createAck((byte)0);  // create initial ACK
+					System.out.println("\nClient: Sending ACK...");
+					send(ack, addr, port);            // send ACK
+					readReq();                        // start file transfer for RRQ
+					break;
+				
+				// ACK
+				} else if (received[1] == 4) {  
+					parseAck(received);  // print ACK info to user				
+					writeReq();  // start file transfer for WRQ
+					break;
+			
+				// ERROR
+				} else if (received[1] == 5) {  
+					parseError(received);  // print error info to user
+					break;
+				
+				// useless packet
+				} else {                        
+					// create and send error response packet for "Unknown transfer ID."
+					byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
+					send(error, addr, port);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * RRQ file transfer.
+	 * 
+	 */
+	public void readReq() {
+		byte blockNumber = 0;  // block number for ACK and DATA during transfer
+		byte[] data = null;    // data from DATA packet
+		byte[] ack = null;     // ACK to send
+		do {	// DATA transfer from client
+			DatagramPacket receivePacket = receive();			// receive the DatagramPacket
+			
+			// invalid packet received
+			if (receivePacket == null) {
+				return;
+			}
+			
+			byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+			
+			if (dataPacket[1] == 3) {						// received DATA
+				blockNumber = dataPacket[3];	// get the data block number
+				data = parseData(dataPacket);	// get data from packet
 				try {
-					writeToFile(fileDirectory + filename, data);	// write the received data to file
+					// gets space left on the drive that we can use
+					long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+					
+					// checks if there is enough usable space on the disk
+					if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+						// writes data to file (creates file first, if it doesn't exist yet)
+						Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+						System.out.println("\nClient: writing data to file: " + filename);
+					} else {
+						// create and send error response packet for "Disk full or allocation exceeded."
+						byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+						send(error, addr, port);
+						return;
+					}
 				} catch (IOException e) {
-					// create and send error response packet for "Access violation."
-					byte[] error = createError((byte)2, "File (" + filename + ") can not be written to.");
-					send(error, datagram.getAddress(), datagram.getPort());	// send ERROR packet
+					e.printStackTrace();
+				}							
+				ack = createAck(blockNumber);	// create ACK
+				System.out.println("\nClient: Sending ACK...");
+				send(ack, addr, port);						// send ACK
+			} else if (dataPacket[1] == 5) {				// ERROR received instead of DATA
+				parseError(dataPacket);			// print ERROR info
+				return;
+			} else {
+				
+			}
+		} while (data.length == MAX_DATA);
+				
+		System.out.println("\nClient: RRQ File Transfer Complete.");
+	}
+	
+	/**
+	 * WRQ file transfer.
+	 * 
+	 */
+	public void writeReq() {
+		try {
+			in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// reads from file during WRQ
+		} catch (FileNotFoundException e) {
+			// create and send error response packet for "Access violation."
+			byte[] error = createError((byte)2, "File (" + filename + ") exists on client, but is not readable.");
+			System.out.println("\nClient: Sending ERROR...");
+			send(error, addr, port);
+			return;
+		}		
+			
+		byte[] read = new byte[MAX_DATA];  // to hold bytes read
+		int bytes = 0;                     // number of bytes read
+		byte blockNumber = 1;              // DATA block number
+		
+		// read up to 512 bytes from file
+		try {			
+			while ((bytes = in.read(read)) != -1) {
+				System.out.println("\nClient: Read " + bytes + " bytes, from " + fileDirectory + filename);
+				
+				// get rid of extra buffer
+				byte[] temp = new byte[bytes];
+				System.arraycopy(read, 0, temp, 0, bytes);
+				read = temp;
+				
+				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+				System.out.println("\nClient: Sending DATA...");
+				send(data, addr, port);                       // send DATA
+				blockNumber++;                                // increment DATA block number
+				
+				// blockNumber goes from 0-127, and then wraps to back to 0
+				if (blockNumber < 0) { 
+					blockNumber = 0;
+				}
+				
+				receivePacket = receive();  // receive the DatagramPacket
+				
+				// invalid packet received
+				if (receivePacket == null) {
 					return;
 				}
 				
-				// create and send ACK packet
-				byte[] ack = createAck(received[3]);
-				send(ack, datagram.getAddress(), datagram.getPort());
-				if(data.length < MAX_DATA) {	// if last DATA packet was received
-					break;
+				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+					parseError(ackPacket);	// print ERROR info and close connection
+				} else if (ackPacket[1] == 4) {
+					parseAck(ackPacket);	// print ACK info
 				}
-				datagram = receive();					// gets received DatagramPacket
-				received = processDatagram(datagram);	// received packet turned into byte[]
-				if (received[1] == Opcode.ERROR.op()) {			// deal with ERROR
-					parseError(received);	
-					return;
-				} else if (received[1] != Opcode.DATA.op()) {	// deal with malformed packet
-					throw new Exception ("Improperly formatted packet received.");
-				}
+			}			
+		} catch (FileNotFoundException e) {
+			// create and send error response packet for "File not found."
+			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+			send(error, addr, port);
+			return;		
+		} catch (IOException e) {
+			System.out.println("\nError: could not read from BufferedInputStream.");
+			System.exit(1);
+		}
+			
+		/* last packet */
+		// check if file was a multiple of 512 bytes in size, send 0 byte DATA
+		if (read.length == MAX_DATA) {
+			read = new byte[0];                           // create 0 byte read file data
+			
+			byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
+			System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
+			send(data, addr, port);                       // send DATA
+			blockNumber++;                                // increment DATA block number
+			
+			// blockNumber goes from 0-127, and then wraps to back to 0
+			if (blockNumber < 0) { 
+				blockNumber = 0;
 			}
 			
-		// Error packet received	
-		} else if (received[1] == Opcode.ERROR.op()) {	
-			parseError(received);	
-			return;
-
-		}
-		else {
-			throw new Exception ("Improperly formatted packet received.");
-		}
+			receivePacket = receive();           // receive the DatagramPacket
+			
+			// invalid packet received
+			if (receivePacket == null) {
+				return;
+			}
+			
+			byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+			if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+				parseError(ackPacket);	// print ERROR info and close connection
+			} else if (ackPacket[1] == 4) {
+				parseAck(ackPacket);	// print ACK info
+			}
+		}			
+		/* done sending last packet */
+		System.out.println("\nClient: WRQ File Transfer Complete.");
 	}
 	
 	/**
@@ -490,15 +618,15 @@ public class Client {
 	 * Sends DatagramPacket.
 	 * 
 	 * @param data	data byte[] to be included in DatagramPacket
-	 * @param addr	internet address to send DatagramPacket to 
+	 * @param addr	InetAddress to send DatagramPacket to 
 	 * @param port	port number to send DatagramPacket to
 	 */
-	public void send (byte[] data, InetAddress addr, int port) {
-		sendPacket = new DatagramPacket(data, data.length, addr, port);
+	public void send (byte[] data, InetAddress iAddr, int portNum) {
+		sendPacket = new DatagramPacket(data, data.length, iAddr, portNum);
 
 		System.out.println("\nClient: Sending packet:");
 		System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
-		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+		System.out.println("Containing " + sendPacket.getLength() + " bytes: ");
 		System.out.println(Arrays.toString(data) + "\n"); 
 		
 		// send the DatagramPacket to the server via the send/receive socket
@@ -512,29 +640,71 @@ public class Client {
 	}
 	
 	/**
-	 * Receives DatagramPacket.
+	 * Receives DatagramPacket, checks that packet came from right place,
+	 * and checks if packet is a valid TFTP packet.
 	 * 
 	 * @return DatagramPacket received
 	 */
-	public DatagramPacket receive () {
+	public DatagramPacket receive() {
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4];
-		receivePacket = new DatagramPacket(data, data.length);
 		
-		try {
-			// block until a DatagramPacket is received via sendReceiveSocket
-			sendReceiveSocket.receive(receivePacket);
-		} catch(IOException e) {
-			e.printStackTrace();
-			System.exit(1);
+		DatagramPacket packet = null;  // new DatagramPacket to be received
+		
+		// loop until packet received from expected host
+		while (true) {
+			packet = new DatagramPacket(data, data.length);
+		
+			try {
+				// block until a DatagramPacket is received via sendReceiveSocket 
+				sendReceiveSocket.receive(packet);
+			} catch(IOException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
+			
+			// check for wrong transfer ID 
+			if (!((packet.getAddress().equals(addr)) && (packet.getPort() == port))) {
+				// create and send error response packet for "Unknown transfer ID."
+				byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
+				
+				// create new DatagramPacket to send to send error
+				sendPacket = new DatagramPacket(error, error.length, packet.getAddress(), packet.getPort());
+				
+				// print out packet info to user
+				System.out.println("\nClient: Sending packet: ");
+				System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
+				System.out.print("Containing " + sendPacket.getLength() + " bytes: ");
+				System.out.println(Arrays.toString(error) + "\n");
+				
+				// send the packet
+				try {
+					sendReceiveSocket.send(sendPacket);
+					System.out.println("Client: Packet sent ");
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			} else {
+				// checks if the received packet is a valid TFTP packet
+				if (!isValidPacket(packet)) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError((byte)4, "Invalid packet.");
+					send(error, addr, port);
+					return null;
+				}
+				
+				// print out thread and port info, from which the packet was sent
+				System.out.println("\nClient: packet received: ");
+				System.out.println("From host: " + packet.getAddress() + " : " + packet.getPort());
+				System.out.println("Containing " + packet.getLength() + " bytes: ");
+				
+				break;  // correct transfer ID and valid packet
+			}
 		}
 		
-		System.out.println("\nClient: DatagramPacket received:");
-		System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-		System.out.print("Containing " + receivePacket.getLength() + " bytes");
-		
-		return receivePacket;
+		return packet;
 	}
 	
 	/**
@@ -548,9 +718,130 @@ public class Client {
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
 		
 		// display info to user
-		System.out.println("\n" + Arrays.toString(data));
+		System.out.println(Arrays.toString(data));
 		
 		return data;
+	}
+
+	/**
+	 * Gets the opcode from the received packet.
+	 * 
+	 * @param received	the DatagramPacket that was received
+	 * @return			the Opcode of the received DatagramPacket
+	 */
+	public Opcode getOpcode (DatagramPacket received) {
+		byte[] data = received.getData();	// get data stored in received DatagramPacket
+		byte opcode = data[1];				// get second byte of opcode to determine packet type
+		Opcode op = null;					// opcode to return
+		
+		// determine if correctly formed opcode
+		if (data[0] != 0) {
+			return null;
+		}
+		
+		// determine which type of packet was received
+		switch (opcode) {
+			case 1: op = Opcode.RRQ;	// RRQ
+				break;
+			case 2: op = Opcode.WRQ;	// WRQ
+				break;
+			case 3:	op = Opcode.DATA;	// DATA
+				break;
+			case 4:	op = Opcode.ACK;	// ACK
+				break;
+			case 5:	op = Opcode.ERROR;	// ERROR
+				break;
+			default: op = null;			// invalid opcode
+				break;
+		}
+		
+		return op;
+	}
+	
+	/**
+	 * Determines if the packet is a valid TFTP packet.
+	 * 
+	 * @param received	the received DatagramPacket to be verified
+	 * @return			true if valid packet, false if invalid
+	 */
+	public boolean isValidPacket (DatagramPacket received) {
+		int len = received.getLength();				            // number of data bytes in packet
+		byte[] data = new byte[len];                            // new byte[] for storing received data 
+		System.arraycopy(received.getData(), 0, data, 0, len);  // copy over data
+		
+		// check size of packet
+		if (len < 4) {
+			return false;
+		} 
+		
+		Opcode op = getOpcode(received);	// get opcode
+		
+		// organize by opcode
+		switch (op) {
+			case RRQ: case WRQ:						// read or write request
+				int f;	// filename finding index
+				for (f = 2; f < len; f++) {
+					if (data[f] == 0) {	// filename is valid
+						break;
+					}
+				}
+				if (f == len) {			// didn't find 0 byte after filename
+					return false;
+				}
+				int m;	// mode finding index
+				for (m = f + 1; m < len; m++) {
+					if (data[m] == 0) {	// mode is valid
+						break;
+					}
+				}
+				if (m == len) {			// didn't find 0 byte after mode
+					return false;
+				}
+			
+				// byte[] to copy mode into
+				byte[] md = new byte[m - f - 1];
+				System.arraycopy(data, f + 1, md, 0, m - f - 1);
+			
+				// make a String out of byte[] for mode
+				String mode = null;
+				try {
+					mode = new String(md, "US-ASCII");
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			
+				// checks if mode is a valid TFTP mode
+				if (!(mode.equalsIgnoreCase("netascii") || mode.equalsIgnoreCase("octet") ||
+						mode.equalsIgnoreCase("mail"))) {
+					return false;
+				}
+				break;
+			case DATA:								// DATA packet
+				if (len > MAX_DATA + 4) {
+					return false;
+				}
+				// TODO: Can first byte of block number be anything but 0?
+				break;
+			case ACK:								// ACK packet
+				if (len != 4) { 
+					return false; 
+				}
+				// TODO: Can first byte of block number be anything but 0?
+				break;
+			case ERROR:								// ERROR packet
+				if (data[len - 1] != 0) {
+					return false;	// error message not terminated with 0 byte
+				}
+				for (int i = 0; i<8; i++) {
+					if (data[3] == (byte)i) {
+						return true;	// found a valid error code
+					}
+				}
+				return false; 			// not a valid error code
+			default: return false;					// invalid opcode
+		}		
+		
+		return true;
 	}
 
 	/**
