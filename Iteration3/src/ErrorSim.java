@@ -27,7 +27,6 @@ public class ErrorSim {
    InetAddress addr;                        // InetAddress of client that sent request
    public static int port; //port of client
    
-   public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }
    
    public ErrorSim()
    {
@@ -52,8 +51,6 @@ public class ErrorSim {
     * See other methods below for what exactly the error codes are and how much the client
     * will be prompted for
     * 
-    * HYDE WILL DO THIS SHIT 
-    * 
     */
    public void UI()
    {
@@ -65,6 +62,7 @@ public class ErrorSim {
        Scanner in = new Scanner(System.in);
        System.out.println("Hello, I am an error simulator :) ");
        System.out.println("Would you like to:  ");
+      
        System.out.println("1. Create a generic error? ");
        System.out.println("2. Simulate a transfer error? ");
        
@@ -79,27 +77,23 @@ public class ErrorSim {
          genericError(err,dest);
          
          
+         
        }
        else if(err=="2"){
          System.out.println("Would you like to test error code (4) or (5)?  ");
          err = in.nextLine();
          if(err=="4")
          {
-           //createError4((byte) 4, "Illegal TFTP Operation.");
+          // createError4();
          }
          else if(err=="5")
          {
-          // createError5((byte) 5, "Invalid TID.");
+          createError5();
          }
        }
    }
    
-   /*
-    * Receives the packet on a specified port, there are 3 ports on error sim
-    * They are: Port 68,the sendandreceive port on the server side and the
-    * sendandreceive port on the client side
-    * 
-    */
+
    
   
    }
@@ -133,10 +127,19 @@ public void ErrsimQuit() {
       }
     }
   }
+
+
+
+/*
+ * Receives the packet on a specified port, there are 3 ports on error sim
+ * They are: Port 68,the sendandreceive port on the server side and the
+ * sendandreceive port on the client side
+ * 
+ */
    public DatagramPacket receivePacket()
    {
      byte data[] = new byte[100]; 
-    DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+     DatagramPacket receivePacket = new DatagramPacket(data, data.length);
     
     while (true){
       try {
@@ -166,7 +169,7 @@ public void ErrsimQuit() {
     */
    public byte[] processDatagramPacket(DatagramPacket packet)
    {
-     byte[] data = new byte[packet.getLength()];
+    byte[] data = new byte[packet.getLength()];
     System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
     
     // display info to user
@@ -184,7 +187,7 @@ public void ErrsimQuit() {
       sendPacket = new DatagramPacket(data, data.length, addr, port);
       
       // print out packet info to user
-      System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+      System.out.println("Error Simulator: Sending packet: ");
       System.out.println("To host: " + addr + " : " + port);
       System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
       System.out.println(Arrays.toString(data) + "\n");
@@ -192,7 +195,7 @@ public void ErrsimQuit() {
       // send the packet
       try {
         sendReceiveSocket.send(sendPacket);
-        System.out.println(Thread.currentThread() + ": Packet sent ");
+        System.out.println("ErrSim: Packet sent");
       } catch (IOException e) {
         e.printStackTrace();
         System.exit(1);
@@ -211,7 +214,7 @@ public void ErrsimQuit() {
    
    /*
     * Error code for Unknown transfer ID
-    * This is basically if a second client randonly sends a block of
+    * This is basically if a second client randomly sends a block of
     * data from an unknown port
     * 
     */
@@ -223,7 +226,7 @@ public void ErrsimQuit() {
     * 
     * This code should be executed only AFTER a packet is recieved from the client.
     * OR the client port to send to number is statically set, and to sim the error simply replace the receivePacket.getPort() 
-    * with that static port number eg 2000 
+    * with that static port number eg 50000 
     * 
     */
    public void createError5()
@@ -256,7 +259,7 @@ public void ErrsimQuit() {
      try
      {
        //Client Packet
-       errorPacketClient = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 2000);
+       errorPacketClient = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 50000);
        //Server Packet
        errorPacketServer = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 69);
      }
@@ -448,6 +451,7 @@ public void ErrsimQuit() {
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
                 { if (destination=="C"){
                      sendPacket = new DatagramPacket(error, error.length, addr, port);
+                     
                 }if (destination=="S"){
                      sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
@@ -456,64 +460,49 @@ public void ErrsimQuit() {
          
        
        else
+       {
          System.exit(1);
-    
-      
+       }
+         //Finally, send constructed ERROR PACKET
+         try {
+             sendReceiveSocket.send(sendPacket);
+             System.out.println("ErrSim: Packet sent");
+           } catch (IOException e) {
+             e.printStackTrace();
+             System.exit(1);
+           }
     }
  
-   public void ForwardPacket()
-   {
-
-      byte[] data;
-      
-      int clientPort, j=0;
   
-      for(;;) { // loop forever
-         // Construct a DatagramPacket for receiving packets up
-         // to 100 bytes long (the length of the byte array).
-         
-         data = new byte[100];
-         receivePacket = new DatagramPacket(data, data.length);
-
-         System.out.println("Simulator: Waiting for packet.");
-         // Block until a datagram packet is received from receiveSocket.
-         try {
-            receiveSocket.receive(receivePacket);
-         } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-         }
-
-         // Process the received datagram.
-         System.out.println("Simulator: Packet received:");
-         System.out.println("From host: " + receivePacket.getAddress());
-         clientPort = receivePacket.getPort();
-         System.out.println("Host port: " + clientPort);
-         System.out.println("Length: " + receivePacket.getLength());
-         System.out.println("Containing: " );
-         
-         // print the bytes
-         for (j=0;j<receivePacket.getLength();j++) {
-            System.out.println("byte " + j + " " + data[j]);
-         }
-
-         // Form a String from the byte array.
-         String received = new String(data,0,receivePacket.getLength());
-         System.out.println(received);
-         
-         
-         Runnable serverConnection = new serverConnection(sendPacket, receivePacket, sendReceiveSocket);
-         new Thread(serverConnection).start();
-         
-      } // end of loop
-
-   }
+  /****************MAIN******** 
+   * Asks user whether they want normal mode or error sim mode, normal mode simply forwards packets to server, Errsim
+   * runs the user interface to get info on what kind of errors to simulate
+   * Please note that createError5 cannot test properly until a packet is received from the client***/
+  
    public static void main( String args[] )
    {
-      ErrorSim s = new ErrorSim();
-      s.ForwardPacket();
+    ErrorSim e = new ErrorSim();
+    Scanner s = new Scanner(System.in); 
+    System.out.println("Would you like to operate in (N)ormal mode or (E)rror sim mode? ");
+    String userch = s.nextLine();
+    if(userch.equalsIgnoreCase("N"))//simply forward the packet along (receive, process,send)
+    {
+      DatagramPacket data = e.receivePacket();
+      byte[] sendpack = e.processDatagramPacket(data); 
+      e.sendPacket(sendpack);
+    }
+    else if(userch.equalsIgnoreCase("E"))//go to UI, send or test appropriate error packets. 
+    {
+      e.receivePacket();
+        e.UI();
+    }
+      
+      
       
    }
+   
+   
+   
 } 
  class serverConnection implements Runnable
  {
