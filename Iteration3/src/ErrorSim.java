@@ -439,6 +439,9 @@ public void ErrsimQuit() {
     	
     }
    }
+ 
+   /*
+   
    public void ForwardPacket()
    {
 
@@ -486,6 +489,7 @@ public void ErrsimQuit() {
       } // end of loop
 
    }
+   */
    public static void main( String args[] )
    {
       ErrorSim s = new ErrorSim();
