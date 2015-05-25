@@ -32,14 +32,13 @@ public class Server {
 	DatagramSocket receiveSocket;						// Client sends to port 69
 	private Scanner input;								// scans user input when determining if Server should shut down
 	public static final int MAX_DATA = 512;				// maximum size of data block
-	public static final int TIMEOUT = 20000;			// number of milliseconds before receiveSocket timeout;	
+	public static final int TIMEOUT = 5000;			// number of milliseconds before receiveSocket timeout;	
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
 	
 	public Server() {
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
-			receiveSocket.setSoTimeout(TIMEOUT);		// socket timeout in TIMEOUT milliseconds
 		} catch (SocketException se) {
 			se.printStackTrace();
 			System.exit(1);
@@ -61,6 +60,16 @@ public class Server {
 			System.out.println("\nServer: Listening for new requests...");
 			DatagramPacket datagram = null;				// DatagramPacket to eventually receive
 			datagram = receive();						// gets received DatagramPacket
+			
+			// set timeout for server receive socket
+			try {
+				receiveSocket.setSoTimeout(TIMEOUT);	// socket timeout in TIMEOUT milliseconds
+			} catch (SocketException e) {
+				System.out.println("Error: could not set socket timeout.");
+				receiveSocket.close();	// close socket listening for requests
+				System.exit(0);			// exit server
+			}
+			
 			byte[] request = processDatagram(datagram);	// received request packet turned into byte[]
 			if (!isValidPacket(datagram)) {				// check if packet was valid, if not: send error
 				byte[] error = createError((byte)4, "Invalid packet.");
