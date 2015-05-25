@@ -25,16 +25,14 @@ import java.util.Scanner;
  * @author	Scott Savage
  * @version	3
  */
-public class Server extends Thread{
+public class Server {
 	
 	DatagramPacket receivePacket;						// to receive DatagramPackets from Client
-	DatagramSocket receiveSocket;						// Client sends to port 69
+	static DatagramSocket receiveSocket;						// Client sends to port 69
 	public static final int MAX_DATA = 512;				// maximum size of data block
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
-	public ThreadGroup serv;
 	
-	public Server(ThreadGroup tg, String name) {
-		super(tg, name);
+	public Server() {
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
@@ -45,16 +43,19 @@ public class Server extends Thread{
 	}
 	public static void main (String args[]) {
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Server Program *****\n");
-		ThreadGroup serv = new ThreadGroup("Server");
-		Server s = new Server(serv, "Server Thread");
-		s.start();
-		UserInput ui = new UserInput(serv, "User Input Thread");		
+		Server s = new Server();
+		UserInput ui = new UserInput();		
 		ui.start();  // starts user input (for quitting server)		
 		s.listener();	// start listening for DatagramPackets		
 	}
 	
-	public void run() {
-		
+	/**
+	 * Gets receive socket.
+	 * 
+	 * @return receive socket
+	 */
+	public static DatagramSocket getSocket() {
+		return receiveSocket;
 	}
 	
 	/**
@@ -65,7 +66,10 @@ public class Server extends Thread{
 		while (true) {	// keep listening on port 69 for new requests 
 			System.out.println("\nServer: Listening for new requests...");
 			DatagramPacket datagram = null;				// DatagramPacket to eventually receive
-			datagram = receive();						// gets received DatagramPacket			
+			datagram = receive();						// gets received DatagramPacket
+			if (datagram == null) {                     // receive socket was closed, return from listener
+				break;
+			}
 			byte[] request = processDatagram(datagram);	// received request packet turned into byte[]
 			if (!isValidPacket(datagram)) {				// check if packet was valid, if not: send error
 				byte[] error = createError((byte)4, "Invalid packet.");
@@ -148,8 +152,7 @@ public class Server extends Thread{
 				
 				break;
 			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(1);
+				return null;  // socket was closed, return null
 			}
 		}
 		
@@ -387,10 +390,8 @@ public class Server extends Thread{
 class UserInput extends Thread {
 	
 	private Scanner input;  // scans user input when determining if Server should shut down
-	public ThreadGroup serv;
-
-	public UserInput(ThreadGroup tg, String name) {
-		this.serv = tg;
+	
+	public UserInput() {
 		System.out.println("Press Q at any time to quit.");
 		
 	}
@@ -400,11 +401,13 @@ class UserInput extends Thread {
 		while (true) {			
 			String choice = input.nextLine();			// user's choice
 			if (choice.equalsIgnoreCase("Q")) {			// Quit
-				System.out.println("\nServer: Goodbye!");
-				ThreadGroup serv = getThreadGroup();
-				serv.interrupt();
+				break;
 			}
 		}
+		System.out.println("\nServer: Goodbye!");
+		DatagramSocket socket = Server.getSocket(); // get server's receive socket
+		socket.close();                             // close server's receive socket
+		Thread.currentThread().interrupt();         // close user input thread
 	}
 }
 
