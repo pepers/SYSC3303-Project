@@ -60,57 +60,6 @@ public class ErrorSim {
        System.out.println("Hello, I am an error simulator :) ");
        System.out.println("Would you like to generate an error packet? (Y/N) ");
        s = in.nextLine();
-       if(s.equals("Y")||s.equals("y"))
-       {
-         
-         System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
-         s = in.nextLine();
-         System.out.println("Enter S for server side and C for client side");
-         answer=in.nextLine();
-         if(s == "1")
-         { if (answer=="C"){
-           byte[] error = createErrorClient1((byte)1, "File  does not exist.");
-         }if (answer=="S"){
-        	 byte[] error = createErrorServer1((byte)1, "File  does not exist.");
-        			 }
-         }
-         else if(s == "2")
-         {
-        	 if (answer=="C"){
-           byte[] error = createErrorClient2((byte)2, "File  can not be written to.");
-         }if (answer=="S"){
-        	 byte[] error = createErrorServer2((byte)2, "File  can not be written to."); 
-         }
-         }
-         else if(s == "3")
-         {
-        	 if (answer=="C"){
-           byte[] error = createErrorClient3((byte)3, "Disk full.");
-         }if (answer=="S"){
-        	 byte[] error = createErrorServer3((byte)3, "Disk full."); }
-         }
-         else if(s == "4")
-         {
-        	 if(answer=="C"){
-        		 byte[] error = createErrorClient4((byte) 4, "Illegal TFTP Operation.");
-         }if (answer=="S"){byte[] error = createErrorServer4((byte) 4, "Illegal TFTP Operation.");}
-         else if(s == "5")
-         {
-        	
-         if (answer=="C"){
-           byte[] error = createErrorClient5((byte)5, "Unknown TID");
-         }if (answer=="S"){
-        	 byte[] error = createErrorServer5((byte)5, "Unknown TID"); }
-         }
-         else
-         {
-           byte[] error = createError6((byte)6, "File already exists.");
-         }
-          
-       }
-       else 
-         System.exit(1);
-     }
    }
    
    /*
@@ -429,11 +378,66 @@ public void ErrsimQuit() {
 ............\..............( 
 ..............\.............\...
     * MOE THIS SHOULDVE BEEN MENTIONED AT THE BEGINNING OF THE UI METHOD
+    * 
+    * 
+    * I'll do this other one: Moe
     */
    
    public void genericError()
    {
-    
+	   if(s.equals("Y")||s.equals("y"))
+       {
+         
+         System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
+         s = in.nextLine();
+         System.out.println("Enter S for server side and C for client side");
+         answer=in.nextLine();
+         if(s == "1")
+         { if (answer=="C"){
+           byte[] error = createErrorClient1((byte)1, "File  does not exist.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer1((byte)1, "File  does not exist.");
+        			 }
+         }
+         else if(s == "2")
+         {
+        	 if (answer=="C"){
+           byte[] error = createErrorClient2((byte)2, "File  can not be written to.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer2((byte)2, "File  can not be written to."); 
+         }
+         }
+         else if(s == "3")
+         {
+        	 if (answer=="C"){
+           byte[] error = createErrorClient3((byte)3, "Disk full.");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer3((byte)3, "Disk full."); }
+         }
+         else if(s == "4")
+         {
+        	 if(answer=="C"){
+        		 byte[] error = createErrorClient4((byte) 4, "Illegal TFTP Operation.");
+         }if (answer=="S"){byte[] error = createErrorServer4((byte) 4, "Illegal TFTP Operation.");}
+         else if(s == "5")
+         {
+        	
+         if (answer=="C"){
+           byte[] error = createErrorClient5((byte)5, "Unknown TID");
+         }if (answer=="S"){
+        	 byte[] error = createErrorServer5((byte)5, "Unknown TID"); }
+         }
+         else
+         {
+           byte[] error = createError6((byte)6, "File already exists.");
+         }
+          
+       }
+       else 
+         System.exit(1);
+     }
+    	
+    }
    }
    public void ForwardPacket()
    {
