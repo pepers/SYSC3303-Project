@@ -120,55 +120,7 @@ public class ErrorSim {
     * 
     */
    
-   private byte[] createErrorServer2(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorServer3(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorServer4(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorServer5(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorClient5(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorClient4(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorClient3(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorServer1(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorClient2(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
-
-private byte[] createErrorClient1(byte b, String string) {
-	// TODO Auto-generated method stub
-	return null;
-}
+  
 
 public void ErrsimQuit() {
     Scanner input = new Scanner(System.in); // scan user input
