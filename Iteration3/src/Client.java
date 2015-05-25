@@ -255,9 +255,15 @@ public class Client {
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					byte[] ack = createAck((byte)0);  // create initial ACK
+					byte[] ack = createAck(received[3]);  // create initial ACK
 					System.out.println("\nClient: Sending ACK...");
 					send(ack, addr, port);            // send ACK
+					
+					if (justData.length < MAX_DATA) {
+						System.out.println("\nClient: RRQ File Transfer Complete.");
+						break;
+					}
+					
 					readReq();                        // start file transfer for RRQ
 					break;
 				
@@ -484,19 +490,24 @@ public class Client {
 	 * Creates the byte[] to be sent as a data DatagramPacket.
 	 * 
 	 * @param blockNumber	the data block number 
-	 * @param data			the data to be sent
+	 * @param passedData	the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] data) {
-		byte[] temp = new byte[4+data.length];
-		temp[0] = 0;
-		temp[1] = 3;
-		temp[2] = 0;
-		temp[3] = blockNumber;
-		for(int i=4; i < data.length; i++) {
-			temp[i] = data[i];
-		}
-		return temp;
+	public byte[] createData (byte blockNumber, byte[] passedData) {
+		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
+		
+		// add opcode
+		data[0] = 0;
+		data[1] = 3;
+				
+		// add block number
+		data[2] = 0;
+		data[3] = blockNumber;
+		
+		// copy data, being passed in, to data byte[]
+		System.arraycopy(passedData, 0, data, 4, passedData.length);
+		
+		return data;
 	}
 	
 	/**
@@ -842,22 +853,5 @@ public class Client {
 		}		
 		
 		return true;
-	}
-
-	/**
-	 * Writes the received data to a file.
-	 * 
-	 * @param filename	name of file to write data to
-	 * @param data		data to be written to file			
-	 * @throws IOException 
-	 */
-	public void writeToFile (String filename, byte[] data) throws IOException {
-		// if data received was not an empty block
-		if (!(data.length < MAX_DATA)) {
-			Files.write(Paths.get(filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-			System.out.println("\nClient: reading data to file: " + filename);
-		} else {
-			System.out.println("\nClient: receiving " + filename + " complete");
-		}
 	}
 }
