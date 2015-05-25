@@ -152,6 +152,14 @@ public class Server {
 				System.exit(0);			// exit server
 			} else if (choice.equalsIgnoreCase("C")) {	// Continue
 				System.out.println("\nServer: Continuing to listen for new requests...");
+				// set timeout for server receive socket
+				try {
+					receiveSocket.setSoTimeout(TIMEOUT);	// socket timeout in TIMEOUT milliseconds
+				} catch (SocketException e) {
+					System.out.println("Error: could not set socket timeout.");
+					receiveSocket.close();	// close socket listening for requests
+					System.exit(0);			// exit server
+				}
 				break;
 			} else {									// invalid user choice
 				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
