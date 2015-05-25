@@ -60,6 +60,11 @@ public class ErrorSim {
        System.out.println("Hello, I am an error simulator :) ");
        System.out.println("Would you like to generate an error packet? (Y/N) ");
        s = in.nextLine();
+       
+       if(s.equals("Y")||s.equals("y"))
+       {
+       
+       }
    }
    
    /*
@@ -385,8 +390,7 @@ public void ErrsimQuit() {
    
    public void genericError()
    {
-	   if(s.equals("Y")||s.equals("y"))
-       {
+	   
          
          System.out.println("What kind of error code would you like to create? (1,2,3,4,5,6)");
          s = in.nextLine();
@@ -435,7 +439,7 @@ public void ErrsimQuit() {
        }
        else 
          System.exit(1);
-     }
+     
     	
     }
    }
