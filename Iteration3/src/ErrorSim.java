@@ -5,6 +5,9 @@ import java.net.*;
 import java.util.Arrays;
 import java.util.Scanner;
 
+
+
+
 /**
  * The error simulation program for the SYSC3303 TFTP Group Project.
  * 
@@ -22,7 +25,9 @@ public class ErrorSim {
    private DatagramPacket sendPacket, receivePacket;
    private DatagramSocket receiveSocket, sendReceiveSocket;
    InetAddress addr;                        // InetAddress of client that sent request
-   int port;
+   public static int port; //port of client
+   
+   public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }
    
    public ErrorSim()
    {
@@ -54,31 +59,37 @@ public class ErrorSim {
    {
      while(true)
      {
-       String s;
-       String answer;
+       String err;
+       String dest;
+       String destination;
        Scanner in = new Scanner(System.in);
        System.out.println("Hello, I am an error simulator :) ");
        System.out.println("Would you like to:  ");
        System.out.println("1. Create a generic error? ");
        System.out.println("2. Simulate a transfer error? ");
        
-       s = in.nextLine();
+       err = in.nextLine();
        
-       if(s == "1")
+       if(err == "1")
        {
+         System.out.println("Where would you like to send this error? (S)erver or (C)lient? ");
+         dest = in.nextLine();
+         System.out.println("What kind of generic error would you like to create? (1,2,3,4,5,6)");
+         err = in.nextLine();
+         genericError(err,dest);
          
          
        }
-       else if(s=="2"){
+       else if(err=="2"){
          System.out.println("Would you like to test error code (4) or (5)?  ");
-         s = in.nextLine();
-         if(s=="4")
+         err = in.nextLine();
+         if(err=="4")
          {
-           createError4((byte) 4, "Illegal TFTP Operation.");
+           //createError4((byte) 4, "Illegal TFTP Operation.");
          }
-         else if(s=="5")
+         else if(err=="5")
          {
-           createError5((byte) 5, "Invalid TID.");
+          // createError5((byte) 5, "Invalid TID.");
          }
        }
    }
@@ -93,7 +104,9 @@ public class ErrorSim {
   
    }
    
+ 
    
+
    /*******************MUST MAKE LISTENER METHOD********************************************************/
    
 public void ErrsimQuit() {
@@ -134,7 +147,7 @@ public void ErrsimQuit() {
         System.out.println("\nServer: packet received: ");
         System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
         System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-        
+        port=receivePacket.getPort();
         break;
       } catch (SocketTimeoutException e) {  // haven't received packet in 5 seconds
         ErrsimQuit(); // find out if user wants to quit, if not while loop will re-try
@@ -186,113 +199,11 @@ public void ErrsimQuit() {
       }
    }
    
-   /*
-    * Test to see if the file exists
-    * For this we will have to extract the filename in the original request
-    * then alter it before forwarding along
-    */
-   
-   
-   public byte[] createError1(byte errorCode, String errorMsg)
-   {
-     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
-    
-    // add opcode
-    error[0] = 0;
-    error[1] = 5;
-    
-    // add error code
-    error[2] = 0;
-    error[3] = errorCode;
-    
-    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
-    
-    // convert errorMsg to byte[], with proper encoding
-    try {
-      message = errorMsg.getBytes("US-ASCII");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    
-    // add error message to error byte[]
-    System.arraycopy(message, 0, error, 4, message.length);
-    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-        
-    return error; //return full error message with opcodes and type of error
-    
-   }
-   
-   /*
-    * Error for Access Violation
-    * Checks for correct opcode, also makes sure the file is writable
-    * for a write request,maybe more scenarios
-    */
-   /*
-   public byte[] createError2(byte errorCode, String errorMsg)
-   {
-     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
-    
-    // add opcode
-    error[0] = 0;
-    error[1] = 5;
-    
-    // add error code
-    error[2] = 0;
-    error[3] = errorCode;
-    
-    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
-    
-    // convert errorMsg to byte[], with proper encoding
-    try {
-      message = errorMsg.getBytes("US-ASCII");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    
-    // add error message to error byte[]
-    System.arraycopy(message, 0, error, 4, message.length);
-    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-        
-    return error; //return full error message with opcodes and type of error
-   }
-   
-   /*
-    * Error for disk full or allocation exceeded
-    * Recommend testing this on a full USB
-    */
-   /*
-   public byte[] createError3(byte errorCode, String errorMsg)
-   {
-     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
-    
-    // add opcode
-    error[0] = 0;
-    error[1] = 5;
-    
-    // add error code
-    error[2] = 0;
-    error[3] = errorCode;
-    
-    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
-    
-    // convert errorMsg to byte[], with proper encoding
-    try {
-      message = errorMsg.getBytes("US-ASCII");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    
-    // add error message to error byte[]
-    System.arraycopy(message, 0, error, 4, message.length);
-    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-        
-    return error; //return full error message with opcodes and type of error
-   }
-   
+ 
    /*
     * Error code for Illegal TFTP operation
     */
-   
+   /*
    public byte[] createError4(byte errorCode, String errorMsg)
    {
      
@@ -305,78 +216,80 @@ public void ErrsimQuit() {
     * 
     */
    
-   public byte[] createError5(byte errorCode, String errorMsg)
-   {
-     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
-    
-    // add opcode
-    error[0] = 0;
-    error[1] = 5;
-    
-    // add error code
-    error[2] = 0;
-    error[3] = errorCode;
-    
-    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
-    
-    // convert errorMsg to byte[], with proper encoding
-    try {
-      message = errorMsg.getBytes("US-ASCII");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    
-    // add error message to error byte[]
-    System.arraycopy(message, 0, error, 4, message.length);
-    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-        
-    return error; //return full error message with opcodes and type of error
-   }
-   
    /*
-    * Error code for File already exists
-    * Check Client.java and Server.java for how this is implemented
+    * Error code for Unknown transfer ID
+    * This code generates a error code 3 message (disk spcae full) to both client and server
+    * to view how they process the packet from an unknown source
+    * 
+    * This code should be executed only AFTER a packet is recieved from the client.
+    * OR the client port to send to number is statically set, and to sim the error simply replace the receivePacket.getPort() 
+    * with that static port number eg 2000 
+    * 
     */
-   /*
-   public byte[] createError6(byte errorCode, String errorMsg)
+   public void createError5()
    {
-     byte[] error = new byte[4 + errorMsg.length() + 1];  // new error to eventually be sent to server
-    
-    // add opcode
-    error[0] = 0;
-    error[1] = 5;
-    
-    // add error code
-    error[2] = 0;
-    error[3] = errorCode;
-    
-    byte[] message = new byte[errorMsg.length()]; // new array for errorMsg, to be joined with codes
-    
-    // convert errorMsg to byte[], with proper encoding
-    try {
-      message = errorMsg.getBytes("US-ASCII");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    
-    // add error message to error byte[]
-    System.arraycopy(message, 0, error, 4, message.length);
-    error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-        
-    return error; //return full error message with opcodes and type of error
+     DatagramPacket errorPacketClient = null, errorPacketServer = null; //Initialize a intentional error packet for both client and server
+     DatagramSocket errorSocket = null; //New Socket initialized to simulate unknown TID
+     try {errorSocket = new DatagramSocket();} //New socket generated to simulate unknown TID
+     catch (SocketException se)
+     {
+           se.printStackTrace();
+           System.exit(1);
+     }
+     
+     //Creating an Error Message which when normally received would close a connection.
+     //Error Packet is designed as a code 3 (disk space full) error.
+     String errorMessage = "Disk full or allocation exceeded.";
+     byte[] data = new byte[5+errorMessage.length()];
+     data[0] = (byte) 0;
+     data[1] = (byte) 5;
+     data[2] = (byte) 0;
+     data[3] = (byte) 3;
+     byte[] temp = errorMessage.getBytes();
+     for(int i=0; i < temp.length; i++) {
+       data[i+4] = temp[i];
+     }
+     data[data.length-1] = (byte) 0;
+     
+     
+     //Create error packets to be sent to both client and server.
+     try
+     {
+       //Client Packet
+       errorPacketClient = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 2000);
+       //Server Packet
+       errorPacketServer = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 69);
+     }
+     catch (UnknownHostException e)
+     {
+           e.printStackTrace();
+           System.exit(1);
+       }
+     
+     // Send the error datagram packet to the server and client both via the (unknown) error socket.
+
+       try {
+          errorSocket.send(errorPacketClient);
+          errorSocket.send(errorPacketServer);
+       } catch (IOException e) {
+          e.printStackTrace();
+          System.exit(1);
+       }
+       
+       //Close Error Socket
+       errorSocket.close();
+
    }
    
+  
    /*
     * The other methods were for if the client/server can detect an error during a file transfer
     * This will just generate an error that the user asks for (in the UI method)
     * and it will create the packet for it
     * 
-    * 
-    * 
-    * I'll do this other one: Moe
     */
  
-  public void genericError(char s)
+  public void genericError(String Errtype, String destination)
    {
  
          byte[] error= new byte[34];
@@ -387,7 +300,7 @@ public void ErrsimQuit() {
          String message=null;
          byte[] messageBytes= new byte[40];
         
-         if(s == "1"){
+         if(Errtype == "1"){
               //Create error message
                  message="File not found";
                
@@ -405,14 +318,14 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69 );
                                    }
                 }
          }
-         else if(s == "2")
+         else if(Errtype == "2")
          {
               //Create error message
                  message="Access violation";
@@ -431,14 +344,14 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
                 }
          }
-         else if(s == "3")
+         else if(Errtype == "3")
          {
               //Create error message
                  message="Disk full or allocation exceeded";
@@ -457,14 +370,14 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
                 }
          }
-         else if(s == "4")
+         else if(Errtype == "4")
          {   //Create error message
                  message="Illegal TFTP operation";
                      
@@ -482,14 +395,14 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
                 }
          }
-         else if(s == "5")
+         else if(Errtype == "5")
          {
               //Create error message
                  message="Unknown transfer ID";
@@ -508,13 +421,13 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
                 }}
-         else if (s=="6")
+         else if (Errtype=="6")
          {
               //Create error message
                  message="File already exists";
@@ -533,10 +446,10 @@ public void ErrsimQuit() {
                 // add error message to error byte[]
                 System.arraycopy(messageBytes, 0, error, 4, message.length());
                 error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-                { if (answer=="C"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
-                }if (answer=="S"){
-                     sendPacket = new DatagramPacket(error, error.length, iAddr, portNum);
+                { if (destination=="C"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, port);
+                }if (destination=="S"){
+                     sendPacket = new DatagramPacket(error, error.length, addr, 69);
                                    }
                 }
         }
