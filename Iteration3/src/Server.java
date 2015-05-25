@@ -8,7 +8,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -26,30 +25,36 @@ import java.util.Scanner;
  * @author	Scott Savage
  * @version	3
  */
-public class Server {
+public class Server extends Thread{
 	
 	DatagramPacket receivePacket;						// to receive DatagramPackets from Client
 	DatagramSocket receiveSocket;						// Client sends to port 69
-	private Scanner input;								// scans user input when determining if Server should shut down
 	public static final int MAX_DATA = 512;				// maximum size of data block
-	public static final int TIMEOUT = 20000;			// number of milliseconds before receiveSocket timeout;	
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
+	public ThreadGroup serv;
 	
-	public Server() {
+	public Server(ThreadGroup tg, String name) {
+		super(tg, name);
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
-			receiveSocket.setSoTimeout(TIMEOUT);		// socket timeout in TIMEOUT milliseconds
 		} catch (SocketException se) {
 			se.printStackTrace();
 			System.exit(1);
 		}   
 	}
-	
-	public static void main(String[] args) throws Exception {
-		Server s = new Server();
+	public static void main (String args[]) {
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Server Program *****\n");
-		s.listener();	// start listening for DatagramPackets
+		ThreadGroup serv = new ThreadGroup("Server");
+		Server s = new Server(serv, "Server Thread");
+		s.start();
+		UserInput ui = new UserInput(serv, "User Input Thread");		
+		ui.start();  // starts user input (for quitting server)		
+		s.listener();	// start listening for DatagramPackets		
+	}
+	
+	public void run() {
+		
 	}
 	
 	/**
@@ -60,7 +65,7 @@ public class Server {
 		while (true) {	// keep listening on port 69 for new requests 
 			System.out.println("\nServer: Listening for new requests...");
 			DatagramPacket datagram = null;				// DatagramPacket to eventually receive
-			datagram = receive();						// gets received DatagramPacket
+			datagram = receive();						// gets received DatagramPacket			
 			byte[] request = processDatagram(datagram);	// received request packet turned into byte[]
 			if (!isValidPacket(datagram)) {				// check if packet was valid, if not: send error
 				byte[] error = createError((byte)4, "Invalid packet.");
@@ -121,36 +126,6 @@ public class Server {
 	}
 	
 	/**
-	 * Determines if user wants to quit, and performs actions accordingly.
-	 * 
-	 */
-	public void serverQuit() {
-		input = new Scanner(System.in);	// scan user input
-		int seconds = 0;					// seconds until socket timeout
-		try {
-			seconds = receiveSocket.getSoTimeout()/1000;
-		} catch (SocketException e) {
-			e.printStackTrace();
-		}	
-		while (true) {
-			System.out.println("\nServer: Have not received new packet in the last " +
-					seconds + " seconds: ");
-			System.out.println("Would you like to (Q)uit?  Or would you like to (C)ontinue?");
-			String choice = input.nextLine();			// user's choice
-			if (choice.equalsIgnoreCase("Q")) {			// Quit
-				System.out.println("\nServer: Goodbye!");
-				receiveSocket.close();	// close socket listening for requests
-				System.exit(0);			// exit server
-			} else if (choice.equalsIgnoreCase("C")) {	// Continue
-				System.out.println("\nServer: Continuing to listen for new requests...");
-				break;
-			} else {									// invalid user choice
-				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
-			}
-		}
-	}
-	
-	/**
 	 * Receives DatagramPacket.
 	 * 
 	 * @return DatagramPacket received
@@ -172,8 +147,6 @@ public class Server {
 				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
 				
 				break;
-			} catch (SocketTimeoutException e) {	// haven't received packet in 5 seconds
-				serverQuit();	// find out if user wants to quit, if not while loop will re-try
 			} catch(IOException e) {
 				e.printStackTrace();
 				System.exit(1);
@@ -404,6 +377,34 @@ public class Server {
 		error[error.length-1] = 0;	// make last element a 0 byte, according to TFTP
 				
 		return error;
+	}
+}
+
+/**
+ * Deal with user input while Server is listening for requests on port 69.
+ *
+ */
+class UserInput extends Thread {
+	
+	private Scanner input;  // scans user input when determining if Server should shut down
+	public ThreadGroup serv;
+
+	public UserInput(ThreadGroup tg, String name) {
+		this.serv = tg;
+		System.out.println("Press Q at any time to quit.");
+		
+	}
+	
+	public void run() {
+		input = new Scanner(System.in);	// scan user input
+		while (true) {			
+			String choice = input.nextLine();			// user's choice
+			if (choice.equalsIgnoreCase("Q")) {			// Quit
+				System.out.println("\nServer: Goodbye!");
+				ThreadGroup serv = getThreadGroup();
+				serv.interrupt();
+			}
+		}
 	}
 }
 
