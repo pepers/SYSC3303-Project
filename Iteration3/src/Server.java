@@ -154,7 +154,7 @@ public class Server {
 				System.out.println("\nServer: Continuing to listen for new requests...");
 				// set timeout for server receive socket
 				try {
-					receiveSocket.setSoTimeout(TIMEOUT);	// socket timeout in TIMEOUT milliseconds
+					receiveSocket.setSoTimeout(0);	// disable socket timeout
 				} catch (SocketException e) {
 					System.out.println("Error: could not set socket timeout.");
 					receiveSocket.close();	// close socket listening for requests
