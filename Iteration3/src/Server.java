@@ -44,8 +44,11 @@ public class Server {
 	public static void main (String args[]) {
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Server Program *****\n");
 		Server s = new Server();
+		
+		// starts user input (for quitting server)
 		UserInput ui = new UserInput();		
-		ui.start();  // starts user input (for quitting server)		
+		ui.start(); 
+		
 		s.listener();	// start listening for DatagramPackets		
 	}
 	
@@ -64,7 +67,6 @@ public class Server {
 	 */
 	public void listener() {
 		while (true) {	// keep listening on port 69 for new requests 
-			System.out.println("\nServer: Listening for new requests...");
 			DatagramPacket datagram = null;				// DatagramPacket to eventually receive
 			datagram = receive();						// gets received DatagramPacket
 			if (datagram == null) {                     // receive socket was closed, return from listener
@@ -143,9 +145,10 @@ public class Server {
 		while (true){
 			try {
 				// block until a DatagramPacket is received via sendReceiveSocket 
+				System.out.println("\nServer: Listening for new requests...");
 				receiveSocket.receive(receivePacket);
 				
-				// print out thread and port info, from which the packet was sent to Client
+				// print out thread and port info
 				System.out.println("\nServer: packet received: ");
 				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
 				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
