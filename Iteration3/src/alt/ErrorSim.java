@@ -20,7 +20,7 @@ public class ErrorSim {
    
 	// UDP DatagramPackets and sockets used to send/receive
 	private DatagramPacket sendPacket, receivePacket;
-	private DatagramSocket sendReceiveSocket, sendSocket;
+	private DatagramSocket serverSendReceiveSocket, clientSendReceiveSocket;
 	private static DatagramSocket receiveSocket;
 	
 	private Scanner input;                   // scans user input in ui()
@@ -32,7 +32,7 @@ public class ErrorSim {
 			receiveSocket = new DatagramSocket(68);
 			
 			// create new socket to send/receive TFTP packets to/from Server
-			sendReceiveSocket = new DatagramSocket();
+			serverSendReceiveSocket = new DatagramSocket();
 		} catch (SocketException se) {
 			se.printStackTrace();
 			System.exit(1);
@@ -107,29 +107,34 @@ public class ErrorSim {
 		int serverPort;                // the port from which the Server is sending from
 		byte[] received;               // received data from DatagramPacket
 		
-		receivePacket = receiveRequest();                      // receive packet on port 68, from Client			
+		receivePacket = receive(receiveSocket);                // receive packet on port 68, from Client			
 		if (receivePacket == null) { return; }                 // user pressed q to quit ErrorSim			
 		received = processDatagram(receivePacket);             // print packet data to user
 		clientPort = receivePacket.getPort();                  // save client port in order to send response later
 		
 		try {
-			sendSocket = new DatagramSocket();                 // open new socket to send to Client
+			clientSendReceiveSocket = new DatagramSocket();    // open new socket to send to Client
 		} catch (SocketException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}   
 		
-		sendServer(received, receivePacket.getAddress(), 69);  // passes Client's packet to Server
+		// passes Client's packet to Server
+		send(received, receivePacket.getAddress(), 69, serverSendReceiveSocket);  
 		
 		while(true) {          
-			receivePacket = receiveServer();                               // receive packet from Server
-			received = processDatagram(receivePacket);                     // print packet data to user	
-			serverPort = receivePacket.getPort();                          // save serve port, in order to send response
-			sendClient(received, receivePacket.getAddress(), clientPort);  // passes Server's packet to Client
+			receivePacket = receive(serverSendReceiveSocket); // receive packet from Server
+			received = processDatagram(receivePacket);        // print packet data to user	
+			serverPort = receivePacket.getPort();             // save serve port, in order to send response
 			
-			receivePacket = receiveClient();                               // receive packet from Client
-			received = processDatagram(receivePacket);                     // print packet data to user
-			sendServer(received, receivePacket.getAddress(), serverPort);  // passes Client's packet to Server			
+			// passes Server's packet to Client
+			send(received, receivePacket.getAddress(), clientPort, clientSendReceiveSocket);  
+			
+			receivePacket = receive(clientSendReceiveSocket); // receive packet from Client
+			received = processDatagram(receivePacket);        // print packet data to user
+			
+			// passes Client's packet to Server			
+			send(received, receivePacket.getAddress(), serverPort, serverSendReceiveSocket);  
 		} 
 	}
 	
@@ -145,43 +150,14 @@ public class ErrorSim {
 		// look at normalMode() for how the packets are passed back and forth
 	}
 	
-	/**
-	 * Receives DatagramPacket from Client on port 68.
-	 * 
-	 * @return DatagramPacket received
-	 */
-	public DatagramPacket receiveRequest() {
-		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
-		byte data[] = new byte[MAX_DATA + 4]; 
-		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
-		
-		while (true){
-			try {
-				// block until a DatagramPacket is received via receiveSocket 
-				System.out.println("\nError Simulator: Listening for new requests...");
-				receiveSocket.receive(receivePacket);
-				
-				// print out thread and port info
-				System.out.println("\nError Simulator: packet received on port 68: ");
-				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-				
-				break;
-			} catch(IOException e) {
-				return null;  // socket was closed, return null
-			}
-		}
-		
-		return receivePacket;
-	}
 	
 	/**
-	 * Receives DatagramPacket from Client.
+	 * Receives DatagramPacket packets.
 	 * 
-	 * @return DatagramPacket received
+	 * @param socket			the DatagramSocket to be receiving packets from
+	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receiveClient() {
+	public DatagramPacket receive(DatagramSocket socket) {
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4]; 
@@ -190,8 +166,8 @@ public class ErrorSim {
 		while (true){
 			try {
 				// block until a DatagramPacket is received via sendSocket 
-				System.out.println("\nError Simulator: Listening for new response from Client...");
-				sendSocket.receive(receivePacket);
+				System.out.println("\nError Simulator: Listening for packets...");
+				socket.receive(receivePacket);
 				
 				// print out thread and port info
 				System.out.println("\nError Simulator: packet received: ");
@@ -207,36 +183,6 @@ public class ErrorSim {
 		return receivePacket;
 	}
 	
-	/**
-	 * Receives DatagramPacket from Server.
-	 * 
-	 * @return DatagramPacket received
-	 */
-	public DatagramPacket receiveServer() {
-		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
-		byte data[] = new byte[MAX_DATA + 4]; 
-		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
-		
-		while (true){
-			try {
-				// block until a DatagramPacket is received via sendReceiveSocket 
-				System.out.println("\nError Simulator: Listening for new response from Server...");
-				sendReceiveSocket.receive(receivePacket);
-				
-				// print out thread and port info
-				System.out.println("\nError Simulator: packet received: " );
-				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
-				
-				break;
-			} catch(IOException e) {
-				return null;  // socket was closed, return null
-			}
-		}
-		
-		return receivePacket;
-	}
 	
 	/**
 	 * Makes an appropriately sized byte[] from a DatagramPacket
@@ -255,13 +201,14 @@ public class ErrorSim {
 	}
 	
 	/**
-	 * Sends DatagramPacket to Client.
+	 * Sends DatagramPackets.
 	 * 
-	 * @param data	data byte[] to be included in DatagramPacket
-	 * @param addr	InetAddress to send packet to
-	 * @param port	port to send packet to
+	 * @param data		data byte[] to be included in DatagramPacket
+	 * @param addr		InetAddress to send packet to
+	 * @param port		port to send packet to
+	 * @param socket	DatagramSocket to send packets with
 	 */
-	public void sendClient (byte[] data, InetAddress addr, int port) {
+	public void send (byte[] data, InetAddress addr, int port, DatagramSocket socket) {
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
@@ -273,40 +220,13 @@ public class ErrorSim {
 		
 		// send the packet
 		try {
-			sendSocket.send(sendPacket);
-			System.out.println("Error Simulator: Packet sent using port " + sendSocket.getLocalPort() + ".");
+			socket.send(sendPacket);
+			System.out.println("Error Simulator: Packet sent using port " + socket.getLocalPort() + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 	}
-	
-	/**
-	 * Sends DatagramPacket to Server.
-	 * 
-	 * @param data	data byte[] to be included in DatagramPacket
-	 * @param addr	InetAddress to send packet to
-	 */
-	public void sendServer (byte[] data, InetAddress addr, int port) {
-		// create new DatagramPacket to send to server
-		sendPacket = new DatagramPacket(data, data.length, addr, port);
-		
-		// print out packet info to user
-		System.out.println("\nError Simulator: Sending packet: ");
-		System.out.println("To host: " + addr + " : " + port);
-		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-		System.out.println(Arrays.toString(data) + "\n");
-		
-		// send the packet
-		try {
-			sendReceiveSocket.send(sendPacket);
-			System.out.println("Error Simulator: Packet sent. ");
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
-	}
-	
 }
 
 
