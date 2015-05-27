@@ -7,7 +7,6 @@ import java.util.Scanner;
 
 
 
-
 /**
  * The error simulation program for the SYSC3303 TFTP Group Project.
  * 
@@ -233,59 +232,52 @@ public class ErrorSim {
    * 
    */
   public void createError5()
-  {
-    DatagramPacket errorPacketClient = null, errorPacketServer = null; //Initialize a intentional error packet for both client and server
-    DatagramSocket errorSocket = null; //New Socket initialized to simulate unknown TID
-    try {errorSocket = new DatagramSocket();} //New socket generated to simulate unknown TID
-    catch (SocketException se)
-    {
-      se.printStackTrace();
-      System.exit(1);
-    }
-
-    //Creating an Error Message which when normally received would close a connection.
-    //Error Packet is designed as a code 3 (disk space full) error.
-    String errorMessage = "Disk full or allocation exceeded.";
-    byte[] data = new byte[5+errorMessage.length()];
-    data[0] = (byte) 0;
-    data[1] = (byte) 5;
-    data[2] = (byte) 0;
-    data[3] = (byte) 3;
-    byte[] temp = errorMessage.getBytes();
-    for(int i=0; i < temp.length; i++) {
-      data[i+4] = temp[i];
-    }
-    data[data.length-1] = (byte) 0;
-
-
-    //Create error packets to be sent to both client and server.
-    try
-    {
-      //Client Packet
-      errorPacketClient = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 50000);
-      //Server Packet
-      errorPacketServer = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 69);
-    }
-    catch (UnknownHostException e)
-    {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    // Send the error datagram packet to the server and client both via the (unknown) error socket.
-
-    try {
-      errorSocket.send(errorPacketClient);
-      errorSocket.send(errorPacketServer);
-    } catch (IOException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    //Close Error Socket
-    errorSocket.close();
-
-  }
+	{
+		DatagramPacket errorPacketClient = null, errorPacketServer = null; //Initialize a intentional error packet for both client and server
+		DatagramSocket errorSocket = null; //New Socket initialized to simulate unknown TID
+		try {errorSocket = new DatagramSocket();} //New socket generated to simulate unknown TID
+		catch (SocketException se)
+		{
+			se.printStackTrace();
+			System.exit(1);
+		}
+		//Creating an Error Message which when normally received would close a connection.
+		//Error Packet is designed as a code 3 (disk space full) error.
+		String errorMessage = "Disk full or allocation exceeded.";
+		byte[] data = new byte[5+errorMessage.length()];
+		data[0] = (byte) 0;
+		data[1] = (byte) 5;
+		data[2] = (byte) 0;
+		data[3] = (byte) 3;
+		byte[] temp = errorMessage.getBytes();
+		for(int i=0; i < temp.length; i++) {
+			data[i+4] = temp[i];
+		}
+		data[data.length-1] = (byte) 0;
+		//Create error packets to be sent to both client and server.
+		try
+		{
+			//Client Packet
+			errorPacketClient = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 50000);
+			//Server Packet
+			errorPacketServer = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 69);
+		}
+		catch (UnknownHostException e)
+		{
+			e.printStackTrace();
+			System.exit(1);
+		}
+		// Send the error datagram packet to the server and client both via the (unknown) error socket.
+		try {
+			errorSocket.send(errorPacketClient);
+			errorSocket.send(errorPacketServer);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		//Close Error Socket
+		errorSocket.close();
+	}
 
 
   /*
