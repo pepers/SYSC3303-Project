@@ -348,16 +348,12 @@ public class ErrorSim {
 
       // add error message to error byte[]
       System.arraycopy(messageBytes, 0, error, 4, message.length());
-      System.out.println("FUCK YOU!!! :D");
       error[error.length-1] = 0;  // make last element a 0 byte, according to TFTP
-      System.out.println("FUCK YOU!!! :D");
       if (destination.equalsIgnoreCase("C")){
         sendPacket = new DatagramPacket(error, error.length, addr, port);
       }else if (destination.equalsIgnoreCase("S")){
         sendPacket = new DatagramPacket(error, error.length, addr, 69);
-        System.out.println("FUCK YOU tooooooooooooooooo!!! :D");
         sendError(sendPacket);
-        System.out.println("FUCK YOU too!!! :D");
       }
       
     }
