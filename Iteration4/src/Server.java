@@ -25,14 +25,15 @@ import java.util.Scanner;
  * @author	Scott Savage
  * @version	4
  */
-public class Server {
-	
+public class Server 
+{	
 	DatagramPacket receivePacket;						// to receive DatagramPackets from Client
 	static DatagramSocket receiveSocket;						// Client sends to port 69
 	public static final int MAX_DATA = 512;				// maximum size of data block
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
 	
-	public Server() {
+	public Server() 
+	{
 		// create new socket to receive TFTP packets from Client
 		try {
 			receiveSocket = new DatagramSocket(69);
@@ -41,7 +42,8 @@ public class Server {
 			System.exit(1);
 		}   
 	}
-	public static void main (String args[]) {
+	public static void main (String args[]) 
+	{
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Server Program *****\n");
 		Server s = new Server();
 		
@@ -57,7 +59,8 @@ public class Server {
 	 * 
 	 * @return receive socket
 	 */
-	public static DatagramSocket getSocket() {
+	public static DatagramSocket getSocket() 
+	{
 		return receiveSocket;
 	}
 	
@@ -65,7 +68,8 @@ public class Server {
 	 * Listens for new DatagramPackets on port 69, and verifies them.
 	 * 
 	 */
-	public void listener() {
+	public void listener() 
+	{
 		while (true) {	// keep listening on port 69 for new requests 
 			DatagramPacket datagram = null;				// DatagramPacket to eventually receive
 			datagram = receive();						// gets received DatagramPacket
@@ -105,7 +109,8 @@ public class Server {
 	 * 
 	 * @param receivePacket	DatagramPacket received by server on port 69
 	 */
-	public void makeConnection (DatagramPacket receivePacket) {
+	public void makeConnection (DatagramPacket receivePacket) 
+	{
 		// create new thread to communicate with Client and transfer file
 		// pass it DatagramPacket that was received				
 		Thread clientConnectionThread = new Thread(
@@ -122,7 +127,8 @@ public class Server {
 	 * @param receivePacket	DatagramPacket received by server on port 69
 	 * @param error			a byte[] to be turned into an ERROR packet
 	 */
-	public void makeConnection (DatagramPacket receivePacket, byte[] error) {
+	public void makeConnection (DatagramPacket receivePacket, byte[] error) 
+	{
 		System.out.println("Server: New ERROR packet to be created and sent. ");
 		// create new thread to communicate with Client and transfer file
 		// pass it DatagramPacket that was received	
@@ -136,7 +142,8 @@ public class Server {
 	 * 
 	 * @return DatagramPacket received
 	 */
-	public DatagramPacket receive() {
+	public DatagramPacket receive() 
+	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4]; 
@@ -150,8 +157,10 @@ public class Server {
 				
 				// print out thread and port info
 				System.out.println("\nServer: packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+				System.out.println("From host: " + receivePacket.getAddress() + 
+						" : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + 
+						" bytes: \n");
 				
 				break;
 			} catch(IOException e) {
@@ -168,9 +177,11 @@ public class Server {
 	 * @param packet	the received DatagramPacket
 	 * @return			the data from the DatagramPacket
 	 */
-	public byte[] processDatagram (DatagramPacket packet) {
+	public byte[] processDatagram (DatagramPacket packet) 
+	{
 		byte[] data = new byte[packet.getLength()];
-		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
+		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
+				packet.getLength());
 		
 		// display info to user
 		System.out.println(Arrays.toString(data));
@@ -184,10 +195,14 @@ public class Server {
 	 * @param received	the DatagramPacket that was received
 	 * @return			the Opcode of the received DatagramPacket
 	 */
-	public Opcode getOpcode (DatagramPacket received) {
-		byte[] data = received.getData();	// get data stored in received DatagramPacket
-		byte opcode = data[1];				// get second byte of opcode to determine packet type
-		Opcode op = null;					// opcode to return
+	public Opcode getOpcode (DatagramPacket received) 
+	{
+		// get data stored in received DatagramPacket
+		byte[] data = received.getData(); 
+		// get second byte of opcode to determine packet type
+		byte opcode = data[1];
+		// opcode to return
+		Opcode op = null;					
 		
 		// determine if correctly formed opcode
 		if (data[0] != 0) {
@@ -219,7 +234,8 @@ public class Server {
 	 * @param received	the received DatagramPacket to be verified
 	 * @return			true if valid packet, false if invalid
 	 */
-	public boolean isValidPacket (DatagramPacket received) {
+	public boolean isValidPacket (DatagramPacket received) 
+	{
 		byte[] data = received.getData();	// get packet data
 		int len = data.length;				// number of data bytes in packet
 		
@@ -265,7 +281,8 @@ public class Server {
 				}
 				
 				// checks if mode is a valid TFTP mode
-				if (!(mode.equalsIgnoreCase("netascii") || mode.equalsIgnoreCase("octet") ||
+				if (!(mode.equalsIgnoreCase("netascii") || 
+						mode.equalsIgnoreCase("octet") ||
 						mode.equalsIgnoreCase("mail"))) {
 					return false;
 				}
@@ -303,7 +320,8 @@ public class Server {
 	 * 
 	 * @param error	the error byte[] that was received in a DatagramPacket
 	 */
-	public void parseError (byte[] error) {
+	public void parseError (byte[] error) 
+	{
 		// get the error message
 		byte[] errorMsg = new byte[error.length - 5];
 		System.arraycopy(error, 4, errorMsg , 0, error.length - 5);
@@ -354,12 +372,14 @@ public class Server {
 	 * @param errorMsg	the message string that will give more detail on the error
 	 * @return			the error byte[]
 	 */
-	public byte[] createError (byte errorCode, String errorMsg) {
+	public byte[] createError (byte errorCode, String errorMsg) 
+	{
 		// inform user
 		System.out.println("\nServer: Error Code: 0" + errorCode);
 		System.out.println("Error Message: " + errorMsg);
 		
-		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
+		// new error to eventually be sent to client
+		byte[] error = new byte[4 + errorMsg.length() + 1];	
 		
 		// add opcode
 		error[0] = 0;
@@ -369,7 +389,7 @@ public class Server {
 		error[2] = 0;
 		error[3] = errorCode;
 		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg
+		byte[] message = new byte[errorMsg.length()]; // new array for errorMsg
 		
 		// convert errorMsg to byte[]
 		try {
@@ -390,16 +410,17 @@ public class Server {
  * Deal with user input while Server is listening for requests on port 69.
  *
  */
-class UserInput extends Thread {
-	
+class UserInput extends Thread 
+{	
 	private Scanner input;  // scans user input when determining if Server should shut down
 	
-	public UserInput() {
-		System.out.println("Press Q at any time to quit.");
-		
+	public UserInput() 
+	{
+		System.out.println("Press Q at any time to quit.");		
 	}
 	
-	public void run() {
+	public void run() 
+	{
 		input = new Scanner(System.in);	// scan user input
 		while (true) {			
 			String choice = input.nextLine();			// user's choice
@@ -418,7 +439,8 @@ class UserInput extends Thread {
  * A thread to deal with a specific file transfer request.
  *
  */
-class ClientConnection implements Runnable {
+class ClientConnection implements Runnable 
+{
 	
 	public static final int MAX_DATA = 512;	//maximum number of bytes in data block
 	
@@ -443,7 +465,8 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @param requestPacket	RRQ or WRQ received
 	 */
-	public ClientConnection(DatagramPacket requestPacket) {
+	public ClientConnection(DatagramPacket requestPacket) 
+	{
 		// open new socket to send and receive responses
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -465,7 +488,8 @@ class ClientConnection implements Runnable {
 	 * @param requestPacket	packet received by server, which caused an error 
 	 * @param error			to be turned into ERROR packet and sent
 	 */
-	public ClientConnection(DatagramPacket requestPacket, byte[] error) {
+	public ClientConnection(DatagramPacket requestPacket, byte[] error) 
+	{
 		// open new socket to send and receive responses
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -480,7 +504,8 @@ class ClientConnection implements Runnable {
 		this.error = error;							// ERROR received from server
 	}
 	
-	public void run() {
+	public void run() 
+	{
 		if (op == Opcode.RRQ) {			// received a RRQ
 			readReq();
 		} else if (op == Opcode.WRQ) {	// received a WRQ
@@ -495,14 +520,16 @@ class ClientConnection implements Runnable {
 	 * Deal with RRQ received.
 	 * 
 	 */
-	public void readReq() {
-		if (Files.exists(Paths.get(fileDirectory + filename))) {	// file exists
+	public void readReq() 
+	{
+		if (Files.exists(Paths.get(fileDirectory + filename))) {  // file exists
 			try {
-				in = new BufferedInputStream(new FileInputStream(fileDirectory + filename));	// reads from file during RRQ
+				in = new BufferedInputStream(new FileInputStream(fileDirectory 
+						+ filename));	// reads from file during RRQ
 			} catch (FileNotFoundException e) {
 				// create and send error response packet for "Access violation."
-				byte[] error = createError((byte)2, "File (" + filename + ") exists on server, but is not readable.");
-				System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
+				byte[] error = createError((byte)2, "File (" + filename + 
+						") exists on server, but is not readable.");
 				send(error);
 				closeConnection();	// quit client connection thread
 			}		
@@ -514,18 +541,19 @@ class ClientConnection implements Runnable {
 			// read up to 512 bytes from file starting at offset
 			try {			
 				while ((bytes = in.read(read)) != -1) {
-					System.out.println("\n" + Thread.currentThread() + ": Read " + bytes 
-							+ " bytes, from " + fileDirectory + filename);
+					System.out.println("\n" + Thread.currentThread() + 
+							": Read " + bytes + " bytes, from " + fileDirectory 
+							+ filename);
 					
 					// get rid of extra buffer
 					byte[] temp = new byte[bytes];
 					System.arraycopy(read, 0, temp, 0, bytes);
 					read = temp;
 					
-					byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
-					System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
-					send(data);                                   // send DATA
-					blockNumber++;                                // increment DATA block number
+					// create DATA packet of file being read
+					byte[] data = createData(blockNumber, read);
+					send(data);     // send DATA
+					blockNumber++;  // increment DATA block number
 					
 					// blockNumber goes from 0-127, and then wraps to back to 0
 					if (blockNumber < 0) { 
@@ -546,7 +574,8 @@ class ClientConnection implements Runnable {
 				
 			} catch (FileNotFoundException e) {
 				// create and send error response packet for "File not found."
-				byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+				byte[] error = createError((byte)1, "File (" + filename + 
+						") does not exist.");
 				send(error);
 				closeConnection(); // quit client connection thread
 			} catch (IOException e) {
@@ -560,7 +589,6 @@ class ClientConnection implements Runnable {
 				read = new byte[0];                         // create 0 byte read file data
 				
 				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
-				System.out.println("\n" + Thread.currentThread() + ": Sending DATA...");
 				send(data);                                   // send DATA
 				blockNumber++;                                // increment DATA block number
 				
@@ -583,7 +611,8 @@ class ClientConnection implements Runnable {
 		/* file doesn't exist */
 		} else {
 			// create and send error response packet for "File not found."
-			byte[] error = createError((byte)1, "File (" + filename + ") does not exist.");
+			byte[] error = createError((byte)1, "File (" + filename + 
+					") does not exist.");
 			send(error);
 		}
 	}
@@ -592,16 +621,16 @@ class ClientConnection implements Runnable {
 	 * Deal with WRQ received.
 	 * 
 	 */
-	public void writeReq() {
+	public void writeReq() 
+	{
 		if (Files.exists(Paths.get(fileDirectory + filename))) {	// file exists
 			// create and send error response packet for "File already exists."
-			byte[] error = createError((byte)6, "File (" + filename + ") already exists on server.");
-			System.out.println("\n" + Thread.currentThread() + ": Sending ERROR...");
+			byte[] error = createError((byte)6, "File (" + filename + 
+					") already exists on server.");
 			send(error);
 		} else {									// file does not exist
 			byte blockNumber = 0;					// block number for ACK and DATA during transfer
 			byte[] ack = createAck(blockNumber);	// create initial ACK
-			System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 			send(ack);								// send initial ACK
 			byte[] data = new byte[0];		// to hold received data portion of DATA packet
 			do {	// DATA transfer from client
@@ -612,16 +641,21 @@ class ClientConnection implements Runnable {
 					data = parseData(dataPacket);	// get data from packet
 					try {
 						// gets space left on the drive that we can use
-						long spaceOnDrive = Files.getFileStore(Paths.get("")).getUsableSpace();	
+						long spaceOnDrive = Files.getFileStore(
+								Paths.get("")).getUsableSpace();	
 						
 						// checks if there is enough usable space on the disk
 						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
 							// writes data to file (creates file first, if it doesn't exist yet)
-							Files.write(Paths.get(fileDirectory + filename), data, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-							System.out.println("\n" + Thread.currentThread() + ": writing data to file: " + filename);
+							Files.write(Paths.get(fileDirectory + filename), 
+									data, StandardOpenOption.CREATE, 
+									StandardOpenOption.APPEND);
+							System.out.println("\n" + Thread.currentThread() + 
+									": writing data to file: " + filename);
 						} else {
 							// create and send error response packet for "Disk full or allocation exceeded."
-							byte[] error = createError((byte)3, "File (" + filename + ") too large for disk.");
+							byte[] error = createError((byte)3, "File (" + 
+									filename + ") too large for disk.");
 							send(error);
 							closeConnection();	// quit client connection thread
 						}
@@ -629,9 +663,8 @@ class ClientConnection implements Runnable {
 						e.printStackTrace();
 					}							
 					ack = createAck(blockNumber);	// create ACK
-					System.out.println("\n" + Thread.currentThread() + ": Sending ACK...");
 					send(ack);						// send ACK
-				} else if (dataPacket[1] == 5) {				// ERROR received instead of DATA
+				} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
 					parseError(dataPacket);			// print ERROR info
 				}						
 			} while (data.length == MAX_DATA);
@@ -641,8 +674,10 @@ class ClientConnection implements Runnable {
 	/**
 	 * Shut down this client connection thread.
 	 */
-	public void closeConnection() {
-		System.out.println("\n" + Thread.currentThread() + ": closing connection and shutting down thread.");
+	public void closeConnection() 
+	{
+		System.out.println("\n" + Thread.currentThread() + 
+				": closing connection and shutting down thread.");
 		Thread.currentThread().interrupt();	// close ClientConnection thread to stop transfer
 	}
 	
@@ -652,7 +687,8 @@ class ClientConnection implements Runnable {
 	 * @param received	the DatagramPacket that was received
 	 * @return			the Opcode of the received DatagramPacket
 	 */
-	public Opcode getOpcode (DatagramPacket received) {
+	public Opcode getOpcode (DatagramPacket received) 
+	{
 		byte[] data = received.getData();	// get data stored in received DatagramPacket
 		byte opcode = data[1];				// get second byte of opcode to determine packet type
 		Opcode op = null;					// opcode to return
@@ -687,10 +723,12 @@ class ClientConnection implements Runnable {
 	 * @param requestPacket	the DatagramPacket that was received by the server.
 	 * @return				the filename from the request packet as a String
 	 */
-	public String getFilename(DatagramPacket requestPacket) {
+	public String getFilename(DatagramPacket requestPacket) 
+	{
 		// byte[] to copy packet data into
 		byte[] received = new byte[requestPacket.getLength()];	
-		System.arraycopy(requestPacket.getData(), 0, received, 0, requestPacket.getLength());
+		System.arraycopy(requestPacket.getData(), 0, received, 0, 
+				requestPacket.getLength());
 		
 		// find the end of filename
 		int end = 2;	// end index of filename bytes
@@ -720,12 +758,34 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @param data	data byte[] to be included in DatagramPacket
 	 */
-	public void send (byte[] data) {
+	public void send (byte[] data) 
+	{
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
+		// tell user what type of packet is being sent 
+		switch (data[1]) {
+			case 1: System.out.println("\n" + Thread.currentThread() + 
+						": Sending RRQ: ");
+				break;
+			case 2: System.out.println("\n" + Thread.currentThread() + 
+						": Sending WRQ: ");
+				break;
+			case 3: System.out.println("\n" + Thread.currentThread() + 
+						": Sending DATA: ");
+				break;
+			case 4: System.out.println("\n" + Thread.currentThread() + 
+						": Sending ACK: ");
+				break;
+			case 5: System.out.println("\n" + Thread.currentThread() + 
+						": Sending ERROR: ");
+				break;
+			default: System.out.println("\n" + Thread.currentThread() + 
+						": Sending packet: ");
+				break;
+		}
+		
 		// print out packet info to user
-		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
 		System.out.println("To host: " + addr + " : " + port);
 		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 		System.out.println(Arrays.toString(data) + "\n");
@@ -746,9 +806,11 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @return DatagramPacket received
 	 */
-	public DatagramPacket receive() {
+	public DatagramPacket receive() 
+	{
 		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
+		// and block number
 		byte data[] = new byte[MAX_DATA + 4];
 		
 		DatagramPacket packet = null;  // new DatagramPacket to be received
@@ -771,12 +833,16 @@ class ClientConnection implements Runnable {
 				byte[] error = createError((byte)5, "Your packet was sent to the wrong place.");
 				
 				// create new DatagramPacket to send to send error
-				sendPacket = new DatagramPacket(error, error.length, packet.getAddress(), packet.getPort());
+				sendPacket = new DatagramPacket(error, error.length, 
+						packet.getAddress(), packet.getPort());
 				
 				// print out packet info to user
-				System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
-				System.out.println("To host: " + sendPacket.getAddress() + " : " + sendPacket.getPort());
-				System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+				System.out.println("\n" + Thread.currentThread() + 
+						": Sending ERROR: ");
+				System.out.println("To host: " + sendPacket.getAddress() + 
+						" : " + sendPacket.getPort());
+				System.out.print("Containing " + sendPacket.getLength() + 
+						" bytes: \n");
 				System.out.println(Arrays.toString(error) + "\n");
 				
 				// send the packet
@@ -797,9 +863,12 @@ class ClientConnection implements Runnable {
 				}
 				
 				// print out thread and port info, from which the packet was sent to Client
-				System.out.println("\n" + Thread.currentThread() + ": packet received: ");
-				System.out.println("From host: " + packet.getAddress() + " : " + packet.getPort());
-				System.out.println("Containing " + packet.getLength() + " bytes: ");
+				System.out.println("\n" + Thread.currentThread() + 
+						": packet received: ");
+				System.out.println("From host: " + packet.getAddress() + " : " 
+						+ packet.getPort());
+				System.out.println("Containing " + packet.getLength() + 
+						" bytes: ");
 				
 				break;  // correct transfer ID and valid packet
 			}
@@ -814,9 +883,10 @@ class ClientConnection implements Runnable {
 	 * @param packet	the received DatagramPacket
 	 * @return			the data from the DatagramPacket
 	 */
-	public byte[] processDatagram (DatagramPacket packet) {
-		int len = packet.getLength();				            // number of data bytes in packet
-		byte[] data = new byte[len];                            // new byte[] for storing received data 
+	public byte[] processDatagram (DatagramPacket packet) 
+	{
+		int len = packet.getLength(); // number of data bytes in packet
+		byte[] data = new byte[len];  // new byte[] for storing received data 
 		System.arraycopy(packet.getData(), 0, data, 0, len);  // copy over data
 		
 		// display info to user
@@ -830,8 +900,10 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @param ack	the acknowledge byte[]
 	 */
-	public void parseAck (byte[] ack) {
-		System.out.println("\n" + Thread.currentThread() + ": Recieved packet is ACK: ");
+	public void parseAck (byte[] ack) 
+	{
+		System.out.println("\n" + Thread.currentThread() + 
+				": Recieved packet is ACK: ");
 		System.out.println("Block#: " + ack[2] + ack[3]);
 	}
 	
@@ -841,14 +913,17 @@ class ClientConnection implements Runnable {
 	 * @param data	the DATA byte[]
 	 * @return		just the data portion of a DATA packet byte[]
 	 */
-	public byte[] parseData (byte[] data) {
+	public byte[] parseData (byte[] data) 
+	{
 		// byte[] for the data portion of DATA packet byte[]
 		byte[] justData = new byte[data.length - 4];	
 		System.arraycopy(data, 4, justData, 0, data.length-4);
 				
 		// print info to user
-		System.out.println("\n" + Thread.currentThread() + ": Recieved packet is DATA: ");
-		System.out.println("Block#: " + data[2] + data[3] + ", and containing data: ");
+		System.out.println("\n" + Thread.currentThread() + 
+				": Recieved packet is DATA: ");
+		System.out.println("Block#: " + data[2] + data[3] + 
+				", and containing data: ");
 		System.out.println(Arrays.toString(justData));
 				
 		return justData;
@@ -859,8 +934,10 @@ class ClientConnection implements Runnable {
 	 * 
 	 * @param data	the data from the received DatagramPacket
 	 */
-	public void parseError (byte[] error) {
-		System.out.println("\n" + Thread.currentThread() + ": Received packet is ERROR: ");		
+	public void parseError (byte[] error) 
+	{
+		System.out.println("\n" + Thread.currentThread() + 
+				": Received packet is ERROR: ");		
 
 		// get the error message
 		byte[] errorMsg = new byte[error.length - 5];
@@ -913,7 +990,8 @@ class ClientConnection implements Runnable {
 	 * @param blockNumber	the data block number that is being acknowledged
 	 * @return				the acknowledgment byte[]
 	 */
-	public byte[] createAck (byte blockNumber) {
+	public byte[] createAck (byte blockNumber) 
+	{
 		byte[] ack = new byte[4];	// new byte[] to be sent in ACK packet
 		
 		// add opcode
@@ -934,8 +1012,10 @@ class ClientConnection implements Runnable {
 	 * @param data			the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] passedData) {
-		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
+	public byte[] createData (byte blockNumber, byte[] passedData) 
+	{
+		// new byte[] to be sent in DATA packet
+		byte[] data = new byte[4 + passedData.length]; 
 		
 		// add opcode
 		data[0] = 0;
@@ -958,12 +1038,15 @@ class ClientConnection implements Runnable {
 	 * @param errorMsg	the message string that will give more detail on the error
 	 * @return			the error byte[]
 	 */
-	public byte[] createError (byte errorCode, String errorMsg) {
+	public byte[] createError (byte errorCode, String errorMsg) 
+	{
 		// inform user
-		System.out.println("\n" + Thread.currentThread() + ": 0" + errorCode + " Error: informing host: ");
+		System.out.println("\n" + Thread.currentThread() + ": 0" + errorCode + 
+				" Error: informing host: ");
 		System.out.println("Error Message: " + errorMsg);
 		
-		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to client
+		// new error to eventually be sent to client
+		byte[] error = new byte[4 + errorMsg.length() + 1];	
 		
 		// add opcode
 		error[0] = 0;
@@ -973,7 +1056,7 @@ class ClientConnection implements Runnable {
 		error[2] = 0;
 		error[3] = errorCode;
 		
-		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg
+		byte[] message = new byte[errorMsg.length()]; // new array for errorMsg
 		
 		// convert errorMsg to byte[]
 		try {
@@ -995,10 +1078,11 @@ class ClientConnection implements Runnable {
 	 * @param received	the received DatagramPacket to be verified
 	 * @return			true if valid packet, false if invalid
 	 */
-	public boolean isValidPacket (DatagramPacket received) {
-		int len = received.getLength();				            // number of data bytes in packet
-		byte[] data = new byte[len];                            // new byte[] for storing received data 
-		System.arraycopy(received.getData(), 0, data, 0, len);  // copy over data
+	public boolean isValidPacket (DatagramPacket received) 
+	{
+		int len = received.getLength(); // number of data bytes in packet
+		byte[] data = new byte[len];    // new byte[] for storing received data 
+		System.arraycopy(received.getData(), 0, data, 0, len); // copy over data
 		
 		// check size of packet
 		if (len < 4) {
@@ -1042,7 +1126,8 @@ class ClientConnection implements Runnable {
 				}
 			
 				// checks if mode is a valid TFTP mode
-				if (!(mode.equalsIgnoreCase("netascii") || mode.equalsIgnoreCase("octet") ||
+				if (!(mode.equalsIgnoreCase("netascii") || 
+						mode.equalsIgnoreCase("octet") ||
 						mode.equalsIgnoreCase("mail"))) {
 					return false;
 				}
@@ -1071,7 +1156,6 @@ class ClientConnection implements Runnable {
 				return false; 			// not a valid error code
 			default: return false;					// invalid opcode
 		}		
-		
 		return true;
 	}
 }

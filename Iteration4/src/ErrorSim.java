@@ -16,15 +16,16 @@ import java.util.Scanner;
  * @author  Scott Savage
  * @version 4
  */
-public class ErrorSim {
-   
+public class ErrorSim 
+{   
 	private DatagramPacket receivePacket;         // packet received from client
 	private static DatagramSocket receiveSocket;  // socket to receive packets from client
 	
 	private Scanner input;                   // scans user input in ui()
 	public static final int MAX_DATA = 512;  // max number of bytes for data field in packet
    
-	public ErrorSim() {		
+	public ErrorSim() 
+	{		
 		try {
 			// create new socket to receive TFTP packets from Client
 			receiveSocket = new DatagramSocket(68);
@@ -35,7 +36,8 @@ public class ErrorSim {
 		}   
 	}
    
-	public void main( String args[] ) {
+	public void main( String args[] ) 
+	{
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Error Simulator Program *****\n");
 		ErrorSim es = new ErrorSim();
 		
@@ -47,17 +49,19 @@ public class ErrorSim {
 		quit.start(); 
 		
 		receivePacket = receive(receiveSocket); // receive packet on port 68, from Client			
-		if (receivePacket == null) { return; }                 // user pressed q to quit ErrorSim		
+		if (receivePacket == null) { return; }  // user pressed q to quit ErrorSim		
 		
 		Thread ConnectionThread;  // to facilitate transfer of files between client and server
 		
 		if (errorSim) {
 			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(receivePacket), "ErrorSim Connection Thread");
+			ConnectionThread = new Thread(new Connection(receivePacket), 
+					"ErrorSim Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
 		} else {
 			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(receivePacket), "Normal Connection Thread");
+			ConnectionThread = new Thread(new Connection(receivePacket), 
+					"Normal Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
 		}
 		
@@ -69,17 +73,19 @@ public class ErrorSim {
 	 * 
 	 * @return receive socket
 	 */
-	public static DatagramSocket getSocket() {
+	public static DatagramSocket getSocket() 
+	{
 		return receiveSocket;
 	}
 	
 	/**
-	 * The simple console text user interface for the ErrorSim program.  User navigates 
-	 * through menus to create and send error packets.
+	 * The simple console text user interface for the ErrorSim program.  
+	 * User navigates through menus to create and send error packets.
 	 * 
-	 * @return	whether to send error packets or not, false for normal mode, true for error simulation
+	 * @return	false for normal mode, true for error simulation
 	 */
-	public boolean ui() {		
+	public boolean ui() 
+	{		
 		// determine if user wants to start in normal mode or error simulation mode
 		input = new Scanner(System.in);  // scans user input
 		while (true) {
@@ -109,9 +115,11 @@ public class ErrorSim {
 	 * @param socket			the DatagramSocket to be receiving packets from
 	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receive(DatagramSocket socket) {
+	public DatagramPacket receive(DatagramSocket socket) 
+	{
 		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
+		// and block number
 		byte data[] = new byte[MAX_DATA + 4]; 
 		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
 		
@@ -123,8 +131,10 @@ public class ErrorSim {
 				
 				// print out thread and port info
 				System.out.println("\nError Simulator: packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+				System.out.println("From host: " + receivePacket.getAddress() + 
+						" : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + 
+						" bytes: \n");
 				
 				break;
 			} catch(IOException e) {
@@ -143,15 +153,17 @@ public class ErrorSim {
  * in normal or error simulation mode.
  *
  */
-class Connection implements Runnable {
-	
+class Connection implements Runnable 
+{	
 	// UDP DatagramPackets and sockets used to send/receive
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket serverSocket, clientSocket;
 	
-	public static final int MAX_DATA = 512;  // max number of bytes for data field in packet
+	// max number of bytes for data field in packet
+	public static final int MAX_DATA = 512;  
 	
-	public Connection (DatagramPacket receivePacket) {
+	public Connection (DatagramPacket receivePacket) 
+	{
 		try {			
 			// create new socket to send/receive TFTP packets to/from Server
 			serverSocket = new DatagramSocket();
@@ -165,17 +177,18 @@ class Connection implements Runnable {
 		this.receivePacket = receivePacket;  
 	}
 	
-	public void run () {
-		
-		int clientPort;                // the port from which the Client is sending from
-		int serverPort;                // the port from which the Server is sending from
-		byte[] received;               // received data from DatagramPacket
+	public void run () 
+	{		
+		int clientPort;    // the port from which the Client is sending from
+		int serverPort;    // the port from which the Server is sending from
+		byte[] received;   // received data from DatagramPacket
 			
 		received = processDatagram(receivePacket);  // print packet data to user
-		clientPort = receivePacket.getPort();       // save client port in order to send response later
+		clientPort = receivePacket.getPort(); // so we can send response later
 		
 		try {
-			clientSocket = new DatagramSocket();    // open new socket to send to Client
+			// open new socket to send to Client
+			clientSocket = new DatagramSocket(); 
 		} catch (SocketException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -186,14 +199,14 @@ class Connection implements Runnable {
 		
 		while(true) {          
 			receivePacket = receive(serverSocket); // receive packet from Server
-			received = processDatagram(receivePacket);        // print packet data to user	
-			serverPort = receivePacket.getPort();             // save serve port, in order to send response
+			received = processDatagram(receivePacket); // print packet data to user	
+			serverPort = receivePacket.getPort(); // so we can send response
 			
 			// passes Server's packet to Client
 			send(received, receivePacket.getAddress(), clientPort, clientSocket);  
 			
 			receivePacket = receive(clientSocket); // receive packet from Client
-			received = processDatagram(receivePacket);        // print packet data to user
+			received = processDatagram(receivePacket); // print packet data to user
 			
 			// passes Client's packet to Server			
 			send(received, receivePacket.getAddress(), serverPort, serverSocket);  
@@ -206,9 +219,11 @@ class Connection implements Runnable {
 	 * @param socket			the DatagramSocket to be receiving packets from
 	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receive(DatagramSocket socket) {
+	public DatagramPacket receive(DatagramSocket socket) 
+	{
 		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
+		// and block number
 		byte data[] = new byte[MAX_DATA + 4]; 
 		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
 		
@@ -220,8 +235,10 @@ class Connection implements Runnable {
 				
 				// print out thread and port info
 				System.out.println("\nError Simulator: packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + " : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + " bytes: \n");
+				System.out.println("From host: " + receivePacket.getAddress() + 
+						" : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + 
+						" bytes: \n");
 				
 				break;
 			} catch(IOException e) {
@@ -239,9 +256,11 @@ class Connection implements Runnable {
 	 * @param packet	the received DatagramPacket
 	 * @return			the data from the DatagramPacket
 	 */
-	public byte[] processDatagram (DatagramPacket packet) {
+	public byte[] processDatagram (DatagramPacket packet) 
+	{
 		byte[] data = new byte[packet.getLength()];
-		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, packet.getLength());
+		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
+				packet.getLength());
 		
 		// display info to user
 		System.out.println(Arrays.toString(data));
@@ -257,7 +276,9 @@ class Connection implements Runnable {
 	 * @param port		port to send packet to
 	 * @param socket	DatagramSocket to send packets with
 	 */
-	public void send (byte[] data, InetAddress addr, int port, DatagramSocket socket) {
+	public void send (byte[] data, InetAddress addr, int port, 
+			DatagramSocket socket) 
+	{
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
@@ -270,7 +291,8 @@ class Connection implements Runnable {
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println("Error Simulator: Packet sent using port " + socket.getLocalPort() + ".");
+			System.out.println("Error Simulator: Packet sent using port " + 
+					socket.getLocalPort() + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -281,19 +303,22 @@ class Connection implements Runnable {
 
 
 /**
- * Deal with user input to quit while ErrorSim is listening for requests on port 68.
+ * Deal with user input to quit while ErrorSim is listening for requests on 
+ * port 68.
  *
  */
-class Quit extends Thread {
+class Quit extends Thread 
+{
+	// scans user input when determining if ErrorSim should shut down
+	private Scanner input;  
 	
-	private Scanner input;  // scans user input when determining if ErrorSim should shut down
-	
-	public Quit() {
-		System.out.println("\nPress 'Q' at any time to quit.");
-		
+	public Quit() 
+	{
+		System.out.println("\nPress 'Q' at any time to quit.");		
 	}
 	
-	public void run() {
+	public void run() 
+	{
 		input = new Scanner(System.in);	// scan user input
 		while (true) {			
 			String choice = input.nextLine();			// user's choice
@@ -302,9 +327,12 @@ class Quit extends Thread {
 			}
 		}
 		System.out.println("\nError Simulator: Goodbye!");
-		DatagramSocket socket = ErrorSim.getSocket(); // get ErrorSim's receive socket
-		socket.close();                               // close ErrorSim's receive socket
-		Thread.currentThread().interrupt();           // close user input thread
+		// get ErrorSim's receive socket
+		DatagramSocket socket = ErrorSim.getSocket();
+		// close ErrorSim's receive socket
+		socket.close(); 
+		// close user input thread
+		Thread.currentThread().interrupt();           
 	}
 }
 
