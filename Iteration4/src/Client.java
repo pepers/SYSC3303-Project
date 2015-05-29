@@ -31,6 +31,7 @@ public class Client
 	DatagramPacket sendPacket;										// to send data to server 
 	DatagramPacket receivePacket;									// to receive data in
 	DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
+	private static final int TIMEOUT = 2000;						// sendReceiveSocket's timeout when receiving
 	private static Scanner input;									// scans user input in the simple console ui()
 	String filename = "test0.txt";									// the file to be sent/received
 	public static final String fileDirectory = "files\\client\\";	// directory for test files
@@ -39,6 +40,7 @@ public class Client
 	public static final int MAX_DATA = 512;							// max number of bytes for data field in packet
 	InetAddress addr;												// InetAddress of host responding to request
 	int port;														// port number of host responding to request
+	private byte req;												// request type sent by user 
 	
 	/**
 	 * opcodes for the different DatagramPackets in TFTP
@@ -194,11 +196,12 @@ public class Client
 			}
 		}
 		
-		byte[] request = createRequest(op.op(), filename, mode);	// get the request byte[] to send
+		req = op.op(); // 1 for RRQ, 2 for WRQ
+		byte[] request = createRequest(req, filename, mode);	// get the request byte[] to send
 				
 		// send request to correct port destination
 		try{
-			send(request, InetAddress.getLocalHost(), dest);			
+			send(request, InetAddress.getLocalHost(), dest);
 		} catch (UnknownHostException e) {
 			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
 			System.exit(1);			
@@ -219,13 +222,18 @@ public class Client
 			DatagramPacket packet = new DatagramPacket(data, data.length);  // gets received DatagramPacket
 		
 			try {
+				// set timeout to receive response
+				sendReceiveSocket.setSoTimeout(TIMEOUT); 
+				
 				// block until a DatagramPacket is received via sendReceiveSocket 
 				sendReceiveSocket.receive(packet);
 			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
-		
+				// receiving response to read/write request has timed out
+				System.out.println("\nClient: Did not receive a response to your request.");
+				System.out.println("You may try again, but the Server may not be running...");				
+				return;
+			} 
+			
 			addr = packet.getAddress();
 			port = packet.getPort();
 		
@@ -244,8 +252,8 @@ public class Client
 			
 				byte[] received = processDatagram(packet);	// received packet turned into byte[]
 			
-				// DATA
-				if (received[1] == 3) {         
+				// DATA && RRQ was sent
+				if ((received[1] == 3) && (req == 1)) {         
 					byte[] justData = parseData(received);  // print DATA info to user		
 					try {
 						// gets space left on the drive that we can use
@@ -253,7 +261,7 @@ public class Client
 								Paths.get("")).getUsableSpace();	
 						
 						// checks if there is enough usable space on the disk
-						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+						if (spaceOnDrive > data.length) {
 							// writes data to file (creates file first, if it doesn't exist yet)
 							Files.write(Paths.get(fileDirectory + filename), 
 									justData, StandardOpenOption.CREATE, 
@@ -269,11 +277,11 @@ public class Client
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
-					}
-					byte[] ack = createAck(received[3]);  // create initial ACK
-					send(ack, addr, port);            // send ACK
+					}					
 					
 					if (justData.length < MAX_DATA) {
+						byte[] ack = createAck(received[3]);  // create initial ACK
+						send(ack, addr, port);            // send ACK
 						System.out.println("\nClient: RRQ File Transfer Complete.");
 						break;
 					}
@@ -281,13 +289,13 @@ public class Client
 					readReq();                        // start file transfer for RRQ
 					break;
 				
-				// ACK
-				} else if (received[1] == 4) {  
+				// ACK && it is block number 0 && WRQ was sent
+				} else if ((received[1] == 4) && (received[3] == 0) && (req == 2)) {  
 					parseAck(received);  // print ACK info to user				
 					writeReq();  // start file transfer for WRQ
 					break;
 			
-				// ERROR
+				// ERROR - in case we sent to the wrong place, we want to know
 				} else if (received[1] == 5) {  
 					parseError(received);  // print error info to user
 					break;
@@ -311,9 +319,32 @@ public class Client
 	{
 		byte blockNumber = 0;  // block number for ACK and DATA during transfer
 		byte[] data = null;    // data from DATA packet
-		byte[] ack = null;     // ACK to send
+		
+		byte[] ack = createAck((byte)1);  // create initial ACK
+		send(ack, addr, port);            // send ACK
+		
 		do {	// DATA transfer from client
-			DatagramPacket receivePacket = receive();			// receive the DatagramPacket
+			DatagramPacket receivePacket = null;
+			
+			boolean timedOut = false;  // have already timed out once
+			while (true) {
+				try {
+					receivePacket = receive(); // receive the DatagramPacket
+					break;
+				} catch (SocketException e1) {
+					if (!timedOut) {
+						// response timeout, resend last ACK
+						System.out.println("\nClient: Socket Timeout: Resending last ACK...");
+						send(ack, addr, port);
+						timedOut = true;  // have timed out once on this packet
+					} else {
+						// have timed out a second time after resending the last packet
+						System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
+						System.out.println("\nClient: You may try again, but the Server may not be running...");
+						return;
+					}
+				}
+			}
 			
 			// invalid packet received
 			if (receivePacket == null) {
@@ -403,18 +434,57 @@ public class Client
 					blockNumber = 0;
 				}
 				
-				receivePacket = receive();  // receive the DatagramPacket
+				// loop until received ACK is for correct block number
+				while (true) {
+					boolean timedOut = false;  // have already timed out once
+					while (true) {
+						try {
+							receivePacket = receive(); // receive the DatagramPacket
+							break;
+						} catch (SocketException e1) {
+							if (!timedOut) {
+								// response timeout, 
+								System.out.println("\nClient: Socket Timeout: Continuing to wait for ACK...");
+								timedOut = true;  // have timed out once on this packet
+							} else {
+								// have timed out a second time after resending the last packet
+								System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
+								System.out.println("Client: You may try again, but the Server may not be running...");
+								return;
+							}
+						}		
+					}
 				
-				// invalid packet received
-				if (receivePacket == null) {
-					return;
-				}
+					// invalid packet received
+					if (receivePacket == null) {
+						System.out.println("\nClient: Invalid packet received: Aborting file transfer:");
+						System.out.println("Client: You may try to send another request...");
+						return;
+					}
 				
-				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
-					parseError(ackPacket);	// print ERROR info and close connection
-				} else if (ackPacket[1] == 4) {
-					parseAck(ackPacket);	// print ACK info
+					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+						parseError(ackPacket);	// print ERROR info and close connection
+						System.out.println("\nClient: Aborting Transfer.");
+						return;
+					} else if (ackPacket[1] == 4) {
+						parseAck(ackPacket);	// print ACK info
+						if (ackPacket[3] == blockNumber) {
+							break;  // got ACK with correct block number, continuing
+						} else if (ackPacket[3] < blockNumber){ // duplicate ACK
+							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else { // ACK with weird block number 
+							// create and send error response packet for "Illegal TFTP operation."
+							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							send(error, addr, port);
+							return;		
+						}
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError((byte)4, "Expected ACK as response.");
+						send(error, addr, port);
+						return;		
+					}
 				}
 			}			
 		} catch (FileNotFoundException e) {
@@ -442,7 +512,13 @@ public class Client
 				blockNumber = 0;
 			}
 			
-			receivePacket = receive();           // receive the DatagramPacket
+			try {
+				receivePacket = receive();  // receive the DatagramPacket
+			} catch (SocketException e) {
+				System.out.println("\nClient: Did not receive ACK for last DATA sent.");
+				System.out.println("\nClient: WRQ File Transfer Complete.");
+				return;
+			}           
 			
 			// invalid packet received
 			if (receivePacket == null) {
@@ -452,6 +528,8 @@ public class Client
 			byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
 			if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
 				parseError(ackPacket);	// print ERROR info and close connection
+				System.out.println("\nClient: Aborting Transfer.");
+				return;
 			} else if (ackPacket[1] == 4) {
 				parseAck(ackPacket);	// print ACK info
 			}
@@ -693,7 +771,8 @@ public class Client
 		System.out.println(Arrays.toString(data) + "\n"); 
 		
 		// send the DatagramPacket to the server via the send/receive socket
-		try {
+		try {			
+			// attempt to send DatagramPacket
 			sendReceiveSocket.send(sendPacket);
 			System.out.println("Client: Packet sent");
 		} catch (IOException e) {
@@ -707,8 +786,9 @@ public class Client
 	 * and checks if packet is a valid TFTP packet.
 	 * 
 	 * @return DatagramPacket received
+	 * @throws SocketException 
 	 */
-	public DatagramPacket receive() 
+	public DatagramPacket receive() throws SocketException 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
@@ -720,17 +800,22 @@ public class Client
 		while (true) {
 			packet = new DatagramPacket(data, data.length);
 		
-			try {
-				// block until a DatagramPacket is received via sendReceiveSocket 
-				sendReceiveSocket.receive(packet);
-			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
+				// set timeout to receive response
+				sendReceiveSocket.setSoTimeout(TIMEOUT);				
+				
+				try {
+					System.out.println("\nClient: Waiting for packet...");
+					// block until a DatagramPacket is received via sendReceiveSocket 
+					sendReceiveSocket.receive(packet);
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			
 			
 			// check for wrong transfer ID 
 			if (!((packet.getAddress().equals(addr)) && 
-					(packet.getPort() == port))) {
+					(packet.getPort() == port))) {				
 				// create and send error response packet for "Unknown transfer ID."
 				byte[] error = createError((byte)5, 
 						"Your packet was sent to the wrong place.");
