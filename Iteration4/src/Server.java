@@ -8,6 +8,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -448,6 +449,7 @@ class ClientConnection implements Runnable
 	DatagramPacket sendPacket;				// DatagramPacket to send in response to the Client
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
+	private static final int TIMEOUT = 2000;// sendReceiveSocket's timeout when receiving
 	
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
 	
@@ -508,8 +510,12 @@ class ClientConnection implements Runnable
 	{
 		if (op == Opcode.RRQ) {			// received a RRQ
 			readReq();
+			System.out.println("\n" + Thread.currentThread() +
+					": RRQ File Transfer Complete");
 		} else if (op == Opcode.WRQ) {	// received a WRQ
 			writeReq();
+			System.out.println("\n" + Thread.currentThread() +
+					": WRQ File Transfer Complete");
 		} else {						// ERROR received from server
 			send(error);
 		}
@@ -590,20 +596,67 @@ class ClientConnection implements Runnable
 				
 				byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
 				send(data);                                   // send DATA
-				blockNumber++;                                // increment DATA block number
+				
+				// loop until received ACK is for correct block number
+				while (true) {
+					boolean timedOut = false;  // have already timed out once
+					while (true) {
+						try {
+							receivePacket = receive(); // receive the DatagramPacket
+							break;
+						} catch (SocketTimeoutException e1) {
+							if (!timedOut) {
+								// response timeout, 
+								System.out.println("\n" + Thread.currentThread() + 
+										": Socket Timeout: Continuing to wait for ACK...");
+								timedOut = true;  // have timed out once on this packet
+							} else {
+								// have timed out a second time
+								System.out.println("\n" + Thread.currentThread() + 
+										": Socket Timeout Again: Aborting file transfer.");
+								closeConnection();
+							}
+						}		
+					}
+				
+					// invalid packet received
+					if (receivePacket == null) {
+						System.out.println("\n" + Thread.currentThread() + 
+								": Invalid packet received: Aborting file transfer:");
+						closeConnection();
+					}
+				
+					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+						parseError(ackPacket);	// print ERROR info and close connection
+						System.out.println("\n" + Thread.currentThread() + 
+								": Aborting Transfer.");
+						closeConnection();
+					} else if (ackPacket[1] == 4) {
+						parseAck(ackPacket);	// print ACK info
+						if (ackPacket[3] == blockNumber) {
+							break;  // got ACK with correct block number, continuing
+						} else if (ackPacket[3] < blockNumber){ // duplicate ACK
+							System.out.println("\n" + Thread.currentThread() + 
+									": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else { // ACK with weird block number 
+							// create and send error response packet for "Illegal TFTP operation."
+							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							send(error);
+							closeConnection();		
+						}
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError((byte)4, "Expected ACK as response.");
+						send(error);
+						closeConnection();		
+					}
+				}
+				blockNumber++; // increment DATA block number
 				
 				// blockNumber goes from 0-127, and then wraps to back to 0
 				if (blockNumber < 0) { 
 					blockNumber = 0;
-				}
-				
-				receivePacket = receive();           // receive the DatagramPacket
-				
-				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
-					parseError(ackPacket);	// print ERROR info and close connection
-				} else if (ackPacket[1] == 4) {
-					parseAck(ackPacket);	// print ACK info
 				}
 			}			
 			/* done sending last packet */
@@ -634,7 +687,35 @@ class ClientConnection implements Runnable
 			send(ack);								// send initial ACK
 			byte[] data = new byte[0];		// to hold received data portion of DATA packet
 			do {	// DATA transfer from client
-				DatagramPacket receivePacket = receive();			// receive the DatagramPacket
+				
+				// dealing with timeout on receiving a packet
+				DatagramPacket receivePacket = null;			
+				boolean timedOut = false;  // have already timed out once			
+				while (true) {
+					try {
+						receivePacket = receive(); // receive the DatagramPacket
+						break;
+					} catch (SocketTimeoutException e1) {
+						if (!timedOut) {
+							// response timeout, re-send last ACK
+							System.out.println("\n" + Thread.currentThread() + 
+									": Resending last ACK...");
+							send(ack);
+							timedOut = true;  // have timed out once on this packet
+						} else {
+							// have timed out a second time after re-sending the last packet
+							System.out.println("\n" + Thread.currentThread() + 
+									": Socket Timeout Again: Aborting file transfer.");
+							closeConnection();
+						}
+					}
+				}
+				
+				// invalid packet received
+				if (receivePacket == null) {
+					closeConnection();
+				}
+				
 				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 				if (dataPacket[1] == 3) {						// received DATA
 					blockNumber = dataPacket[3];	// get the data block number
@@ -805,8 +886,9 @@ class ClientConnection implements Runnable
 	 * and checks if packet is a valid TFTP packet.
 	 * 
 	 * @return DatagramPacket received
+	 * @throws SocketTimeoutException 
 	 */
-	public DatagramPacket receive() 
+	public DatagramPacket receive() throws SocketTimeoutException 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
@@ -819,12 +901,16 @@ class ClientConnection implements Runnable
 		while (true) {
 			packet = new DatagramPacket(data, data.length);
 		
+			System.out.println("\n" + Thread.currentThread() + 
+					" : Waiting for packet...");
+			
+			// block until a DatagramPacket is received via sendReceiveSocket 
 			try {
-				// block until a DatagramPacket is received via sendReceiveSocket 
+				// set timeout to receive response
+				sendReceiveSocket.setSoTimeout(TIMEOUT);
 				sendReceiveSocket.receive(packet);
-			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(1);
+			} catch (IOException e1) {
+				throw new SocketTimeoutException();  // timed out
 			}
 			
 			// check for wrong transfer ID 
@@ -859,7 +945,7 @@ class ClientConnection implements Runnable
 					// create and send error response packet for "Illegal TFTP operation."
 					byte[] error = createError((byte)4, "Invalid packet.");
 					send(error);
-					closeConnection();
+					closeConnection();  // close this ClientConnection thread
 				}
 				
 				// print out thread and port info, from which the packet was sent to Client

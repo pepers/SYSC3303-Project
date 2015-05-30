@@ -325,21 +325,22 @@ public class Client
 		send(ack, addr, port);            // send ACK
 		
 		do {	// DATA transfer from client
-			DatagramPacket receivePacket = null;
 			
-			boolean timedOut = false;  // have already timed out once
+			// dealing with timeout on receiving a packet
+			DatagramPacket receivePacket = null;			
+			boolean timedOut = false;  // have already timed out once			
 			while (true) {
 				try {
 					receivePacket = receive(); // receive the DatagramPacket
 					break;
 				} catch (SocketTimeoutException e1) {
 					if (!timedOut) {
-						// response timeout, resend last ACK
+						// response timeout, re-send last ACK
 						System.out.println("\nClient: Socket Timeout: Resending last ACK...");
 						send(ack, addr, port);
 						timedOut = true;  // have timed out once on this packet
 					} else {
-						// have timed out a second time after resending the last packet
+						// have timed out a second time after re-sending the last packet
 						System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
 						System.out.println("\nClient: You may try again, but the Server may not be running...");
 						return;
@@ -442,7 +443,7 @@ public class Client
 								System.out.println("\nClient: Socket Timeout: Continuing to wait for ACK...");
 								timedOut = true;  // have timed out once on this packet
 							} else {
-								// have timed out a second time after resending the last packet
+								// have timed out a second time
 								System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
 								System.out.println("Client: You may try again, but the Server may not be running...");
 								return;
