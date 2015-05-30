@@ -18,11 +18,18 @@ import java.util.Scanner;
  */
 public class ErrorSim 
 {   
-	private DatagramPacket receivePacket;         // packet received from client
+	private static DatagramPacket receivePacket;  // packet received from client
 	private static DatagramSocket receiveSocket;  // socket to receive packets from client
 	
 	private Scanner input;                   // scans user input in ui()
 	public static final int MAX_DATA = 512;  // max number of bytes for data field in packet
+	
+	// choices when entering Error Simulation Mode
+	public enum PacketType { RRQ, WRQ, ACK, DATA, ERROR }
+	private static PacketType packetType = null;
+	public enum PacketDo { lose, delay, duplicate, send, edit}
+	private static PacketDo packetDo = null;
+	private static boolean choiceIsServer = true; // true if choice is server, false if client
    
 	public ErrorSim() 
 	{		
@@ -36,7 +43,7 @@ public class ErrorSim
 		}   
 	}
    
-	public void main( String args[] ) 
+	public static void main( String args[] ) 
 	{
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Error Simulator Program *****\n");
 		ErrorSim es = new ErrorSim();
@@ -55,12 +62,14 @@ public class ErrorSim
 		
 		if (errorSim) {
 			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(receivePacket), 
+			ConnectionThread = new Thread(new Connection(
+					receivePacket, packetType, packetDo, choiceIsServer),
 					"ErrorSim Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
 		} else {
 			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(receivePacket), 
+			ConnectionThread = new Thread(new Connection(
+					receivePacket, null, null, false), 
 					"Normal Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
 		}
@@ -95,9 +104,110 @@ public class ErrorSim
 				System.out.println("\nError Simulator: You have chosen to start in Normal Mode.");
 				return false;
 			} else if (choice.equalsIgnoreCase("E")) {  // error simulation mode
+				while (true) {
+					System.out.println("\nError Simulator: How would you like to manipulate packets?");
+					System.out.println("\t 1. Lose a packet.");
+					System.out.println("\t 2. Delay a packet.");
+					System.out.println("\t 3. Duplicate a packet.");
+					System.out.println("\t 4. Send a packet.");
+					System.out.println("\t 5. Edit a packet.");
+					System.out.println("(type the number corresponding to your choice...");
+					choice = input.nextLine();  // user's choice
+					if (choice.equals("1")) { 
+						packetDo = PacketDo.lose;
+						break;
+					} else if (choice.equals("2")) {
+						packetDo = PacketDo.delay;
+						break;
+					} else if (choice.equals("3")) {
+						packetDo = PacketDo.duplicate;
+						break;
+					} else if (choice.equals("4")) {
+						packetDo = PacketDo.send;
+						break;
+					} else if (choice.equals("5")) {
+						packetDo = PacketDo.edit;
+						break;
+					} else {
+						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}
+				}
+				while (true) {
+					System.out.println("\nError Simulator: What type of packet do you want to manipulate?");
+					System.out.println("\t 1. RRQ packet.");
+					System.out.println("\t 2. WRQ packet.");
+					System.out.println("\t 3. DATA packet.");
+					System.out.println("\t 4. ACK packet.");
+					System.out.println("\t 5. ERROR packet.");
+					System.out.println("(type the number corresponding to your choice...");
+					choice = input.nextLine();  // user's choice
+					if (choice.equals("1")) { 
+						packetType = PacketType.RRQ;
+						break;
+					} else if (choice.equals("2")) {
+						packetType = PacketType.WRQ;
+						break;
+					} else if (choice.equals("3")) {
+						packetType = PacketType.DATA;
+						break;
+					} else if (choice.equals("4")) {
+						packetType = PacketType.ACK;
+						break;
+					} else if (choice.equals("5")) {
+						packetType = PacketType.ERROR;
+						break;
+					} else {
+						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}
+				}
+				while (true) {
+					// choose where the packets to manipulated are from and going
+					if (packetDo == PacketDo.lose || 
+							packetDo == PacketDo.delay || 
+							packetDo == PacketDo.duplicate ||
+							packetDo == PacketDo.edit) { 
+						System.out.println("\nError Simulator: Would you like to " + packetDo.name() + " the first " 
+								+ packetType.name() + " packet ");
+						System.out.println("\t received from the (C)lient, or from the (S)erver?");
+					} else if (packetDo == PacketDo.send) {
+						System.out.println("\nError Simulator: Would you like to send a " 
+								+ packetType.name() + " packet ");
+						System.out.println("\t to the (C)lient, or to the (S)erver?");
+					} 
+					choice = input.nextLine();  // user's choice
+					if (choice.equalsIgnoreCase("C")) {
+						choiceIsServer = false; // choice is Client 
+						break;
+					} else if (choice.equalsIgnoreCase("S")) {
+						choiceIsServer = true; // choice is Server
+						break;
+					} else {
+						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}				
+				}
+				// print choice info to user
 				System.out.println("\nError Simulator: You have chosen to start in Error Simulation Mode.");
-				// TODO: choose error to simulate
-				break;
+				String host = null; // client or server
+				if (choiceIsServer) {
+					host = "Server";
+				} else {
+					host = "Client";
+				}
+				if (packetDo == PacketDo.delay || 
+						packetDo == PacketDo.duplicate ||
+						packetDo == PacketDo.edit) { 
+					System.out.println("\t The first " + packetType.name() + 
+							" packet, from the " + host + ", will be " +
+							packetDo.name() + "ed.");
+				} else if (packetDo == PacketDo.lose) {
+					System.out.println("\t The first " + packetType.name() + 
+							" packet, from the " + host + ", will be lost.");
+				} else if (packetDo == PacketDo.send) {
+					System.out.println("\t A " + packetType.name() + 
+							" packet will be sent to the " + host + ".");
+				} 				
+				return true; // error simulation mode was chosen
+				
 			} else if (choice.equalsIgnoreCase("Q")) {  // quit
 				System.out.println("\nGoodbye!");
 				System.exit(0);
@@ -105,8 +215,6 @@ public class ErrorSim
 				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 			}
 		}
-		
-		return false;
 	}
 	
 	/**
@@ -115,7 +223,7 @@ public class ErrorSim
 	 * @param socket			the DatagramSocket to be receiving packets from
 	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receive(DatagramSocket socket) 
+	public static DatagramPacket receive(DatagramSocket socket) 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
@@ -159,10 +267,18 @@ class Connection implements Runnable
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket serverSocket, clientSocket;
 	
+	// choices when entering Error Simulation Mode
+	private ErrorSim.PacketType packetType;
+	private ErrorSim.PacketDo packetDo;
+	private boolean choiceIsServer; // true if choice is server, false if client
+	
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
 	
-	public Connection (DatagramPacket receivePacket) 
+	public Connection (DatagramPacket receivePacket, 
+						ErrorSim.PacketType packetType, 
+						ErrorSim.PacketDo packetDo, 
+						boolean choiceIsServer) 
 	{
 		try {			
 			// create new socket to send/receive TFTP packets to/from Server
@@ -175,6 +291,11 @@ class Connection implements Runnable
 		
 		// the original packet received on ErrorSim's port 68, from client
 		this.receivePacket = receivePacket;  
+		
+		// choices made for error simulation
+		this.packetType = packetType;
+		this.packetDo = packetDo;
+		this.choiceIsServer = choiceIsServer;
 	}
 	
 	public void run () 
