@@ -510,12 +510,8 @@ class ClientConnection implements Runnable
 	{
 		if (op == Opcode.RRQ) {			// received a RRQ
 			readReq();
-			System.out.println("\n" + Thread.currentThread() +
-					": RRQ File Transfer Complete");
 		} else if (op == Opcode.WRQ) {	// received a WRQ
 			writeReq();
-			System.out.println("\n" + Thread.currentThread() +
-					": WRQ File Transfer Complete");
 		} else {						// ERROR received from server
 			send(error);
 		}
@@ -537,7 +533,7 @@ class ClientConnection implements Runnable
 				byte[] error = createError((byte)2, "File (" + filename + 
 						") exists on server, but is not readable.");
 				send(error);
-				closeConnection();	// quit client connection thread
+				return;	// quit client connection thread
 			}		
 				
 			byte[] read = new byte[MAX_DATA];  // to hold bytes read
@@ -559,20 +555,66 @@ class ClientConnection implements Runnable
 					// create DATA packet of file being read
 					byte[] data = createData(blockNumber, read);
 					send(data);     // send DATA
-					blockNumber++;  // increment DATA block number
+					// loop until received ACK is for correct block number
+					while (true) {
+						boolean timedOut = false;  // have already timed out once
+						while (true) {
+							try {
+								receivePacket = receive(); // receive the DatagramPacket
+								break;
+							} catch (SocketTimeoutException e1) {
+								if (!timedOut) {
+									// response timeout, 
+									System.out.println("\n" + Thread.currentThread() + 
+											": Socket Timeout: Continuing to wait for ACK...");
+									timedOut = true;  // have timed out once on this packet
+								} else {
+									// have timed out a second time
+									System.out.println("\n" + Thread.currentThread() + 
+											": Socket Timeout Again: Aborting file transfer.");
+									return;
+								}
+							}		
+						}
+					
+						// invalid packet received
+						if (receivePacket == null) {
+							System.out.println("\n" + Thread.currentThread() + 
+									": Invalid packet received: Aborting file transfer:");
+							return;
+						}
+					
+						byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+						if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+							parseError(ackPacket);	// print ERROR info and close connection
+							System.out.println("\n" + Thread.currentThread() + 
+									": Aborting Transfer.");
+							return;
+						} else if (ackPacket[1] == 4) {
+							parseAck(ackPacket);	// print ACK info
+							if (ackPacket[3] == blockNumber) {
+								break;  // got ACK with correct block number, continuing
+							} else if (ackPacket[3] < blockNumber){ // duplicate ACK
+								System.out.println("\n" + Thread.currentThread() + 
+										": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else { // ACK with weird block number 
+								// create and send error response packet for "Illegal TFTP operation."
+								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+								send(error);
+								return;		
+							}
+						} else {
+							// create and send error response packet for "Illegal TFTP operation."
+							byte[] error = createError((byte)4, "Expected ACK as response.");
+							send(error);
+							return;		
+						}
+					}
+					blockNumber++; // increment DATA block number
 					
 					// blockNumber goes from 0-127, and then wraps to back to 0
 					if (blockNumber < 0) { 
 						blockNumber = 0;
-					}
-					
-					receivePacket = receive();  // receive the DatagramPacket
-					
-					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
-						parseError(ackPacket);	// print ERROR info and close connection
-					} else if (ackPacket[1] == 4) {
-						parseAck(ackPacket);	// print ACK info
 					}
 				}
 				
@@ -583,7 +625,7 @@ class ClientConnection implements Runnable
 				byte[] error = createError((byte)1, "File (" + filename + 
 						") does not exist.");
 				send(error);
-				closeConnection(); // quit client connection thread
+				return; // quit client connection thread
 			} catch (IOException e) {
 				System.out.println("\nError: could not read from BufferedInputStream.");
 				System.exit(1);
@@ -623,7 +665,7 @@ class ClientConnection implements Runnable
 					if (receivePacket == null) {
 						System.out.println("\n" + Thread.currentThread() + 
 								": Invalid packet received: Aborting file transfer:");
-						closeConnection();
+						return;
 					}
 				
 					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
@@ -631,7 +673,7 @@ class ClientConnection implements Runnable
 						parseError(ackPacket);	// print ERROR info and close connection
 						System.out.println("\n" + Thread.currentThread() + 
 								": Aborting Transfer.");
-						closeConnection();
+						return;
 					} else if (ackPacket[1] == 4) {
 						parseAck(ackPacket);	// print ACK info
 						if (ackPacket[3] == blockNumber) {
@@ -643,13 +685,13 @@ class ClientConnection implements Runnable
 							// create and send error response packet for "Illegal TFTP operation."
 							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
 							send(error);
-							closeConnection();		
+							return;		
 						}
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
 						byte[] error = createError((byte)4, "Expected ACK as response.");
 						send(error);
-						closeConnection();		
+						return;		
 					}
 				}
 				blockNumber++; // increment DATA block number
@@ -667,7 +709,10 @@ class ClientConnection implements Runnable
 			byte[] error = createError((byte)1, "File (" + filename + 
 					") does not exist.");
 			send(error);
+			return;
 		}
+		System.out.println("\n" + Thread.currentThread() +
+				": RRQ File Transfer Complete");
 	}
 	
 	/**
@@ -750,6 +795,8 @@ class ClientConnection implements Runnable
 				}						
 			} while (data.length == MAX_DATA);
 		}
+		System.out.println("\n" + Thread.currentThread() +
+				": WRQ File Transfer Complete");
 	}
 	
 	/**

@@ -30,6 +30,7 @@ public class ErrorSim
 	public enum PacketDo { lose, delay, duplicate, send, edit}
 	private static PacketDo packetDo = null;
 	private static boolean choiceIsServer = true; // true if choice is server, false if client
+	private static int choiceInt = 0; // the number of the packet to be manipulated
    
 	public ErrorSim() 
 	{		
@@ -63,13 +64,13 @@ public class ErrorSim
 		if (errorSim) {
 			// start new connection between client and server in normal mode			
 			ConnectionThread = new Thread(new Connection(
-					receivePacket, packetType, packetDo, choiceIsServer),
+					receivePacket, packetType, packetDo, choiceIsServer, choiceInt),
 					"ErrorSim Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
 		} else {
 			// start new connection between client and server in normal mode			
 			ConnectionThread = new Thread(new Connection(
-					receivePacket, null, null, false), 
+					receivePacket, null, null, false, 0), 
 					"Normal Connection Thread");
 			System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
 		}
@@ -105,6 +106,7 @@ public class ErrorSim
 				return false;
 			} else if (choice.equalsIgnoreCase("E")) {  // error simulation mode
 				while (true) {
+					// choose how to manipulate packet
 					System.out.println("\nError Simulator: How would you like to manipulate packets?");
 					System.out.println("\t 1. Lose a packet.");
 					System.out.println("\t 2. Delay a packet.");
@@ -133,6 +135,7 @@ public class ErrorSim
 					}
 				}
 				while (true) {
+					// choose type of packet
 					System.out.println("\nError Simulator: What type of packet do you want to manipulate?");
 					System.out.println("\t 1. RRQ packet.");
 					System.out.println("\t 2. WRQ packet.");
@@ -161,19 +164,24 @@ public class ErrorSim
 					}
 				}
 				while (true) {
+					// choose which packet to manipulate
+					System.out.println("\nError Simulator: Enter a number to indicate which " 
+							+ packetType + " packet to manipulate.");
+					System.out.println("(eg: enter '1' for the first packet, etc.");
+					try {
+						choiceInt = Integer.parseInt(input.nextLine());  // user's choice
+						if (choiceInt < 1) { 
+							System.out.println("\nI'm sorry, " + choiceInt + " is not a valid choice.  Please try again...");
+						} else {
+							break;
+						}	
+					} catch (NumberFormatException n) {
+						System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+					}				
+				}
+				while (true) {
 					// choose where the packets to manipulated are from and going
-					if (packetDo == PacketDo.lose || 
-							packetDo == PacketDo.delay || 
-							packetDo == PacketDo.duplicate ||
-							packetDo == PacketDo.edit) { 
-						System.out.println("\nError Simulator: Would you like to " + packetDo.name() + " the first " 
-								+ packetType.name() + " packet ");
-						System.out.println("\t received from the (C)lient, or from the (S)erver?");
-					} else if (packetDo == PacketDo.send) {
-						System.out.println("\nError Simulator: Would you like to send a " 
-								+ packetType.name() + " packet ");
-						System.out.println("\t to the (C)lient, or to the (S)erver?");
-					} 
+					System.out.println("\nError Simulator: Is the packet to be manipulated coming from the (C)lient, or the (S)erver?");
 					choice = input.nextLine();  // user's choice
 					if (choice.equalsIgnoreCase("C")) {
 						choiceIsServer = false; // choice is Client 
@@ -196,15 +204,17 @@ public class ErrorSim
 				if (packetDo == PacketDo.delay || 
 						packetDo == PacketDo.duplicate ||
 						packetDo == PacketDo.edit) { 
-					System.out.println("\t The first " + packetType.name() + 
-							" packet, from the " + host + ", will be " +
-							packetDo.name() + "ed.");
+					System.out.println("\t The #" + choiceInt + " " + 
+							packetType.name() + " packet, from the " + host + 
+							", will be " + packetDo.name() + "ed.");
 				} else if (packetDo == PacketDo.lose) {
-					System.out.println("\t The first " + packetType.name() + 
-							" packet, from the " + host + ", will be lost.");
+					System.out.println("\t The #" + choiceInt + " " + 
+							packetType.name() + " packet, from the " + host + 
+							", will be lost.");
 				} else if (packetDo == PacketDo.send) {
-					System.out.println("\t A " + packetType.name() + 
-							" packet will be sent to the " + host + ".");
+					System.out.println("\t The #" + choiceInt + 
+							" packet sent to the " + host + " will be a " + 
+							packetType.name() + " packet.");
 				} 				
 				return true; // error simulation mode was chosen
 				
@@ -267,18 +277,27 @@ class Connection implements Runnable
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket serverSocket, clientSocket;
 	
+	int clientPort;    // the port from which the Client is sending from
+	int serverPort;    // the port from which the Server is sending from
+	
 	// choices when entering Error Simulation Mode
 	private ErrorSim.PacketType packetType;
 	private ErrorSim.PacketDo packetDo;
 	private boolean choiceIsServer; // true if choice is server, false if client
+	private int packetNumber; // number of packet to be manipulated
+	private int actionCount; // count packets of one type, in order to tell when to take action
+	
+	// check if ErrorSim action took place, so it is only done once
+	private boolean actionFlag = false;
 	
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
-	
+		
 	public Connection (DatagramPacket receivePacket, 
 						ErrorSim.PacketType packetType, 
 						ErrorSim.PacketDo packetDo, 
-						boolean choiceIsServer) 
+						boolean choiceIsServer,
+						int packetNumber) 
 	{
 		try {			
 			// create new socket to send/receive TFTP packets to/from Server
@@ -296,12 +315,11 @@ class Connection implements Runnable
 		this.packetType = packetType;
 		this.packetDo = packetDo;
 		this.choiceIsServer = choiceIsServer;
+		this.packetNumber = packetNumber;
 	}
 	
 	public void run () 
 	{		
-		int clientPort;    // the port from which the Client is sending from
-		int serverPort;    // the port from which the Server is sending from
 		byte[] received;   // received data from DatagramPacket
 			
 		received = processDatagram(receivePacket);  // print packet data to user
@@ -319,14 +337,14 @@ class Connection implements Runnable
 		send(received, receivePacket.getAddress(), 69, serverSocket);  
 		
 		while(true) {          
-			receivePacket = receive(serverSocket); // receive packet from Server
+			receivePacket = receiveServer(); // receive packet from Server
 			received = processDatagram(receivePacket); // print packet data to user	
 			serverPort = receivePacket.getPort(); // so we can send response
 			
 			// passes Server's packet to Client
 			send(received, receivePacket.getAddress(), clientPort, clientSocket);  
 			
-			receivePacket = receive(clientSocket); // receive packet from Client
+			receivePacket = receiveClient(); // receive packet from Client
 			received = processDatagram(receivePacket); // print packet data to user
 			
 			// passes Client's packet to Server			
@@ -335,12 +353,12 @@ class Connection implements Runnable
 	}
 	
 	/**
-	 * Receives DatagramPacket packets.
+	 * Receives DatagramPacket packets from client.
 	 * 
 	 * @param socket			the DatagramSocket to be receiving packets from
 	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receive(DatagramSocket socket) 
+	public DatagramPacket receiveClient() 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
@@ -351,11 +369,13 @@ class Connection implements Runnable
 		while (true){
 			try {
 				// block until a DatagramPacket is received via sendSocket 
-				System.out.println("\nError Simulator: Listening for packets...");
-				socket.receive(receivePacket);
+				System.out.println("\n" + Thread.currentThread() + 
+						": Listening for packets from Client...");
+				clientSocket.receive(receivePacket);
 				
 				// print out thread and port info
-				System.out.println("\nError Simulator: packet received: ");
+				System.out.println("\n" + Thread.currentThread() + 
+						": packet received: ");
 				System.out.println("From host: " + receivePacket.getAddress() + 
 						" : " + receivePacket.getPort());
 				System.out.print("Containing " + receivePacket.getLength() + 
@@ -369,7 +389,43 @@ class Connection implements Runnable
 		
 		return receivePacket;
 	}
-	
+
+	/**
+	 * Receives DatagramPacket packets from server.
+	 * 
+	 * @return DatagramPacket 	received
+	 */
+	public DatagramPacket receiveServer() 
+	{
+		// no packet will be larger than DATA packet
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
+		// and block number
+		byte data[] = new byte[MAX_DATA + 4]; 
+		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+		
+		while (true){
+			try {
+				// block until a DatagramPacket is received via sendSocket 
+				System.out.println("\n" + Thread.currentThread() + 
+						": Listening for packets from Server...");
+				serverSocket.receive(receivePacket);
+				
+				// print out thread and port info
+				System.out.println("\n" + Thread.currentThread() + 
+						": packet received: ");
+				System.out.println("From host: " + receivePacket.getAddress() + 
+						" : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + 
+						" bytes: \n");
+				
+				break;
+			} catch(IOException e) {
+				return null;  // socket was closed, return null
+			}
+		}
+		
+		return receivePacket;
+	}
 	
 	/**
 	 * Makes an appropriately sized byte[] from a DatagramPacket
@@ -403,8 +459,60 @@ class Connection implements Runnable
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
+		// if haven't taken action on packet, try it
+		if (!actionFlag) {
+			if (packetMatchesChoice(data, port)) {
+				actionCount++;  // increase count of correct packet type
+				if (actionCount == packetNumber) {
+					actionFlag = true;  // take action on packet
+					// delay packet
+					if (packetDo == ErrorSim.PacketDo.delay) {
+						System.out.println("\n" + Thread.currentThread() + ": Delaying " + 
+								packetType + " packet...");
+						
+						// start new thread to delay packet			
+						Thread DelayThread = new Thread(new Delay(data, addr, port, socket),
+											"Packet Delay Thread");
+						DelayThread.start();
+						return;
+					// duplicate packet
+					} else if (packetDo == ErrorSim.PacketDo.duplicate) {
+						System.out.println("\n" + Thread.currentThread() + ": Duplicating " + 
+								packetType + " packet.");
+						
+						// print out packet info to user
+						System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+						System.out.println("To host: " + addr + " : " + port);
+						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+						System.out.println(Arrays.toString(data) + "\n");
+						
+						// send the packet
+						try {
+							socket.send(sendPacket);
+							System.out.println(Thread.currentThread() + 
+								": Packet sent using port " + socket.getLocalPort() + ".");
+						} catch (IOException e) {
+							e.printStackTrace();
+							System.exit(1);
+						}
+					// edit packet
+					} else if (packetDo == ErrorSim.PacketDo.edit) {
+						//TODO
+					// lose packet
+					} else if (packetDo == ErrorSim.PacketDo.lose) {
+						System.out.println("\n" + Thread.currentThread() + ": Losing " + 
+								packetType + " packet.");
+						return;	// don't send packet
+					// send another packet
+					} else if (packetDo == ErrorSim.PacketDo.send) {
+						//TODO
+					}
+				}
+			}
+		}
+		
 		// print out packet info to user
-		System.out.println("\nError Simulator: Sending packet: ");
+		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
 		System.out.println("To host: " + addr + " : " + port);
 		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 		System.out.println(Arrays.toString(data) + "\n");
@@ -412,12 +520,129 @@ class Connection implements Runnable
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println("Error Simulator: Packet sent using port " + 
-					socket.getLocalPort() + ".");
+			System.out.println(Thread.currentThread() + 
+				": Packet sent using port " + socket.getLocalPort() + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+	
+	/**
+	 * Checks if it is safe to take Error Simulation action with packet.
+	 * 
+	 * @param data		packet data
+	 * @param addr		InetAddress to send to
+	 * @param port		port to send to 
+	 * @param socket	socket to send with
+	 * @return			true if can take action, false if not
+	 */
+	public boolean packetMatchesChoice (byte[] data, int port)
+	{		
+		// check that the received packet type matches the packet type that the
+		// user wants to take action on
+		switch (data[1]) {
+			case 1 :
+				if (packetType != ErrorSim.PacketType.RRQ) {
+					return false;
+				}
+				if (!choiceIsServer && (port == 69)) {
+					return true;
+				}
+				break;	
+			case 2 :
+				if (packetType != ErrorSim.PacketType.WRQ) {
+					return false;
+				}
+				if (!choiceIsServer && (port == 69)) {
+					return true;
+				}
+				break;
+			case 3 :
+				if (packetType != ErrorSim.PacketType.DATA) {
+					return false;
+				}
+				break;
+			case 4 :
+				if (packetType != ErrorSim.PacketType.ACK) {
+					return false;
+				}
+				break;
+			case 5 :
+				if (packetType != ErrorSim.PacketType.ERROR) {
+					return false;
+				}
+				break;
+			default :
+				return false;
+		}
+		
+		// if the packet was sent from the wrong host, don't take action
+		if (choiceIsServer && (port == serverPort)) {
+			return false;
+		} else if (!choiceIsServer && (port == clientPort)) {
+			return false;
+		}
+		
+		return true;
+	}
+}
+
+
+
+/**
+ * Delays and sends a packet.
+ * 
+ */
+class Delay implements Runnable
+{	
+	public static final int DELAY = 2000;  // milliseconds to delay packet
+	byte[] data;                           // data to put in packet
+	InetAddress addr;                      // InetAddress to send packet to
+	int port;                              // port to send packet to
+	DatagramSocket socket;                 // socket to send packet from
+	DatagramPacket sendPacket;             // packet to delay and send
+	
+	public Delay (byte[] data, InetAddress addr, int port, 
+			DatagramSocket socket)
+	{
+		this.data = data;
+		this.addr = addr;
+		this.port = port;
+		this.socket = socket;
+	}
+	
+	public void run() 
+	{
+		// delay the packet
+		try {
+            Thread.sleep(DELAY);
+            System.out.println("\n" + Thread.currentThread() + ": Packet Delayed.");
+        } catch (InterruptedException e) {
+        	Thread.currentThread().interrupt();
+        }
+		
+		// send the delayed packet
+		
+		// create new DatagramPacket to send to client
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
+		
+		// print out packet info to user
+		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+		System.out.println("To host: " + addr + " : " + port);
+		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+		System.out.println(Arrays.toString(data) + "\n");
+		
+		// send the packet
+		try {
+			socket.send(sendPacket);
+			System.out.println(Thread.currentThread() + 
+					": Packet sent using port " + socket.getLocalPort() + ".");
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
 	}
 }
 
