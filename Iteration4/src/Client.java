@@ -8,6 +8,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -331,7 +332,7 @@ public class Client
 				try {
 					receivePacket = receive(); // receive the DatagramPacket
 					break;
-				} catch (SocketException e1) {
+				} catch (SocketTimeoutException e1) {
 					if (!timedOut) {
 						// response timeout, resend last ACK
 						System.out.println("\nClient: Socket Timeout: Resending last ACK...");
@@ -427,12 +428,6 @@ public class Client
 				// create DATA packet of file being read
 				byte[] data = createData(blockNumber, read);
 				send(data, addr, port);                       // send DATA
-				blockNumber++;                                // increment DATA block number
-				
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
-					blockNumber = 0;
-				}
 				
 				// loop until received ACK is for correct block number
 				while (true) {
@@ -441,7 +436,7 @@ public class Client
 						try {
 							receivePacket = receive(); // receive the DatagramPacket
 							break;
-						} catch (SocketException e1) {
+						} catch (SocketTimeoutException e1) {
 							if (!timedOut) {
 								// response timeout, 
 								System.out.println("\nClient: Socket Timeout: Continuing to wait for ACK...");
@@ -486,6 +481,12 @@ public class Client
 						return;		
 					}
 				}
+				blockNumber++; // increment DATA block number
+				
+				// blockNumber goes from 0-127, and then wraps to back to 0
+				if (blockNumber < 0) { 
+					blockNumber = 0;
+				}
 			}			
 		} catch (FileNotFoundException e) {
 			// create and send error response packet for "File not found."
@@ -514,7 +515,7 @@ public class Client
 			
 			try {
 				receivePacket = receive();  // receive the DatagramPacket
-			} catch (SocketException e) {
+			} catch (SocketTimeoutException e) {
 				System.out.println("\nClient: Did not receive ACK for last DATA sent.");
 				System.out.println("\nClient: WRQ File Transfer Complete.");
 				return;
@@ -786,31 +787,30 @@ public class Client
 	 * and checks if packet is a valid TFTP packet.
 	 * 
 	 * @return DatagramPacket received
-	 * @throws SocketException 
+	 * @throws SocketTimeoutException 
 	 */
-	public DatagramPacket receive() throws SocketException 
+	public DatagramPacket receive() throws SocketTimeoutException 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode and block number
 		byte data[] = new byte[MAX_DATA + 4];
 		
 		DatagramPacket packet = null;  // new DatagramPacket to be received
-		
+				
 		// loop until packet received from expected host
 		while (true) {
 			packet = new DatagramPacket(data, data.length);
-		
+			
+			System.out.println("\nClient: Waiting for packet...");
+			
+			// block until a DatagramPacket is received via sendReceiveSocket 
+			try {
 				// set timeout to receive response
-				sendReceiveSocket.setSoTimeout(TIMEOUT);				
-				
-				try {
-					System.out.println("\nClient: Waiting for packet...");
-					// block until a DatagramPacket is received via sendReceiveSocket 
-					sendReceiveSocket.receive(packet);
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				sendReceiveSocket.setSoTimeout(TIMEOUT);
+				sendReceiveSocket.receive(packet);
+			} catch (IOException e1) {
+				throw new SocketTimeoutException();  // timed out
+			}
 			
 			
 			// check for wrong transfer ID 
