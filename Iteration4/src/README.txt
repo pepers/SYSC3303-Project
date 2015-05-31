@@ -101,9 +101,7 @@ USE
 TESTING
 	- most testing can be done through following the 
 	onscreen console prompts in the Error Simulator,
-	outlined in the previous section, but for those
-	errors that can't be simulated through the Error
-	Simulator:
+	but for those errors that can't be simulated through the 	Error	Simulator:
 
 	ERROR CODE 03
 	- to test Error Code 03 (Disk full), the Eclipse 
@@ -122,4 +120,136 @@ TESTING
 	- next try sending a RRQ or WRQ, and you will get 
 	Error Code 03, because the disk is full, and files
 	are not able to be written
+
+	PATHS THROUGH ERROR SIMULATION MENU
+	- when choosing Error Simulation Mode, instead of 
+	Normal Mode, the following paths through the menu can
+	be taken to simulate a variety of errors:
+
+	- 1. Lose a packet.
+		- 1. RRQ
+			- which RRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 2. WRQ
+			- which WRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 3. DATA
+			- which DATA (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 4. ACK
+			- which ACK (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 5. ERROR
+			- which ERROR (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+	- 2. Delay a packet.
+		- 1. RRQ
+			- which RRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 2. WRQ
+			- which WRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 3. DATA
+			- which DATA (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 4. ACK
+			- which ACK (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 5. ERROR
+			- which ERROR (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+	- 3. Duplicate a packet.
+		- 1. RRQ
+			- which RRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 2. WRQ
+			- which WRQ (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 3. DATA
+			- which DATA (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 4. ACK
+			- which ACK (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+		- 5. ERROR
+			- which ERROR (1st, 2nd, 3rd, etc.)
+				- coming from Client? or Server?
+	- 4. Send a packet.
+		- 1. RRQ
+			- enter a filename
+				- which packet (1st, 2nd, 3rd, etc.)
+					- sending to Client? or Server?
+		- 2. WRQ
+			- enter a filename
+				- which packet (1st, 2nd, 3rd, etc.)
+					- sending to Client? or Server?
+		- 3. DATA
+			- enter a block number (0-127)
+				- which packet (1st, 2nd, 3rd, etc.)
+					- sending to Client? or Server?
+		- 4. ACK
+			- enter a block number (0-127)
+				- which packet (1st, 2nd, 3rd, etc.)
+					- sending to Client? or Server?
+		- 5. ERROR
+			- enter an error code (0-8, 8 is invalid)
+				- which packet (1st, 2nd, 3rd, etc.)
+					- sending to Client? or Server?
+	- 5. Edit a packet.
+		- 1. RRQ
+			- 1. make opcode invalid
+				- which RRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 2. change filename to 'DOESNTEXIST'
+				- which RRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 3. make mode invalid
+				- which RRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+		- 2. WRQ
+			- 1. make opcode invalid
+				- which WRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 2. change filename to 'DOESNTEXIST'
+				- which WRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 3. make mode invalid
+				- which WRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+		- 3. DATA
+			- 1. make opcode invalid
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 2. change block number (0-127)
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 3. delete data field
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+		- 4. ACK
+			1. make opcode invalid
+				- which ACK (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			2. change block number (0-127)
+				- which ACK (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+		- 5. ERROR
+			1. make opcode invalid
+				- which ERROR (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			2. change error code (0-8, 8 is invalid)
+				- which ERROR (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+		
+		DISCLAIMER
+		- Many of the previous paths will produce the same 
+		errors, and many paths won't affect file transfer
+		at all (eg: choosing the 2nd RRQ to edit, there will
+		be only one RRQ in a transfer, and it will be the 
+		first packet).  It is up to the user of the Error
+		Simulator to understand how file transfer program 
+		works, and how to correctly test for various TFTP
+		errors.
+
+
 	 

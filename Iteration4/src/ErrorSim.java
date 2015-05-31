@@ -36,7 +36,8 @@ public class ErrorSim
 	private static boolean eMdFlag = false; // make mode invalid
 	private static byte eBlockNumber = 0;   // block number to change to
 	private static boolean eDfFlag = false; // delete the data field in DATA
-	private static byte errorCode = 0;       // change error code
+	private static byte errorCode = 0;      // change error code
+	private static String filename = null;  // filename for RRQ or WRQ to send
    
 	public ErrorSim() 
 	{		
@@ -73,14 +74,15 @@ public class ErrorSim
 				// start new connection between client and server in normal mode			
 				ConnectionThread = new Thread(new Connection(
 					receivePacket, packetType, packetDo, choiceIsServer, choiceInt,
-					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag, errorCode),
+					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag, errorCode,
+					filename),
 					"ErrorSim Connection Thread");
 				System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
 			} else {
 				// start new connection between client and server in normal mode			
 				ConnectionThread = new Thread(new Connection(
 					receivePacket, null, null, false, 0, false, false, false, 
-					(byte)0, false, (byte)0), 
+					(byte)0, false, (byte)0, null), 
 					"Normal Connection Thread");
 				System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
 			}
@@ -147,7 +149,8 @@ public class ErrorSim
 				}
 				while (true) {
 					// choose type of packet
-					System.out.println("\nError Simulator: What type of packet do you want to manipulate?");
+					System.out.println("\nError Simulator: What type of packet do you want to "
+							+ packetDo.name() + "?");
 					System.out.println("\t 1. RRQ packet.");
 					System.out.println("\t 2. WRQ packet.");
 					System.out.println("\t 3. DATA packet.");
@@ -174,8 +177,50 @@ public class ErrorSim
 						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 					}
 				}
+				// sending a file
+				if (packetDo == PacketDo.send) {
+					if (packetType == PacketType.RRQ || 
+							packetType == PacketType.WRQ) {
+						System.out.println("\nError Simulator: What would you like the Filename to be?");
+						filename = input.nextLine();	// user's choice
+					} else if (packetType == PacketType.DATA ||
+							packetType == PacketType.ACK) {
+						while(true) {
+							System.out.println("\nError Simulator: Enter a Block Number between 0-127 for your "
+									+ packetType.name() + " packet...");
+							try {
+								int bnInt = Integer.parseInt(input.nextLine());  // user's choice
+								if (bnInt < 0 || bnInt > 127) { 
+									System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
+								} else {
+									eBlockNumber = (byte)bnInt;
+									break;
+								}	
+							} catch (NumberFormatException n) {
+								System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+							}				
+							break;
+						}
+					} else if (packetType == PacketType.ERROR) {
+						while(true) {
+							System.out.println("\nError Simulator: Enter an Error Code between 0-8 for your "
+									+ packetType.name() + " packet (8 is an invalid TFTP Error Code)...");
+							try {
+								int ecInt = Integer.parseInt(input.nextLine());  // user's choice
+								if (ecInt < 0 || ecInt > 8) { 
+									System.out.println("\nI'm sorry, " + ecInt + " is not a valid choice.  Please try again...");
+								} else {
+									errorCode = (byte)ecInt;
+									break;
+								}	
+							} catch (NumberFormatException n) {
+								System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+							}				
+							break;
+						}
+					}
 				// editing a file
-				if (packetDo == PacketDo.edit) {
+				} else if (packetDo == PacketDo.edit) {
 					// RRQ or WRQ menu
 					if (packetType == PacketType.RRQ || 
 							packetType == PacketType.WRQ) {
@@ -284,10 +329,10 @@ public class ErrorSim
 							} else if (choice.equals("2")) {
 								// choose the error code
 								while (true) {
-									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Error Code to...");
+									System.out.println("\nError Simulator: Enter a number between 0-8 to change the Error Code to (8 is an invalid TFTP Error Code)...");
 									try {
 										int ecInt = Integer.parseInt(input.nextLine());  // user's choice
-										if (ecInt < 0 || ecInt > 127) { 
+										if (ecInt < 0 || ecInt > 8) { 
 											System.out.println("\nI'm sorry, " + ecInt + " is not a valid choice.  Please try again...");
 										} else {
 											errorCode = (byte)ecInt;
@@ -434,6 +479,7 @@ class Connection implements Runnable
 	byte eBlockNumber; // change block number
 	boolean eDfFlag;   // delete data field
 	byte errorCode;    // change error code
+	String filename;   // change the filename in RRQ or WRQ
 	
 	// check if ErrorSim action took place, so it is only done once
 	private boolean actionFlag = false;
@@ -451,7 +497,8 @@ class Connection implements Runnable
 						boolean eMdFlag, 
 						byte eBlockNumber, 
 						boolean eDfFlag, 
-						byte errorCode) 
+						byte errorCode,
+						String filename) 
 	{
 		try {			
 			// create new socket to send/receive TFTP packets to/from Server
@@ -476,6 +523,7 @@ class Connection implements Runnable
 		this.eBlockNumber = eBlockNumber;
 		this.eDfFlag = eDfFlag;
 		this.errorCode = errorCode;
+		this.filename = filename;
 	}
 	
 	public void run () 
@@ -615,10 +663,7 @@ class Connection implements Runnable
 	 */
 	public void send (byte[] data, InetAddress addr, int port, 
 			DatagramSocket socket) 
-	{
-		// create new DatagramPacket to send to client
-		sendPacket = new DatagramPacket(data, data.length, addr, port);
-		
+	{		
 		// if haven't taken action on packet, try it
 		if (!actionFlag) {
 			if (packetMatchesChoice(data, port)) {
@@ -665,11 +710,32 @@ class Connection implements Runnable
 						return;	// don't send packet
 					// send another packet
 					} else if (packetDo == ErrorSim.PacketDo.send) {
-						//TODO
+						// create new DatagramPacket to send to client
+						byte[] otherData = createPacket();
+						sendPacket = new DatagramPacket(otherData, otherData.length, addr, port);
+						
+						// print out packet info to user
+						System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+						System.out.println("To host: " + addr + " : " + port);
+						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+						System.out.println(Arrays.toString(data) + "\n");
+						
+						// send the packet
+						try {
+							socket.send(sendPacket);
+							System.out.println(Thread.currentThread() + 
+								": Packet sent using port " + socket.getLocalPort() + ".");
+						} catch (IOException e) {
+							e.printStackTrace();
+							System.exit(1);
+						}
 					}
 				}
 			}
 		}
+		
+		// create new DatagramPacket to send to client
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
 		// print out packet info to user
 		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
@@ -698,7 +764,25 @@ class Connection implements Runnable
 	 * @return			true if can take action, false if not
 	 */
 	public boolean packetMatchesChoice (byte[] data, int port)
-	{		
+	{	
+		// if the packet was sent from the wrong host, don't take action
+		if (packetDo == ErrorSim.PacketDo.send) {
+			if (choiceIsServer && (port == serverPort)) {
+				return true;
+			} else if (!choiceIsServer && (port == clientPort)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			if (choiceIsServer && (port == serverPort)) {
+				return false;
+			} else if (!choiceIsServer && (port == clientPort)) {
+				return false;
+			}
+		}
+		
+		
 		// check that the received packet type matches the packet type that the
 		// user wants to take action on
 		switch (data[1]) {
@@ -737,14 +821,103 @@ class Connection implements Runnable
 				return false;
 		}
 		
-		// if the packet was sent from the wrong host, don't take action
-		if (choiceIsServer && (port == serverPort)) {
-			return false;
-		} else if (!choiceIsServer && (port == clientPort)) {
-			return false;
+		return true;
+	}
+		
+	/**
+	 * Creates the data for a new packet to send.  Packet type and contents are
+	 * based on what the user entered as choices.
+	 * 
+	 * @return	new packet data
+	 */
+	public byte[] createPacket() {
+		// write bytes to stream, and then convert to byte[] at end of method
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		
+		byte[] packet = null;  // the packet data to return
+		
+		byteStream.write(0); // first byte of opcode
+		
+		// create packet data based on packet type
+		switch (packetType) {
+			case RRQ : byteStream.write(1); // second byte of opcode
+				try {
+					// write filename
+					byteStream.write(filename.getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				try {
+					// write mode
+					byteStream.write("octet".getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			case WRQ : byteStream.write(2); // second byte of opcode
+				try {
+					// write filename
+					byteStream.write(filename.getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				try {
+					// write mode
+					byteStream.write("octet".getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			case DATA : byteStream.write(3); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(eBlockNumber);
+				try {
+					// write some data in data field
+					byteStream.write("*** THIS IS IN THE DATA FIELD ***".getBytes(
+							"US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create DATA.");
+					return null;
+				}
+				break;
+			case ACK : byteStream.write(4); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(eBlockNumber);
+				break;
+			case ERROR : byteStream.write(5); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(errorCode);
+				try {
+					// write some data in data field
+					byteStream.write("*** THIS IS YOUR ERROR MESSAGE ***".getBytes(
+							"US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create ERROR.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			default :
+				return null;
 		}
 		
-		return true;
+		// convert stream to byte[] to return
+		packet = byteStream.toByteArray();
+		
+		// make opcode invalid
+		if (eOpFlag) {
+			packet[1] = 0;
+		}
+		
+		return packet;
 	}
 }
 
