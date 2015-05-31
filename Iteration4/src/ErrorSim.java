@@ -31,6 +31,12 @@ public class ErrorSim
 	private static PacketDo packetDo = null;
 	private static boolean choiceIsServer = true; // true if choice is server, false if client
 	private static int choiceInt = 0; // the number of the packet to be manipulated
+	private static boolean eOpFlag = false; // make opcode invalid
+	private static boolean eFnFlag = false; // change filename
+	private static boolean eMdFlag = false; // make mode invalid
+	private static byte eBlockNumber = 0;   // block number to change to
+	private static boolean eDfFlag = false; // delete the data field in DATA
+	private static byte errorCode = 0;       // change error code
    
 	public ErrorSim() 
 	{		
@@ -56,26 +62,31 @@ public class ErrorSim
 		Quit quit = new Quit();		
 		quit.start(); 
 		
-		receivePacket = receive(receiveSocket); // receive packet on port 68, from Client			
-		if (receivePacket == null) { return; }  // user pressed q to quit ErrorSim		
-		
 		Thread ConnectionThread;  // to facilitate transfer of files between client and server
 		
-		if (errorSim) {
-			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(
-					receivePacket, packetType, packetDo, choiceIsServer, choiceInt),
+		// receive packets and start new connections 
+		while (true) {
+			receivePacket = receive(receiveSocket); // receive packet on port 68, from Client			
+			if (receivePacket == null) { return; }  // user pressed q to quit ErrorSim		
+				
+			if (errorSim) {
+				// start new connection between client and server in normal mode			
+				ConnectionThread = new Thread(new Connection(
+					receivePacket, packetType, packetDo, choiceIsServer, choiceInt,
+					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag, errorCode),
 					"ErrorSim Connection Thread");
-			System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
-		} else {
-			// start new connection between client and server in normal mode			
-			ConnectionThread = new Thread(new Connection(
-					receivePacket, null, null, false, 0), 
+				System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
+			} else {
+				// start new connection between client and server in normal mode			
+				ConnectionThread = new Thread(new Connection(
+					receivePacket, null, null, false, 0, false, false, false, 
+					(byte)0, false, (byte)0), 
 					"Normal Connection Thread");
-			System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
-		}
+				System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
+			}
 		
-		ConnectionThread.start();	// start new connection thread
+			ConnectionThread.start();	// start new connection thread
+		}
 	}
 	
 	/**
@@ -161,6 +172,137 @@ public class ErrorSim
 						break;
 					} else {
 						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}
+				}
+				// editing a file
+				if (packetDo == PacketDo.edit) {
+					// RRQ or WRQ menu
+					if (packetType == PacketType.RRQ || 
+							packetType == PacketType.WRQ) {
+						while (true) {
+							System.out.println("\nError Simulator: What would you like to edit in the " 
+									+ packetType.name() + " packet?");
+							System.out.println("\t 1. Make Opcode invalid.");
+							System.out.println("\t 2. Change filename to 'DOESNTEXIST'.");
+							System.out.println("\t 3. Make Mode invalid.");
+							System.out.println("(type the number corresponding to your choice...");
+							choice = input.nextLine();  // user's choice
+							if (choice.equals("1")) { 
+								eOpFlag = true;
+								break;
+							} else if (choice.equals("2")) {
+								eFnFlag = true;
+								break;
+							} else if (choice.equals("3")) {
+								eMdFlag = true;
+								break;
+							} else {
+								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+							}
+						}
+					// DATA menu
+					} else if (packetType == PacketType.DATA) {
+						while (true) {
+							System.out.println("\nError Simulator: What would you like to edit in the DATA packet?");
+							System.out.println("\t 1. Make Opcode invalid.");
+							System.out.println("\t 2. Change Block Number.");
+							System.out.println("\t 3. Delete Data field.");
+							System.out.println("(type the number corresponding to your choice...");
+							choice = input.nextLine();  // user's choice
+							if (choice.equals("1")) { 
+								eOpFlag = true;
+								break;
+							} else if (choice.equals("2")) {
+								// choose the block number
+								while (true) {
+									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Block Number to...");
+									try {
+										int bnInt = Integer.parseInt(input.nextLine());  // user's choice
+										if (bnInt < 0 || bnInt > 127) { 
+											System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
+										} else {
+											eBlockNumber = (byte)bnInt;
+											break;
+										}	
+									} catch (NumberFormatException n) {
+										System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+									}				
+									break;
+								}
+								break;
+							} else if (choice.equals("3")) {
+								eDfFlag = true;
+								break;
+							} else {
+								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+							}
+						}					
+					// ACK menu
+					} else if (packetType == PacketType.ACK) {
+						while (true) {
+							System.out.println("\nError Simulator: What would you like to edit in the ACK packet?");
+							System.out.println("\t 1. Make Opcode invalid.");
+							System.out.println("\t 2. Change Block Number.");
+							System.out.println("(type the number corresponding to your choice...");
+							choice = input.nextLine();  // user's choice
+							if (choice.equals("1")) { 
+								eOpFlag = true;
+								break;
+							} else if (choice.equals("2")) {
+								// choose the block number
+								while (true) {
+									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Block Number to...");
+									try {
+										int bnInt = Integer.parseInt(input.nextLine());  // user's choice
+										if (bnInt < 0 || bnInt > 127) { 
+											System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
+										} else {
+											eBlockNumber = (byte)bnInt;
+											break;
+										}	
+									} catch (NumberFormatException n) {
+										System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+									}				
+									break;
+								}
+								break;
+							} else {
+								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+							}
+						}
+					// ERROR menu
+					} else if (packetType == PacketType.ERROR) {
+						while (true) {
+							System.out.println("\nError Simulator: What would you like to edit in the ERROR packet?");
+							System.out.println("\t 1. Make Opcode invalid.");
+							System.out.println("\t 2. Change Error Code.");
+							System.out.println("(type the number corresponding to your choice...");
+							choice = input.nextLine();  // user's choice
+							if (choice.equals("1")) { 
+								eOpFlag = true;
+								break;
+							} else if (choice.equals("2")) {
+								// choose the error code
+								while (true) {
+									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Error Code to...");
+									try {
+										int ecInt = Integer.parseInt(input.nextLine());  // user's choice
+										if (ecInt < 0 || ecInt > 127) { 
+											System.out.println("\nI'm sorry, " + ecInt + " is not a valid choice.  Please try again...");
+										} else {
+											errorCode = (byte)ecInt;
+											break;
+										}	
+									} catch (NumberFormatException n) {
+										System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+									}				
+									break;
+								}
+								break;
+							} else {
+								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+							}
+						}
 					}
 				}
 				while (true) {
@@ -286,6 +428,12 @@ class Connection implements Runnable
 	private boolean choiceIsServer; // true if choice is server, false if client
 	private int packetNumber; // number of packet to be manipulated
 	private int actionCount; // count packets of one type, in order to tell when to take action
+	boolean eOpFlag;   // change opcode 
+	boolean eFnFlag;   // change filename
+	boolean eMdFlag;   // change mode
+	byte eBlockNumber; // change block number
+	boolean eDfFlag;   // delete data field
+	byte errorCode;    // change error code
 	
 	// check if ErrorSim action took place, so it is only done once
 	private boolean actionFlag = false;
@@ -297,7 +445,13 @@ class Connection implements Runnable
 						ErrorSim.PacketType packetType, 
 						ErrorSim.PacketDo packetDo, 
 						boolean choiceIsServer,
-						int packetNumber) 
+						int packetNumber,
+						boolean eOpFlag, 
+						boolean eFnFlag, 
+						boolean eMdFlag, 
+						byte eBlockNumber, 
+						boolean eDfFlag, 
+						byte errorCode) 
 	{
 		try {			
 			// create new socket to send/receive TFTP packets to/from Server
@@ -316,6 +470,12 @@ class Connection implements Runnable
 		this.packetDo = packetDo;
 		this.choiceIsServer = choiceIsServer;
 		this.packetNumber = packetNumber;
+		this.eOpFlag = eOpFlag;
+		this.eFnFlag = eFnFlag;
+		this.eMdFlag = eMdFlag;
+		this.eBlockNumber = eBlockNumber;
+		this.eDfFlag = eDfFlag;
+		this.errorCode = errorCode;
 	}
 	
 	public void run () 
