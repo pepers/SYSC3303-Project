@@ -246,6 +246,8 @@ public class Server
 		} 
 		
 		Opcode op = getOpcode(received);	// get opcode
+		if (op == null)
+			return false;
 		
 		// organize by opcode
 		switch (op) {
