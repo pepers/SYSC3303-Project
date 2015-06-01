@@ -69,22 +69,21 @@ public class ErrorSim
 		while (true) {
 			receivePacket = receive(receiveSocket); // receive packet on port 68, from Client			
 			if (receivePacket == null) { return; }  // user pressed q to quit ErrorSim		
-				
+			
+			int sendPort = receivePacket.getPort(); // port to send to during connection
+			
 			if (errorSim) {
-				// start new connection between client and server in normal mode			
-				ConnectionThread = new Thread(new Connection(
-					receivePacket, packetType, packetDo, choiceIsServer, choiceInt,
-					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag, errorCode,
-					filename),
-					"ErrorSim Connection Thread");
-				System.out.println("\nError Simulator: New File Transfer Connection Started, in Error Simulation Mode... ");			
+				// start new connection to server in error simulation mode			
+				ConnectionThread = new Thread(new ToServer(
+					receivePacket, packetType, packetDo, choiceIsServer, 
+					choiceInt, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
+					errorCode,filename, null, null, sendPort), "TransferToServer");
+				System.out.println("\nError Simulator: New File Transfer Starting to Server, in Error Simulation Mode... ");			
 			} else {
-				// start new connection between client and server in normal mode			
-				ConnectionThread = new Thread(new Connection(
-					receivePacket, null, null, false, 0, false, false, false, 
-					(byte)0, false, (byte)0, null), 
-					"Normal Connection Thread");
-				System.out.println("\nError Simulator: New File Transfer Connection Started, in Normal Mode... ");		
+				// start new connection to server in normal mode			
+				ConnectionThread = new Thread(new ToServer(receivePacket, 
+						null, null, sendPort), "TransferToServer" );
+				System.out.println("\nError Simulator: New File Transfer Starting to Server, in Normal Mode... ");		
 			}
 		
 			ConnectionThread.start();	// start new connection thread
@@ -441,6 +440,15 @@ public class ErrorSim
 				System.out.print("Containing " + receivePacket.getLength() + 
 						" bytes: \n");
 				
+				// get data from packet
+				byte[] packetData = new byte[receivePacket.getLength()];
+				System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
+						packetData, 0, receivePacket.getLength());
+				
+				// display data to user
+				System.out.println(Arrays.toString(packetData));
+				
+				
 				break;
 			} catch(IOException e) {
 				return null;  // socket was closed, return null
@@ -454,22 +462,20 @@ public class ErrorSim
 
 
 /**
- * Continues the connection with Client and Server
- * in normal or error simulation mode.
+ * Receive from Client, send to Server.
  *
  */
-class Connection implements Runnable 
+class ToServer implements Runnable 
 {	
 	// UDP DatagramPackets and sockets used to send/receive
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket serverSocket, clientSocket;
 	
-	int clientPort;    // the port from which the Client is sending from
-	int serverPort;    // the port from which the Server is sending from
+	int sendPort;  // port to send to
 	
 	// choices when entering Error Simulation Mode
-	private ErrorSim.PacketType packetType;
-	private ErrorSim.PacketDo packetDo;
+	private ErrorSim.PacketType packetType = null;
+	private ErrorSim.PacketDo packetDo = null;
 	private boolean choiceIsServer; // true if choice is server, false if client
 	private int packetNumber; // number of packet to be manipulated
 	private int actionCount; // count packets of one type, in order to tell when to take action
@@ -486,8 +492,28 @@ class Connection implements Runnable
 	
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
-		
-	public Connection (DatagramPacket receivePacket, 
+	
+	/**
+	 * ErrorSim started in Error Simulation Mode.
+	 * This method is overloaded.
+	 * 
+	 * @param receivePacket		packet received by ErrorSim on port 68
+	 * @param packetType		type of packet to manipulate
+	 * @param packetDo			how to manipulate packet
+	 * @param choiceIsServer	where to manipulate packet
+	 * @param packetNumber		which packet to manipulate
+	 * @param eOpFlag			change opcode to invalid
+	 * @param eFnFlag			change filename to 'DOESNTEXIST'
+	 * @param eMdFlag			change mode to invalid
+	 * @param eBlockNumber		change block number to invalid
+	 * @param eDfFlag			delete data field
+	 * @param errorCode			change error code to this
+	 * @param filename			change filename  to this
+	 * @param serverSocket		socket to send to Server
+	 * @param clientSocket		socket to receive from Client
+	 * @param sendPort			port on Server to send packets to
+	 */
+	public ToServer (DatagramPacket receivePacket, 
 						ErrorSim.PacketType packetType, 
 						ErrorSim.PacketDo packetDo, 
 						boolean choiceIsServer,
@@ -498,16 +524,34 @@ class Connection implements Runnable
 						byte eBlockNumber, 
 						boolean eDfFlag, 
 						byte errorCode,
-						String filename) 
+						String filename,
+						DatagramSocket serverSocket,
+						DatagramSocket clientSocket,
+						int sendPort) 
 	{
-		try {			
-			// create new socket to send/receive TFTP packets to/from Server
-			serverSocket = new DatagramSocket();
-			
-		} catch (SocketException se) {
-			se.printStackTrace();
-			System.exit(1);
-		}   
+		/* If this Connection thread is to send to Server, the sockets will be
+		   null and must be created.
+		   
+		   If this Connection thread is to send to Client, sockets will have 
+		   been passed to it, and will not need to be created.
+		*/ 		
+		if (serverSocket == null) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Server
+				serverSocket = new DatagramSocket();			
+				// open new socket to send/receive to/from Client
+				clientSocket = new DatagramSocket();			
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
+		
+		// sockets
+		this.serverSocket = serverSocket;
+		this.clientSocket = clientSocket;
+		
+		this.sendPort = sendPort;  // port to send to
 		
 		// the original packet received on ErrorSim's port 68, from client
 		this.receivePacket = receivePacket;  
@@ -526,47 +570,112 @@ class Connection implements Runnable
 		this.filename = filename;
 	}
 	
+	/**
+	 * ErrorSim started in Normal Mode.
+	 * This method is overloaded.
+	 * 
+	 * @param receivePacket	packet received by ErrorSim on port 68
+	 * @param serverSocket	socket to send to Server
+	 * @param clientSocket	socket to receive from Client
+	 * @param sendPort		port on Server to send packets to
+	 */
+	public ToServer (DatagramPacket receivePacket,
+			DatagramSocket serverSocket,
+			DatagramSocket clientSocket,
+			int sendPort) 
+	{
+		/* If this Connection thread is to send to Server, the sockets will be
+			null and must be created.
+
+		   If this Connection thread is to send to Client, sockets will have 
+			been passed to it, and will not need to be created.
+		 */ 		
+		if (serverSocket == null) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Server
+				serverSocket = new DatagramSocket();			
+				// open new socket to send/receive to/from Client
+				clientSocket = new DatagramSocket();			
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
+
+		// sockets
+		this.serverSocket = serverSocket;
+		this.clientSocket = clientSocket;
+		
+		this.sendPort = sendPort;  // port to send to
+
+		// the original packet received on ErrorSim's port 68, from client
+		this.receivePacket = receivePacket; 
+	}
+	
 	public void run () 
-	{		
-		byte[] received;   // received data from DatagramPacket
-			
-		received = processDatagram(receivePacket);  // print packet data to user
-		clientPort = receivePacket.getPort(); // so we can send response later
+	{
+		// received data from DatagramPacket					
+		byte[] received = new byte[receivePacket.getLength()];
+		System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), received, 0, 
+				receivePacket.getLength());
 		
-		try {
-			// open new socket to send to Client
-			clientSocket = new DatagramSocket(); 
-		} catch (SocketException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}   
-		
+		// get port for ToClient
+		int clientPort = receivePacket.getPort();
+					
 		// passes Client's packet to Server
-		send(received, receivePacket.getAddress(), 69, serverSocket);  
+		send(received, receivePacket.getAddress(), 69, serverSocket); 
 		
-		while(true) {          
-			receivePacket = receiveServer(); // receive packet from Server
-			received = processDatagram(receivePacket); // print packet data to user	
-			serverPort = receivePacket.getPort(); // so we can send response
-			
-			// passes Server's packet to Client
-			send(received, receivePacket.getAddress(), clientPort, clientSocket);  
-			
-			receivePacket = receiveClient(); // receive packet from Client
+		// receive response from Server, in order to get port to send to later
+		receivePacket = receive(serverSocket);
+		received = processDatagram(receivePacket);  // print packet data to user
+		sendPort = receivePacket.getPort();  // get port on Server to send to
+		
+		
+		Thread ConnectionThread;  // for ToClient connection		
+		if (packetDo != null) {
+			// start new connection in error simulation mode			
+			ConnectionThread = new Thread(new ToClient(receivePacket,
+					packetType, packetDo, choiceIsServer, packetNumber,
+					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
+					errorCode,filename, serverSocket, clientSocket, 
+					clientPort), "TransferToClient");
+			System.out.println("\n" + threadName() + 
+					": File Transfer Continuing to Client, in Error Simulation Mode... ");			
+		} else {
+			// start new connection in normal mode			
+			ConnectionThread = new Thread(new ToClient(receivePacket, 
+					serverSocket, clientSocket, clientPort), "TransferToClient");
+			System.out.println("\n" + threadName() + 
+					": File Transfer Continuing to Client, in Normal Mode... ");			
+		}
+	
+		ConnectionThread.start();	// start new connection ToClient thread 
+		
+		while (true) {	
+			receivePacket = receive(clientSocket); // receive packet from Client
 			received = processDatagram(receivePacket); // print packet data to user
 			
-			// passes Client's packet to Server			
-			send(received, receivePacket.getAddress(), serverPort, serverSocket);  
-		} 
+			// passes Client's packet to Server
+			send(received, receivePacket.getAddress(), sendPort, serverSocket);
+		}	
 	}
 	
 	/**
-	 * Receives DatagramPacket packets from client.
+	 * Gets a nicer looking thread name and id combo.
+	 * 
+	 * @return	thread name/id
+	 */
+	public String threadName () {
+		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	/**
+	 * Receives DatagramPacket packets.
 	 * 
 	 * @param socket			the DatagramSocket to be receiving packets from
 	 * @return DatagramPacket 	received
 	 */
-	public DatagramPacket receiveClient() 
+	public DatagramPacket receive(DatagramSocket socket) 
 	{
 		// no packet will be larger than DATA packet
 		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
@@ -576,51 +685,13 @@ class Connection implements Runnable
 		
 		while (true){
 			try {
-				// block until a DatagramPacket is received via sendSocket 
-				System.out.println("\n" + Thread.currentThread() + 
-						": Listening for packets from Client...");
-				clientSocket.receive(receivePacket);
+				// block until a DatagramPacket is received 
+				System.out.println("\n" + threadName() + 
+						": Listening for packets...");
+				socket.receive(receivePacket);
 				
 				// print out thread and port info
-				System.out.println("\n" + Thread.currentThread() + 
-						": packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + 
-						" : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + 
-						" bytes: \n");
-				
-				break;
-			} catch(IOException e) {
-				return null;  // socket was closed, return null
-			}
-		}
-		
-		return receivePacket;
-	}
-
-	/**
-	 * Receives DatagramPacket packets from server.
-	 * 
-	 * @return DatagramPacket 	received
-	 */
-	public DatagramPacket receiveServer() 
-	{
-		// no packet will be larger than DATA packet
-		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
-		// and block number
-		byte data[] = new byte[MAX_DATA + 4]; 
-		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
-		
-		while (true){
-			try {
-				// block until a DatagramPacket is received via sendSocket 
-				System.out.println("\n" + Thread.currentThread() + 
-						": Listening for packets from Server...");
-				serverSocket.receive(receivePacket);
-				
-				// print out thread and port info
-				System.out.println("\n" + Thread.currentThread() + 
-						": packet received: ");
+				System.out.println("\n" + threadName() + ": packet received: ");
 				System.out.println("From host: " + receivePacket.getAddress() + 
 						" : " + receivePacket.getPort());
 				System.out.print("Containing " + receivePacket.getLength() + 
@@ -663,82 +734,12 @@ class Connection implements Runnable
 	 */
 	public void send (byte[] data, InetAddress addr, int port, 
 			DatagramSocket socket) 
-	{		
-		// if haven't taken action on packet, try it
-		if (!actionFlag) {
-			if (packetMatchesChoice(data, port)) {
-				actionCount++;  // increase count of correct packet type
-				if (actionCount == packetNumber) {
-					actionFlag = true;  // take action on packet
-					// delay packet
-					if (packetDo == ErrorSim.PacketDo.delay) {
-						System.out.println("\n" + Thread.currentThread() + ": Delaying " + 
-								packetType + " packet...");
-						
-						// start new thread to delay packet			
-						Thread DelayThread = new Thread(new Delay(data, addr, port, socket),
-											"Packet Delay Thread");
-						DelayThread.start();
-						return;
-					// duplicate packet
-					} else if (packetDo == ErrorSim.PacketDo.duplicate) {
-						System.out.println("\n" + Thread.currentThread() + ": Duplicating " + 
-								packetType + " packet.");
-						
-						// print out packet info to user
-						System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
-						System.out.println("To host: " + addr + " : " + port);
-						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-						System.out.println(Arrays.toString(data) + "\n");
-						
-						// send the packet
-						try {
-							socket.send(sendPacket);
-							System.out.println(Thread.currentThread() + 
-								": Packet sent using port " + socket.getLocalPort() + ".");
-						} catch (IOException e) {
-							e.printStackTrace();
-							System.exit(1);
-						}
-					// edit packet
-					} else if (packetDo == ErrorSim.PacketDo.edit) {
-						//TODO
-					// lose packet
-					} else if (packetDo == ErrorSim.PacketDo.lose) {
-						System.out.println("\n" + Thread.currentThread() + ": Losing " + 
-								packetType + " packet.");
-						return;	// don't send packet
-					// send another packet
-					} else if (packetDo == ErrorSim.PacketDo.send) {
-						// create new DatagramPacket to send to client
-						byte[] otherData = createPacket();
-						sendPacket = new DatagramPacket(otherData, otherData.length, addr, port);
-						
-						// print out packet info to user
-						System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
-						System.out.println("To host: " + addr + " : " + port);
-						System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-						System.out.println(Arrays.toString(data) + "\n");
-						
-						// send the packet
-						try {
-							socket.send(sendPacket);
-							System.out.println(Thread.currentThread() + 
-								": Packet sent using port " + socket.getLocalPort() + ".");
-						} catch (IOException e) {
-							e.printStackTrace();
-							System.exit(1);
-						}
-					}
-				}
-			}
-		}
-		
+	{	
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
 		// print out packet info to user
-		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+		System.out.println("\n" + threadName() + ": Sending packet: ");
 		System.out.println("To host: " + addr + " : " + port);
 		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 		System.out.println(Arrays.toString(data) + "\n");
@@ -746,83 +747,13 @@ class Connection implements Runnable
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println(Thread.currentThread() + 
-				": Packet sent using port " + socket.getLocalPort() + ".");
+			System.out.println(threadName() + ": Packet sent using port " 
+					+ socket.getLocalPort() + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
-	}
-	
-	/**
-	 * Checks if it is safe to take Error Simulation action with packet.
-	 * 
-	 * @param data		packet data
-	 * @param addr		InetAddress to send to
-	 * @param port		port to send to 
-	 * @param socket	socket to send with
-	 * @return			true if can take action, false if not
-	 */
-	public boolean packetMatchesChoice (byte[] data, int port)
-	{	
-		// if the packet was sent from the wrong host, don't take action
-		if (packetDo == ErrorSim.PacketDo.send) {
-			if (choiceIsServer && (port == serverPort)) {
-				return true;
-			} else if (!choiceIsServer && (port == clientPort)) {
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			if (choiceIsServer && (port == serverPort)) {
-				return false;
-			} else if (!choiceIsServer && (port == clientPort)) {
-				return false;
-			}
-		}
-		
-		
-		// check that the received packet type matches the packet type that the
-		// user wants to take action on
-		switch (data[1]) {
-			case 1 :
-				if (packetType != ErrorSim.PacketType.RRQ) {
-					return false;
-				}
-				if (!choiceIsServer && (port == 69)) {
-					return true;
-				}
-				break;	
-			case 2 :
-				if (packetType != ErrorSim.PacketType.WRQ) {
-					return false;
-				}
-				if (!choiceIsServer && (port == 69)) {
-					return true;
-				}
-				break;
-			case 3 :
-				if (packetType != ErrorSim.PacketType.DATA) {
-					return false;
-				}
-				break;
-			case 4 :
-				if (packetType != ErrorSim.PacketType.ACK) {
-					return false;
-				}
-				break;
-			case 5 :
-				if (packetType != ErrorSim.PacketType.ERROR) {
-					return false;
-				}
-				break;
-			default :
-				return false;
-		}
-		
-		return true;
-	}
+	}	
 		
 	/**
 	 * Creates the data for a new packet to send.  Packet type and contents are
@@ -922,6 +853,364 @@ class Connection implements Runnable
 }
 
 
+/**
+ * Receive from Server, send to Client.
+ *
+ */
+class ToClient implements Runnable 
+{	
+	// UDP DatagramPackets and sockets used to send/receive
+	private DatagramPacket sendPacket, receivePacket;
+	private DatagramSocket serverSocket, clientSocket;
+	
+	int sendPort;  // port to send to
+	
+	// choices when entering Error Simulation Mode
+	private ErrorSim.PacketType packetType = null;
+	private ErrorSim.PacketDo packetDo = null;
+	private boolean choiceIsServer; // true if choice is server, false if client
+	private int packetNumber; // number of packet to be manipulated
+	private int actionCount; // count packets of one type, in order to tell when to take action
+	boolean eOpFlag;   // change opcode 
+	boolean eFnFlag;   // change filename
+	boolean eMdFlag;   // change mode
+	byte eBlockNumber; // change block number
+	boolean eDfFlag;   // delete data field
+	byte errorCode;    // change error code
+	String filename;   // change the filename in RRQ or WRQ
+	
+	// check if ErrorSim action took place, so it is only done once
+	private boolean actionFlag = false;
+	
+	// max number of bytes for data field in packet
+	public static final int MAX_DATA = 512;  
+	
+	/**
+	 * ErrorSim started in Error Simulation Mode.
+	 * This method is overloaded.
+	 * 
+	 * @param receivePacket		packet received by ErrorSim on port 68
+	 * @param packetType		type of packet to manipulate
+	 * @param packetDo			how to manipulate packet
+	 * @param choiceIsServer	where to manipulate packet
+	 * @param packetNumber		which packet to manipulate
+	 * @param eOpFlag			change opcode to invalid
+	 * @param eFnFlag			change filename to 'DOESNTEXIST'
+	 * @param eMdFlag			change mode to invalid
+	 * @param eBlockNumber		change block number to invalid
+	 * @param eDfFlag			delete data field
+	 * @param errorCode			change error code to this
+	 * @param filename			change filename  to this
+	 * @param serverSocket		socket to receive from Server
+	 * @param clientSocket		socket to send to Client
+	 * @param sendPort			port on Client to send packets to
+	 */
+	public ToClient (DatagramPacket receivePacket, 
+						ErrorSim.PacketType packetType, 
+						ErrorSim.PacketDo packetDo, 
+						boolean choiceIsServer,
+						int packetNumber,
+						boolean eOpFlag, 
+						boolean eFnFlag, 
+						boolean eMdFlag, 
+						byte eBlockNumber, 
+						boolean eDfFlag, 
+						byte errorCode,
+						String filename,
+						DatagramSocket serverSocket,
+						DatagramSocket clientSocket,
+						int sendPort) 
+	{
+		/* If this Connection thread is to send to Server, the sockets will be
+		   null and must be created.
+		   
+		   If this Connection thread is to send to Client, sockets will have 
+		   been passed to it, and will not need to be created.
+		*/ 		
+		if (serverSocket == null) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Server
+				serverSocket = new DatagramSocket();			
+				// open new socket to send/receive to/from Client
+				clientSocket = new DatagramSocket();			
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
+		
+		// sockets
+		this.serverSocket = serverSocket;
+		this.clientSocket = clientSocket;
+		
+		this.sendPort = sendPort;  // port to send to
+		
+		// the original packet received on ErrorSim's port 68, from client
+		this.receivePacket = receivePacket;  
+		
+		// choices made for error simulation
+		this.packetType = packetType;
+		this.packetDo = packetDo;
+		this.choiceIsServer = choiceIsServer;
+		this.packetNumber = packetNumber;
+		this.eOpFlag = eOpFlag;
+		this.eFnFlag = eFnFlag;
+		this.eMdFlag = eMdFlag;
+		this.eBlockNumber = eBlockNumber;
+		this.eDfFlag = eDfFlag;
+		this.errorCode = errorCode;
+		this.filename = filename;
+	}
+	
+	/**
+	 * ErrorSim started in Normal Mode.
+	 * This method is overloaded.
+	 * 
+	 * @param receivePacket	packet received by ErrorSim on port 68
+	 * @param serverSocket	socket to receive from Server
+	 * @param clientSocket	socket to send to Client
+	 * @param sendPort		port on Client to send packets to
+	 */
+	public ToClient (DatagramPacket receivePacket,
+			DatagramSocket serverSocket,
+			DatagramSocket clientSocket,
+			int sendPort) 
+	{
+		/* If this Connection thread is to send to Server, the sockets will be
+			null and must be created.
+
+		   If this Connection thread is to send to Client, sockets will have 
+			been passed to it, and will not need to be created.
+		 */ 		
+		if (serverSocket == null) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Server
+				serverSocket = new DatagramSocket();			
+				// open new socket to send/receive to/from Client
+				clientSocket = new DatagramSocket();			
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
+
+		// sockets
+		this.serverSocket = serverSocket;
+		this.clientSocket = clientSocket;
+		
+		this.sendPort = sendPort;  // port to send to
+
+		// the original packet received on ErrorSim's port 68, from client
+		this.receivePacket = receivePacket; 
+	}
+	
+	public void run () 
+	{
+		// received data from DatagramPacket	
+		byte[] received = new byte[receivePacket.getLength()];
+		System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
+				received, 0, receivePacket.getLength());
+		
+		while (true) {
+			// passes Server's packet to Client
+			send(received, receivePacket.getAddress(), sendPort, clientSocket);
+			receivePacket = receive(serverSocket);  // receive packet from Server
+			received = processDatagram(receivePacket); // print packet data to user
+		}	
+	}
+	
+	/**
+	 * Gets a nicer looking thread name and id combo.
+	 * 
+	 * @return	thread name/id
+	 */
+	public String threadName () {
+		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	/**
+	 * Receives DatagramPacket packets.
+	 * 
+	 * @param socket			the DatagramSocket to be receiving packets from
+	 * @return DatagramPacket 	received
+	 */
+	public DatagramPacket receive(DatagramSocket socket) 
+	{
+		// no packet will be larger than DATA packet
+		// room for a possible maximum of 512 bytes of data + 4 bytes opcode 
+		// and block number
+		byte data[] = new byte[MAX_DATA + 4]; 
+		DatagramPacket receivePacket = new DatagramPacket(data, data.length);
+		
+		while (true){
+			try {
+				// block until a DatagramPacket is received 
+				System.out.println("\n" + threadName() + 
+						": Listening for packets...");
+				socket.receive(receivePacket);
+				
+				// print out thread and port info
+				System.out.println("\n" + threadName() + ": packet received: ");
+				System.out.println("From host: " + receivePacket.getAddress() + 
+						" : " + receivePacket.getPort());
+				System.out.print("Containing " + receivePacket.getLength() + 
+						" bytes: \n");
+				
+				break;
+			} catch(IOException e) {
+				return null;  // socket was closed, return null
+			}
+		}
+		
+		return receivePacket;
+	}
+	
+	/**
+	 * Makes an appropriately sized byte[] from a DatagramPacket
+	 * 
+	 * @param packet	the received DatagramPacket
+	 * @return			the data from the DatagramPacket
+	 */
+	public byte[] processDatagram (DatagramPacket packet) 
+	{
+		byte[] data = new byte[packet.getLength()];
+		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
+				packet.getLength());
+		
+		// display info to user
+		System.out.println(Arrays.toString(data));
+		
+		return data;
+	}
+	
+	/**
+	 * Sends DatagramPackets.
+	 * 
+	 * @param data		data byte[] to be included in DatagramPacket
+	 * @param addr		InetAddress to send packet to
+	 * @param port		port to send packet to
+	 * @param socket	DatagramSocket to send packets with
+	 */
+	public void send (byte[] data, InetAddress addr, int port, 
+			DatagramSocket socket) 
+	{	
+		// create new DatagramPacket to send to client
+		sendPacket = new DatagramPacket(data, data.length, addr, port);
+		
+		// print out packet info to user
+		System.out.println("\n" + threadName() + ": Sending packet: ");
+		System.out.println("To host: " + addr + " : " + port);
+		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
+		System.out.println(Arrays.toString(data) + "\n");
+		
+		// send the packet
+		try {
+			socket.send(sendPacket);
+			System.out.println(threadName() + ": Packet sent using port " 
+					+ socket.getLocalPort() + ".");
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}	
+		
+	/**
+	 * Creates the data for a new packet to send.  Packet type and contents are
+	 * based on what the user entered as choices.
+	 * 
+	 * @return	new packet data
+	 */
+	public byte[] createPacket() {
+		// write bytes to stream, and then convert to byte[] at end of method
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		
+		byte[] packet = null;  // the packet data to return
+		
+		byteStream.write(0); // first byte of opcode
+		
+		// create packet data based on packet type
+		switch (packetType) {
+			case RRQ : byteStream.write(1); // second byte of opcode
+				try {
+					// write filename
+					byteStream.write(filename.getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				try {
+					// write mode
+					byteStream.write("octet".getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			case WRQ : byteStream.write(2); // second byte of opcode
+				try {
+					// write filename
+					byteStream.write(filename.getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				try {
+					// write mode
+					byteStream.write("octet".getBytes("US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create WRQ.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			case DATA : byteStream.write(3); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(eBlockNumber);
+				try {
+					// write some data in data field
+					byteStream.write("*** THIS IS IN THE DATA FIELD ***".getBytes(
+							"US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create DATA.");
+					return null;
+				}
+				break;
+			case ACK : byteStream.write(4); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(eBlockNumber);
+				break;
+			case ERROR : byteStream.write(5); // second byte of opcode
+				byteStream.write(0);
+				byteStream.write(errorCode);
+				try {
+					// write some data in data field
+					byteStream.write("*** THIS IS YOUR ERROR MESSAGE ***".getBytes(
+							"US-ASCII"));
+				} catch (IOException e) {
+					System.out.println("\nError: could not create ERROR.");
+					return null;
+				}
+				byteStream.write(0);
+				break;
+			default :
+				return null;
+		}
+		
+		// convert stream to byte[] to return
+		packet = byteStream.toByteArray();
+		
+		// make opcode invalid
+		if (eOpFlag) {
+			packet[1] = 0;
+		}
+		
+		return packet;
+	}
+}
+
 
 /**
  * Delays and sends a packet.
@@ -950,7 +1239,7 @@ class Delay implements Runnable
 		// delay the packet
 		try {
             Thread.sleep(DELAY);
-            System.out.println("\n" + Thread.currentThread() + ": Packet Delayed.");
+            System.out.println("\n" + threadName() + ": Packet Delayed.");
         } catch (InterruptedException e) {
         	Thread.currentThread().interrupt();
         }
@@ -961,7 +1250,7 @@ class Delay implements Runnable
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 		
 		// print out packet info to user
-		System.out.println("\n" + Thread.currentThread() + ": Sending packet: ");
+		System.out.println("\n" + threadName() + ": Sending packet: ");
 		System.out.println("To host: " + addr + " : " + port);
 		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
 		System.out.println(Arrays.toString(data) + "\n");
@@ -969,13 +1258,23 @@ class Delay implements Runnable
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println(Thread.currentThread() + 
-					": Packet sent using port " + socket.getLocalPort() + ".");
+			System.out.println("\n" + threadName() + ": Packet sent using port " 
+					+ socket.getLocalPort() + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 		
+	}
+	
+	/**
+	 * Gets a nicer looking thread name and id combo.
+	 * 
+	 * @return	thread name/id
+	 */
+	public String threadName () 
+	{
+		return Thread.currentThread().getName() + Thread.currentThread().getId();
 	}
 }
 

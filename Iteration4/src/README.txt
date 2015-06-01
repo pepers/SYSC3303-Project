@@ -94,8 +94,11 @@ USE
 	and not interfering with them
 	- Error Simulator Mode allows the user to simulate
 	errors happening during the file transfer, and the
-	user will be prompted to choose which error they want 
-	to simulate
+	user will be prompted to choose a variety of settings
+	with which to simulate those errors
+	- the Error Simulator must be closed and restarted 
+	between each transfer
+	
 
 
 TESTING

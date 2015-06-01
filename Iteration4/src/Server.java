@@ -28,10 +28,10 @@ import java.util.Scanner;
  */
 public class Server 
 {	
-	DatagramPacket receivePacket;						// to receive DatagramPackets from Client
-	static DatagramSocket receiveSocket;						// Client sends to port 69
-	public static final int MAX_DATA = 512;				// maximum size of data block
-	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
+	DatagramPacket receivePacket;                       // to receive DatagramPackets from Client
+	static DatagramSocket receiveSocket;                // Client sends to port 69
+	public static final int MAX_DATA = 512;             // maximum size of data block
+	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }   // opcodes for different DatagramPackets in TFTP
 	
 	public Server() 
 	{
@@ -113,9 +113,9 @@ public class Server
 	public void makeConnection (DatagramPacket receivePacket) 
 	{
 		// create new thread to communicate with Client and transfer file
-		// pass it DatagramPacket that was received				
+		// pass it DatagramPacket that was received	
 		Thread clientConnectionThread = new Thread(
-				new ClientConnection(receivePacket), "Client Connection Thread");
+				new ClientConnection(receivePacket), "ClientConnection");
 		System.out.println("Server: New File Transfer Connection Started ");
 		clientConnectionThread.start();	// start new connection thread
 	}
@@ -134,7 +134,7 @@ public class Server
 		// create new thread to communicate with Client and transfer file
 		// pass it DatagramPacket that was received	
 		Thread clientConnectionThread = new Thread(
-				new ClientConnection(receivePacket, error), "Error Sending Thread");
+				new ClientConnection(receivePacket, error), "ErrorSendingThread");
 		clientConnectionThread.start();	// start new connection thread
 	}
 	
@@ -464,6 +464,7 @@ class ClientConnection implements Runnable
 	
 	/** 
 	 * For file transfer.
+	 * This method is overloaded.
 	 * 
 	 * @param requestPacket	RRQ or WRQ received
 	 */
@@ -486,6 +487,7 @@ class ClientConnection implements Runnable
 	
 	/**
 	 * For sending an ERROR packet.
+	 * This method is overloaded.
 	 * 
 	 * @param requestPacket	packet received by server, which caused an error 
 	 * @param error			to be turned into ERROR packet and sent
@@ -519,6 +521,15 @@ class ClientConnection implements Runnable
 	}
 	
 	/**
+	 * Gets a nicer looking thread name and id combo.
+	 * 
+	 * @return	thread name/id
+	 */
+	public String threadName () {
+		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	/**
 	 * Deal with RRQ received.
 	 * 
 	 */
@@ -543,7 +554,7 @@ class ClientConnection implements Runnable
 			// read up to 512 bytes from file starting at offset
 			try {			
 				while ((bytes = in.read(read)) != -1) {
-					System.out.println("\n" + Thread.currentThread() + 
+					System.out.println("\n" + threadName() + 
 							": Read " + bytes + " bytes, from " + fileDirectory 
 							+ filename);
 					
@@ -565,12 +576,12 @@ class ClientConnection implements Runnable
 							} catch (SocketTimeoutException e1) {
 								if (!timedOut) {
 									// response timeout, 
-									System.out.println("\n" + Thread.currentThread() + 
+									System.out.println("\n" + threadName() + 
 											": Socket Timeout: Continuing to wait for ACK...");
 									timedOut = true;  // have timed out once on this packet
 								} else {
 									// have timed out a second time
-									System.out.println("\n" + Thread.currentThread() + 
+									System.out.println("\n" + threadName() + 
 											": Socket Timeout Again: Aborting file transfer.");
 									return;
 								}
@@ -579,7 +590,7 @@ class ClientConnection implements Runnable
 					
 						// invalid packet received
 						if (receivePacket == null) {
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": Invalid packet received: Aborting file transfer:");
 							return;
 						}
@@ -587,7 +598,7 @@ class ClientConnection implements Runnable
 						byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
 						if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
 							parseError(ackPacket);	// print ERROR info and close connection
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": Aborting Transfer.");
 							return;
 						} else if (ackPacket[1] == 4) {
@@ -595,7 +606,7 @@ class ClientConnection implements Runnable
 							if (ackPacket[3] == blockNumber) {
 								break;  // got ACK with correct block number, continuing
 							} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-								System.out.println("\n" + Thread.currentThread() + 
+								System.out.println("\n" + threadName() + 
 										": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
 							} else { // ACK with weird block number 
 								// create and send error response packet for "Illegal TFTP operation."
@@ -649,12 +660,12 @@ class ClientConnection implements Runnable
 						} catch (SocketTimeoutException e1) {
 							if (!timedOut) {
 								// response timeout, 
-								System.out.println("\n" + Thread.currentThread() + 
+								System.out.println("\n" + threadName() + 
 										": Socket Timeout: Continuing to wait for ACK...");
 								timedOut = true;  // have timed out once on this packet
 							} else {
 								// have timed out a second time
-								System.out.println("\n" + Thread.currentThread() + 
+								System.out.println("\n" + threadName() + 
 										": Socket Timeout Again: Aborting file transfer.");
 								closeConnection();
 							}
@@ -663,7 +674,7 @@ class ClientConnection implements Runnable
 				
 					// invalid packet received
 					if (receivePacket == null) {
-						System.out.println("\n" + Thread.currentThread() + 
+						System.out.println("\n" + threadName() + 
 								": Invalid packet received: Aborting file transfer:");
 						return;
 					}
@@ -671,7 +682,7 @@ class ClientConnection implements Runnable
 					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
 					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
 						parseError(ackPacket);	// print ERROR info and close connection
-						System.out.println("\n" + Thread.currentThread() + 
+						System.out.println("\n" + threadName() + 
 								": Aborting Transfer.");
 						return;
 					} else if (ackPacket[1] == 4) {
@@ -679,7 +690,7 @@ class ClientConnection implements Runnable
 						if (ackPacket[3] == blockNumber) {
 							break;  // got ACK with correct block number, continuing
 						} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
 						} else { // ACK with weird block number 
 							// create and send error response packet for "Illegal TFTP operation."
@@ -711,8 +722,7 @@ class ClientConnection implements Runnable
 			send(error);
 			return;
 		}
-		System.out.println("\n" + Thread.currentThread() +
-				": RRQ File Transfer Complete");
+		System.out.println("\n" + threadName() + ": RRQ File Transfer Complete");
 	}
 	
 	/**
@@ -743,13 +753,13 @@ class ClientConnection implements Runnable
 					} catch (SocketTimeoutException e1) {
 						if (!timedOut) {
 							// response timeout, re-send last ACK
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": Resending last ACK...");
 							send(ack);
 							timedOut = true;  // have timed out once on this packet
 						} else {
 							// have timed out a second time after re-sending the last packet
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": Socket Timeout Again: Aborting file transfer.");
 							closeConnection();
 						}
@@ -776,7 +786,7 @@ class ClientConnection implements Runnable
 							Files.write(Paths.get(fileDirectory + filename), 
 									data, StandardOpenOption.CREATE, 
 									StandardOpenOption.APPEND);
-							System.out.println("\n" + Thread.currentThread() + 
+							System.out.println("\n" + threadName() + 
 									": writing data to file: " + filename);
 						} else {
 							// create and send error response packet for "Disk full or allocation exceeded."
@@ -795,8 +805,7 @@ class ClientConnection implements Runnable
 				}						
 			} while (data.length == MAX_DATA);
 		}
-		System.out.println("\n" + Thread.currentThread() +
-				": WRQ File Transfer Complete");
+		System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
 	}
 	
 	/**
@@ -804,7 +813,7 @@ class ClientConnection implements Runnable
 	 */
 	public void closeConnection() 
 	{
-		System.out.println("\n" + Thread.currentThread() + 
+		System.out.println("\n" + threadName() + 
 				": closing connection and shutting down thread.");
 		Thread.currentThread().interrupt();	// close ClientConnection thread to stop transfer
 	}
@@ -893,23 +902,17 @@ class ClientConnection implements Runnable
 		
 		// tell user what type of packet is being sent 
 		switch (data[1]) {
-			case 1: System.out.println("\n" + Thread.currentThread() + 
-						": Sending RRQ: ");
+			case 1: System.out.println("\n" + threadName() + ": Sending RRQ: ");
 				break;
-			case 2: System.out.println("\n" + Thread.currentThread() + 
-						": Sending WRQ: ");
+			case 2: System.out.println("\n" + threadName() + ": Sending WRQ: ");
 				break;
-			case 3: System.out.println("\n" + Thread.currentThread() + 
-						": Sending DATA: ");
+			case 3: System.out.println("\n" + threadName() + ": Sending DATA: ");
 				break;
-			case 4: System.out.println("\n" + Thread.currentThread() + 
-						": Sending ACK: ");
+			case 4: System.out.println("\n" + threadName() + ": Sending ACK: ");
 				break;
-			case 5: System.out.println("\n" + Thread.currentThread() + 
-						": Sending ERROR: ");
+			case 5: System.out.println("\n" + threadName() + ": Sending ERROR: ");
 				break;
-			default: System.out.println("\n" + Thread.currentThread() + 
-						": Sending packet: ");
+			default: System.out.println("\n" + threadName() + ": Sending packet: ");
 				break;
 		}
 		
@@ -921,7 +924,7 @@ class ClientConnection implements Runnable
 		// send the packet
 		try {
 			sendReceiveSocket.send(sendPacket);
-			System.out.println(Thread.currentThread() + ": Packet sent ");
+			System.out.println(threadName() + ": Packet sent ");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -948,8 +951,7 @@ class ClientConnection implements Runnable
 		while (true) {
 			packet = new DatagramPacket(data, data.length);
 		
-			System.out.println("\n" + Thread.currentThread() + 
-					" : Waiting for packet...");
+			System.out.println("\n" + threadName() + " : Waiting for packet...");
 			
 			// block until a DatagramPacket is received via sendReceiveSocket 
 			try {
@@ -970,8 +972,7 @@ class ClientConnection implements Runnable
 						packet.getAddress(), packet.getPort());
 				
 				// print out packet info to user
-				System.out.println("\n" + Thread.currentThread() + 
-						": Sending ERROR: ");
+				System.out.println("\n" + threadName() + ": Sending ERROR: ");
 				System.out.println("To host: " + sendPacket.getAddress() + 
 						" : " + sendPacket.getPort());
 				System.out.print("Containing " + sendPacket.getLength() + 
@@ -981,7 +982,7 @@ class ClientConnection implements Runnable
 				// send the packet
 				try {
 					sendReceiveSocket.send(sendPacket);
-					System.out.println(Thread.currentThread() + ": Packet sent ");
+					System.out.println(threadName() + ": Packet sent ");
 				} catch (IOException e) {
 					e.printStackTrace();
 					System.exit(1);
@@ -996,8 +997,7 @@ class ClientConnection implements Runnable
 				}
 				
 				// print out thread and port info, from which the packet was sent to Client
-				System.out.println("\n" + Thread.currentThread() + 
-						": packet received: ");
+				System.out.println("\n" + threadName() + ": packet received: ");
 				System.out.println("From host: " + packet.getAddress() + " : " 
 						+ packet.getPort());
 				System.out.println("Containing " + packet.getLength() + 
@@ -1035,8 +1035,7 @@ class ClientConnection implements Runnable
 	 */
 	public void parseAck (byte[] ack) 
 	{
-		System.out.println("\n" + Thread.currentThread() + 
-				": Recieved packet is ACK: ");
+		System.out.println("\n" + threadName() + ": Recieved packet is ACK: ");
 		System.out.println("Block#: " + ack[2] + ack[3]);
 	}
 	
@@ -1053,8 +1052,7 @@ class ClientConnection implements Runnable
 		System.arraycopy(data, 4, justData, 0, data.length-4);
 				
 		// print info to user
-		System.out.println("\n" + Thread.currentThread() + 
-				": Recieved packet is DATA: ");
+		System.out.println("\n" + threadName() + ": Recieved packet is DATA: ");
 		System.out.println("Block#: " + data[2] + data[3] + 
 				", and containing data: ");
 		System.out.println(Arrays.toString(justData));
@@ -1069,8 +1067,7 @@ class ClientConnection implements Runnable
 	 */
 	public void parseError (byte[] error) 
 	{
-		System.out.println("\n" + Thread.currentThread() + 
-				": Received packet is ERROR: ");		
+		System.out.println("\n" + threadName() + ": Received packet is ERROR: ");		
 
 		// get the error message
 		byte[] errorMsg = new byte[error.length - 5];
@@ -1174,7 +1171,7 @@ class ClientConnection implements Runnable
 	public byte[] createError (byte errorCode, String errorMsg) 
 	{
 		// inform user
-		System.out.println("\n" + Thread.currentThread() + ": 0" + errorCode + 
+		System.out.println("\n" + threadName() + ": 0" + errorCode + 
 				" Error: informing host: ");
 		System.out.println("Error Message: " + errorMsg);
 		
