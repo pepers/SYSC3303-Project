@@ -731,7 +731,6 @@ class ToServer implements Runnable
 					"DelayThread");
 				DelayThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
-			// TODO: resend data by calling the send method twice
 			send(received, receivePacket.getAddress(), sendPort, serverSocket);
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
