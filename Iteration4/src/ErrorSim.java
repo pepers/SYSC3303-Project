@@ -649,9 +649,8 @@ class ToServer implements Runnable
 				received = processDatagram(receivePacket); // print packet data to user
 			
 				// passes Client's packet to Server
-				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
-				//this is where the action method will be called
-				action(received);
+				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				
 				
 			}
 		
@@ -695,6 +694,11 @@ class ToServer implements Runnable
 				
 				// passes Client's packet to Server
 				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				
+				//this is where the action method will be called
+				if (matchType(received[1])) {
+					action(received);
+				}
 				
 				//TODO - TEST - sending delayed packet once:
 				if (!happenOnce) {
@@ -758,6 +762,25 @@ class ToServer implements Runnable
 		}			
 	}
 	
+	public boolean matchType (byte op) {
+		// determine which type of packet was received
+		switch (op) {
+			case 1: if (packetType == ErrorSim.PacketType.RRQ){ return true; }	// RRQ
+				break;
+			case 2: if (packetType == ErrorSim.PacketType.WRQ){ return true; }	// WRQ
+				break;
+			case 3:	if (packetType == ErrorSim.PacketType.DATA){ return true; }	// DATA
+				break;
+			case 4: if (packetType == ErrorSim.PacketType.ACK){ return true; }	// ACK
+				break;
+			case 5:	 if (packetType == ErrorSim.PacketType.ERROR){ return true; }	// ERROR
+				break;
+			default: 			// invalid opcode
+				break;
+		}
+		return false;
+	}
+
 	/**
 	 * Receives DatagramPacket packets.
 	 * 
