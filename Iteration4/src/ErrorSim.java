@@ -722,9 +722,13 @@ class ToServer implements Runnable
 	public void action (byte[] received)
 	{
 		if (packetDo == ErrorSim.PacketDo.delay) {
-			// TODO: call the delay thread
+			Thread DelayThread = new Thread(new Delay(received, 
+					receivePacket.getAddress(), sendPort, serverSocket),
+					"DelayThread");
+				DelayThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
 			// TODO: resend data by calling the send method twice
+			send(received, receivePacket.getAddress(), sendPort, serverSocket);
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
 				// change opcode
