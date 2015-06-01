@@ -485,19 +485,16 @@ class ToServer implements Runnable
 	boolean eDfFlag;   // delete data field
 	byte errorCode;    // change error code
 	String filename;   // change the filename in RRQ or WRQ
-<<<<<<< HEAD
+
 
 	// check if ErrorSim action took place, so it is only done once
 	private boolean actionFlag = false;
 
-=======
-	
 	// counters
 	private int packetCount = 0;  // number of packets received
 	private int typeCount = 0;    // number of packets received of packetType type
 
 	
->>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
 
@@ -673,10 +670,6 @@ class ToServer implements Runnable
 
 			// get port for ToClient
 			int clientPort = receivePacket.getPort();
-<<<<<<< HEAD
-
-=======
-			
 			//this is where the action method will be called
 			if (matchType(received[1])) {
 				typeCount++;
@@ -684,8 +677,7 @@ class ToServer implements Runnable
 					action(received);
 				}
 			}
-					
->>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
+	
 			// passes Client's packet to Server
 			send(received, receivePacket.getAddress(), 69, serverSocket); 
 
@@ -711,14 +703,10 @@ class ToServer implements Runnable
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
 				received = processDatagram(receivePacket); // print packet data to user
-<<<<<<< HEAD
 
 				// passes Client's packet to Server
 				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
 
-=======
-				
->>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 				//this is where the action method will be called
 				if (matchType(received[1])) {
 					typeCount++;
@@ -726,7 +714,6 @@ class ToServer implements Runnable
 						action(received);
 					}
 				}
-<<<<<<< HEAD
 
 				//TODO - TEST - sending delayed packet once:
 				if (!happenOnce) {
@@ -738,11 +725,9 @@ class ToServer implements Runnable
 				} else {
 					send(received, receivePacket.getAddress(), sendPort, serverSocket);
 				}
-=======
 				
 				// passes Client's packet to Server
 				send(received, receivePacket.getAddress(), sendPort, serverSocket);
->>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 			}
 		}
 	}
