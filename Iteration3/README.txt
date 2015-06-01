@@ -66,3 +66,6 @@ USE
 	- when the Server doesn't receive any Datagram Packets
 	for 20 seconds, it will ask the user if they want to 
 	(Q)uit or (C)ontinue
+
+
+NOTE: For errsim follow the prompts from the menu to test different error packets and scenarios. Choose to create generic errors and if they will be sent to client or server by typing in the first letter in brackets: (S)erver = send to server. 

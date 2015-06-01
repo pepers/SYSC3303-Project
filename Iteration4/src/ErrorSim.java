@@ -478,7 +478,6 @@ class ToServer implements Runnable
 	private ErrorSim.PacketDo packetDo = null;
 	private boolean choiceIsServer; // true if choice is server, false if client
 	private int packetNumber; // number of packet to be manipulated
-	private int actionCount; // count packets of one type, in order to tell when to take action
 	boolean eOpFlag;   // change opcode 
 	boolean eFnFlag;   // change filename
 	boolean eMdFlag;   // change mode
@@ -486,10 +485,19 @@ class ToServer implements Runnable
 	boolean eDfFlag;   // delete data field
 	byte errorCode;    // change error code
 	String filename;   // change the filename in RRQ or WRQ
+<<<<<<< HEAD
 
 	// check if ErrorSim action took place, so it is only done once
 	private boolean actionFlag = false;
 
+=======
+	
+	// counters
+	private int packetCount = 0;  // number of packets received
+	private int typeCount = 0;    // number of packets received of packetType type
+
+	
+>>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
 
@@ -665,7 +673,19 @@ class ToServer implements Runnable
 
 			// get port for ToClient
 			int clientPort = receivePacket.getPort();
+<<<<<<< HEAD
 
+=======
+			
+			//this is where the action method will be called
+			if (matchType(received[1])) {
+				typeCount++;
+				if (packetNumber == typeCount || packetNumber == packetCount) {
+					action(received);
+				}
+			}
+					
+>>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 			// passes Client's packet to Server
 			send(received, receivePacket.getAddress(), 69, serverSocket); 
 
@@ -691,14 +711,22 @@ class ToServer implements Runnable
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
 				received = processDatagram(receivePacket); // print packet data to user
+<<<<<<< HEAD
 
 				// passes Client's packet to Server
 				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
 
+=======
+				
+>>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 				//this is where the action method will be called
 				if (matchType(received[1])) {
-					action(received);
+					typeCount++;
+					if (packetNumber == typeCount || packetNumber == packetCount) {
+						action(received);
+					}
 				}
+<<<<<<< HEAD
 
 				//TODO - TEST - sending delayed packet once:
 				if (!happenOnce) {
@@ -710,6 +738,11 @@ class ToServer implements Runnable
 				} else {
 					send(received, receivePacket.getAddress(), sendPort, serverSocket);
 				}
+=======
+				
+				// passes Client's packet to Server
+				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+>>>>>>> 736814ffdd5f90d67c5e047589c4357b5b94556c
 			}
 		}
 	}
