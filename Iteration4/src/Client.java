@@ -98,7 +98,7 @@ public class Client
 	 * 
 	 */
 	public void ui() 
-	{		
+	{	
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input

@@ -578,6 +578,7 @@ class ClientConnection implements Runnable
 									// response timeout, 
 									System.out.println("\n" + threadName() + 
 											": Socket Timeout: Continuing to wait for ACK...");
+									send(data);       // send DATA
 									timedOut = true;  // have timed out once on this packet
 								} else {
 									// have timed out a second time

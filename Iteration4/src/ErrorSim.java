@@ -34,9 +34,9 @@ public class ErrorSim
 	private static boolean eOpFlag = false; // make opcode invalid
 	private static boolean eFnFlag = false; // change filename
 	private static boolean eMdFlag = false; // make mode invalid
-	private static byte eBlockNumber = 0;   // block number to change to
+	private static byte eBlockNumber = -1;   // block number to change to
 	private static boolean eDfFlag = false; // delete the data field in DATA
-	private static byte errorCode = 0;      // change error code
+	private static byte errorCode = -1;      // change error code
 	private static String filename = null;  // filename for RRQ or WRQ to send
    
 	public ErrorSim() 
@@ -649,7 +649,10 @@ class ToServer implements Runnable
 				received = processDatagram(receivePacket); // print packet data to user
 			
 				// passes Client's packet to Server
-				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				//this is where the action method will be called
+				action(received);
+				
 			}
 		
 		/*
@@ -714,6 +717,41 @@ class ToServer implements Runnable
 	 */
 	public String threadName () {
 		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	public void action (byte[] received)
+	{
+		if (packetDo == ErrorSim.PacketDo.delay) {
+			// TODO: call the delay thread
+		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
+			// TODO: resend data by calling the send method twice
+		} else if (packetDo == ErrorSim.PacketDo.edit) {
+			if (eOpFlag) {
+				// change opcode
+			} else if (eFnFlag) {
+				// change filename to 'DOESNTEXIST'
+			} else if (eMdFlag) {
+				// change mode
+			} else if (eBlockNumber != -1) {
+				// change block number to eBlockNumber
+			} else if (eDfFlag) {
+				// delete data field
+			} else if (errorCode != -1) {
+				// change error code to errorCode
+			}
+		} else if (packetDo == ErrorSim.PacketDo.lose) {
+			return;
+		} else if (packetDo == ErrorSim.PacketDo.send) {
+			if (packetType == ErrorSim.PacketType.RRQ ||
+					packetType == ErrorSim.PacketType.WRQ) {
+				// change filename to filename
+			} else if (packetType == ErrorSim.PacketType.DATA || 
+					packetType == ErrorSim.PacketType.ACK) {
+				// change blocknumber to eBlockNumber
+			} else if (packetType == ErrorSim.PacketType.ERROR) {
+				// change error code to errorCode
+			}
+		}			
 	}
 	
 	/**
@@ -1286,7 +1324,7 @@ class ToClient implements Runnable
  */
 class Delay implements Runnable
 {	
-	public static final int DELAY = 2000;  // milliseconds to delay packet
+	public static final int DELAY = 2500;  // milliseconds to delay packet
 	byte[] data;                           // data to put in packet
 	InetAddress addr;                      // InetAddress to send packet to
 	int port;                              // port to send packet to
