@@ -478,7 +478,6 @@ class ToServer implements Runnable
 	private ErrorSim.PacketDo packetDo = null;
 	private boolean choiceIsServer; // true if choice is server, false if client
 	private int packetNumber; // number of packet to be manipulated
-	private int actionCount; // count packets of one type, in order to tell when to take action
 	boolean eOpFlag;   // change opcode 
 	boolean eFnFlag;   // change filename
 	boolean eMdFlag;   // change mode
@@ -487,8 +486,10 @@ class ToServer implements Runnable
 	byte errorCode;    // change error code
 	String filename;   // change the filename in RRQ or WRQ
 	
-	// check if ErrorSim action took place, so it is only done once
-	private boolean actionFlag = false;
+	// counters
+	private int packetCount = 0;  // number of packets received
+	private int typeCount = 0;    // number of packets received of packetType type
+
 	
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
@@ -665,6 +666,14 @@ class ToServer implements Runnable
 		
 			// get port for ToClient
 			int clientPort = receivePacket.getPort();
+			
+			//this is where the action method will be called
+			if (matchType(received[1])) {
+				typeCount++;
+				if (packetNumber == typeCount || packetNumber == packetCount) {
+					action(received);
+				}
+			}
 					
 			// passes Client's packet to Server
 			send(received, receivePacket.getAddress(), 69, serverSocket); 
@@ -692,24 +701,16 @@ class ToServer implements Runnable
 				receivePacket = receive(clientSocket); // receive packet from Client
 				received = processDatagram(receivePacket); // print packet data to user
 				
-				// passes Client's packet to Server
-				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
-				
 				//this is where the action method will be called
 				if (matchType(received[1])) {
-					action(received);
+					typeCount++;
+					if (packetNumber == typeCount || packetNumber == packetCount) {
+						action(received);
+					}
 				}
 				
-				//TODO - TEST - sending delayed packet once:
-				if (!happenOnce) {
-					Thread DelayThread = new Thread(new Delay(received, 
-						receivePacket.getAddress(), sendPort, serverSocket),
-						"DelayThread");
-					DelayThread.start();
-					happenOnce = true;
-				} else {
-					send(received, receivePacket.getAddress(), sendPort, serverSocket);
-				}
+				// passes Client's packet to Server
+				send(received, receivePacket.getAddress(), sendPort, serverSocket);
 			}
 		}
 	}
