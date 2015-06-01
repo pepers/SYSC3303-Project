@@ -614,50 +614,97 @@ class ToServer implements Runnable
 	
 	public void run () 
 	{
-		// received data from DatagramPacket					
-		byte[] received = new byte[receivePacket.getLength()];
-		System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), received, 0, 
-				receivePacket.getLength());
+		/*
+		 * NORMAL MODE
+		 */
+		if (packetDo == null) {
+			// received data from DatagramPacket					
+			byte[] received = new byte[receivePacket.getLength()];
+			System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), received, 0, 
+					receivePacket.getLength());
 		
-		// get port for ToClient
-		int clientPort = receivePacket.getPort();
+			// get port for ToClient
+			int clientPort = receivePacket.getPort();
 					
-		// passes Client's packet to Server
-		send(received, receivePacket.getAddress(), 69, serverSocket); 
+			// passes Client's packet to Server
+			send(received, receivePacket.getAddress(), 69, serverSocket); 
 		
-		// receive response from Server, in order to get port to send to later
-		receivePacket = receive(serverSocket);
-		received = processDatagram(receivePacket);  // print packet data to user
-		sendPort = receivePacket.getPort();  // get port on Server to send to
+			// receive response from Server, in order to get port to send to later
+			receivePacket = receive(serverSocket);
+			received = processDatagram(receivePacket);  // print packet data to user
+			sendPort = receivePacket.getPort();  // get port on Server to send to
+			
+			// start new ToClient connection in normal mode			
+			Thread ConnectionThread = new Thread(new ToClient(
+					receivePacket, serverSocket, clientSocket, clientPort), 
+					"TransferToClient");
+			System.out.println("\n" + threadName() + 
+					": File Transfer Continuing to Client, in Normal Mode... ");			
 		
+	
+			ConnectionThread.start();	// start new connection ToClient thread 
 		
-		Thread ConnectionThread;  // for ToClient connection		
-		if (packetDo != null) {
-			// start new connection in error simulation mode			
-			ConnectionThread = new Thread(new ToClient(receivePacket,
-					packetType, packetDo, choiceIsServer, packetNumber,
-					eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
-					errorCode,filename, serverSocket, clientSocket, 
+			while (true) {	
+				receivePacket = receive(clientSocket); // receive packet from Client
+				received = processDatagram(receivePacket); // print packet data to user
+			
+				// passes Client's packet to Server
+				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+			}
+		
+		/*
+		 * ERROR SIMULATION MODE
+		 */
+		} else {
+			// received data from DatagramPacket					
+			byte[] received = new byte[receivePacket.getLength()];
+			System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), received, 0, 
+					receivePacket.getLength());
+		
+			// get port for ToClient
+			int clientPort = receivePacket.getPort();
+					
+			// passes Client's packet to Server
+			send(received, receivePacket.getAddress(), 69, serverSocket); 
+		
+			// receive response from Server, in order to get port to send to later
+			receivePacket = receive(serverSocket);
+			received = processDatagram(receivePacket);  // print packet data to user
+			sendPort = receivePacket.getPort();  // get port on Server to send to
+				
+			// start new ToClient connection in error simulation mode			
+			Thread ConnectionThread = new Thread(new ToClient(
+					receivePacket, packetType, packetDo, choiceIsServer, 
+					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
+					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
 					clientPort), "TransferToClient");
 			System.out.println("\n" + threadName() + 
 					": File Transfer Continuing to Client, in Error Simulation Mode... ");			
-		} else {
-			// start new connection in normal mode			
-			ConnectionThread = new Thread(new ToClient(receivePacket, 
-					serverSocket, clientSocket, clientPort), "TransferToClient");
-			System.out.println("\n" + threadName() + 
-					": File Transfer Continuing to Client, in Normal Mode... ");			
-		}
-	
-		ConnectionThread.start();	// start new connection ToClient thread 
 		
-		while (true) {	
-			receivePacket = receive(clientSocket); // receive packet from Client
-			received = processDatagram(receivePacket); // print packet data to user
+			ConnectionThread.start();	// start new connection ToClient thread 
 			
-			// passes Client's packet to Server
-			send(received, receivePacket.getAddress(), sendPort, serverSocket);
-		}	
+			//TODO - PART OF TEST 
+			boolean happenOnce = false;
+			
+			while (true) {	
+				receivePacket = receive(clientSocket); // receive packet from Client
+				received = processDatagram(receivePacket); // print packet data to user
+				
+				// passes Client's packet to Server
+				//send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				
+				//TODO - TEST - sending delayed packet once:
+				if (!happenOnce) {
+					Thread DelayThread = new Thread(new Delay(received, 
+						receivePacket.getAddress(), sendPort, serverSocket),
+						"DelayThread");
+					DelayThread.start();
+					happenOnce = true;
+				} else {
+					send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				}
+			}
+		}
 	}
 	
 	/**
@@ -1006,17 +1053,38 @@ class ToClient implements Runnable
 	
 	public void run () 
 	{
-		// received data from DatagramPacket	
-		byte[] received = new byte[receivePacket.getLength()];
-		System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
-				received, 0, receivePacket.getLength());
+		/*
+		 *  NORMAL MODE
+		 */
+		if (packetDo == null) {
+			// received data from DatagramPacket	
+			byte[] received = new byte[receivePacket.getLength()];
+			System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
+					received, 0, receivePacket.getLength());
 		
-		while (true) {
-			// passes Server's packet to Client
-			send(received, receivePacket.getAddress(), sendPort, clientSocket);
-			receivePacket = receive(serverSocket);  // receive packet from Server
-			received = processDatagram(receivePacket); // print packet data to user
-		}	
+			while (true) {
+				// passes Server's packet to Client
+				send(received, receivePacket.getAddress(), sendPort, clientSocket);
+				receivePacket = receive(serverSocket);  // receive packet from Server
+				received = processDatagram(receivePacket); // print packet data to user
+			}	
+			
+		/*
+		 *  ERROR SIMULATION MODE
+		 */
+		} else {
+			// received data from DatagramPacket	
+			byte[] received = new byte[receivePacket.getLength()];
+			System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
+					received, 0, receivePacket.getLength());
+		
+			while (true) {
+				// passes Server's packet to Client
+				send(received, receivePacket.getAddress(), sendPort, clientSocket);
+				receivePacket = receive(serverSocket);  // receive packet from Server
+				received = processDatagram(receivePacket); // print packet data to user
+			}
+		}
 	}
 	
 	/**
