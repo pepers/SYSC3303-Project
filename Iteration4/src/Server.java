@@ -670,7 +670,7 @@ class ClientConnection implements Runnable
 								// have timed out a second time
 								System.out.println("\n" + threadName() + 
 										": Socket Timeout Again: Aborting file transfer.");
-								closeConnection();
+								return;
 							}
 						}		
 					}
@@ -764,14 +764,14 @@ class ClientConnection implements Runnable
 							// have timed out a second time after re-sending the last packet
 							System.out.println("\n" + threadName() + 
 									": Socket Timeout Again: Aborting file transfer.");
-							closeConnection();
+							return;
 						}
 					}
 				}
 				
 				// invalid packet received
 				if (receivePacket == null) {
-					closeConnection();
+					return;
 				}
 				
 				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
@@ -796,7 +796,7 @@ class ClientConnection implements Runnable
 							byte[] error = createError((byte)3, "File (" + 
 									filename + ") too large for disk.");
 							send(error);
-							closeConnection();	// quit client connection thread
+							return;
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -1223,6 +1223,8 @@ class ClientConnection implements Runnable
 		} 
 		
 		Opcode op = getOpcode(received);	// get opcode
+		if(op == null)
+			return false;
 		
 		// organize by opcode
 		switch (op) {
