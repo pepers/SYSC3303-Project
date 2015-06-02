@@ -38,6 +38,7 @@ public class ErrorSim
 	private static boolean eDfFlag = false; // delete the data field in DATA
 	private static byte errorCode = -1;      // change error code
 	private static String filename = null;  // filename for RRQ or WRQ to send
+	private static int delay = 0;  // milliseconds to delay packet
 
 	public ErrorSim() 
 	{		
@@ -77,7 +78,7 @@ public class ErrorSim
 				ConnectionThread = new Thread(new ToServer(
 						receivePacket, packetType, packetDo, sendToServer, 
 						choiceInt, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
-						errorCode,filename, null, null, sendPort), "TransferToServer");
+						errorCode,filename, null, null, sendPort, delay), "TransferToServer");
 				System.out.println("\nError Simulator: New File Transfer Starting to Server, in Error Simulation Mode... ");			
 			} else {
 				// start new connection to server in normal mode			
@@ -176,6 +177,23 @@ public class ErrorSim
 						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 					}
 				}
+				// delaying or duplicating a file
+				if (packetDo == PacketDo.delay ||
+						packetDo == PacketDo.duplicate) {
+					while(true) {
+						if (packetDo == PacketDo.delay) {
+							System.out.println("\nError Simulator: How long of a delay do you want on your delayed packet? (in milliseconds)");
+						} else {
+							System.out.println("\nError Simulator: How long of a delay do you want between your duplicated packets? (in milliseconds)");
+						}
+						try {
+							delay = Integer.parseInt(input.nextLine());  // user's choice
+							break;
+						} catch (NumberFormatException n) {
+							System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+						}				
+					}
+				}
 				// sending a file
 				if (packetDo == PacketDo.send) {
 					if (packetType == PacketType.RRQ || 
@@ -229,7 +247,7 @@ public class ErrorSim
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Replace first character of filename with a space (invalidating filename).");
 							System.out.println("\t 3. Make Mode invalid.");
-							System.out.println("(type the number corresponding to your choice...");
+							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
 								eOpFlag = true;
@@ -251,7 +269,7 @@ public class ErrorSim
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Block Number.");
 							System.out.println("\t 3. Delete Data field.");
-							System.out.println("(type the number corresponding to your choice...");
+							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
 								eOpFlag = true;
@@ -287,7 +305,7 @@ public class ErrorSim
 							System.out.println("\nError Simulator: What would you like to edit in the ACK packet?");
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Block Number.");
-							System.out.println("(type the number corresponding to your choice...");
+							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
 								eOpFlag = true;
@@ -320,7 +338,7 @@ public class ErrorSim
 							System.out.println("\nError Simulator: What would you like to edit in the ERROR packet?");
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Error Code.");
-							System.out.println("(type the number corresponding to your choice...");
+							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
 								eOpFlag = true;
@@ -353,7 +371,7 @@ public class ErrorSim
 					// choose which packet to manipulate
 					System.out.println("\nError Simulator: Enter a number to indicate which " 
 							+ packetType + " packet to manipulate.");
-					System.out.println("(eg: enter '1' for the first packet, etc.");
+					System.out.println("(eg: enter '1' for the first packet, etc.)");
 					try {
 						choiceInt = Integer.parseInt(input.nextLine());  // user's choice
 						if (choiceInt < 1) { 
@@ -383,25 +401,23 @@ public class ErrorSim
 						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 					}				
 				}
-				// because of wording differences between send and the rest of
-				// the manipulation types
-				if (packetDo == PacketDo.send) {
-					sendToServer = !sendToServer;
-				}
 				// print choice info to user
 				System.out.println("\nError Simulator: You have chosen to start in Error Simulation Mode.");
 				String host = null; // client or server
 				if (sendToServer) {
-					host = "Server";
-				} else {
 					host = "Client";
+				} else {
+					host = "Server";
 				}
-				if (packetDo == PacketDo.delay || 
-						packetDo == PacketDo.duplicate ||
+				if (packetDo == PacketDo.delay ||
 						packetDo == PacketDo.edit) { 
 					System.out.println("\t The #" + choiceInt + " " + 
 							packetType.name() + " packet, from the " + host + 
 							", will be " + packetDo.name() + "ed.");
+				} else if (packetDo == PacketDo.duplicate) {
+					System.out.println("\t The #" + choiceInt + " " + 
+							packetType.name() + " packet, from the " + host + 
+							", will be duplicated.");
 				} else if (packetDo == PacketDo.lose) {
 					System.out.println("\t The #" + choiceInt + " " + 
 							packetType.name() + " packet, from the " + host + 
@@ -411,6 +427,12 @@ public class ErrorSim
 							" packet sent to the " + host + " will be a " + 
 							packetType.name() + " packet.");
 				} 
+				// because of wording differences between send and the rest of
+				// the manipulation types
+				if (packetDo == PacketDo.send) {
+					sendToServer = !sendToServer;
+				}
+				
 				return true; // error simulation mode was chosen
 
 			} else if (choice.equalsIgnoreCase("Q")) {  // quit
@@ -494,6 +516,7 @@ class ToServer implements Runnable
 	boolean eDfFlag;   // delete data field
 	byte errorCode;    // change error code
 	String filename;   // change the filename in RRQ or WRQ
+	private int delay = 0;  // milliseconds to delay packet
 	
 	// counters
 	private int packetCount = 0;  // number of packets received
@@ -522,6 +545,7 @@ class ToServer implements Runnable
 	 * @param serverSocket		socket to send to Server
 	 * @param clientSocket		socket to receive from Client
 	 * @param sendPort			port on Server to send packets to
+	 * @param delay				milliseconds to delay packet for
 	 */
 	public ToServer (DatagramPacket receivePacket, 
 			ErrorSim.PacketType packetType, 
@@ -537,7 +561,8 @@ class ToServer implements Runnable
 			String filename,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
-			int sendPort) 
+			int sendPort,
+			int delay) 
 	{
 		/* If this Connection thread is to send to Server, the sockets will be
 		   null and must be created.
@@ -578,6 +603,7 @@ class ToServer implements Runnable
 		this.eDfFlag = eDfFlag;
 		this.errorCode = errorCode;
 		this.filename = filename;
+		this.delay = delay;
 	}
 
 	/**
@@ -710,7 +736,7 @@ class ToServer implements Runnable
 					receivePacket, packetType, packetDo, sendToServer, 
 					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
-					clientPort), "TransferToClient");
+					clientPort, delay), "TransferToClient");
 			System.out.println("\n" + threadName() + 
 					": File Transfer Continuing to Client, in Error Simulation Mode... ");			
 
@@ -767,14 +793,20 @@ class ToServer implements Runnable
 	public byte[] action (byte[] received) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
+			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket),
+					receivePacket.getAddress(), sendPort, serverSocket, delay),
 					"DelayThread");
 			DelayThread.start();
+			return null;  // so delaying packet does not duplicate
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
-			// re-send data by calling the send method 
+			// re-send packet in another thread as well as in run() after this 
+			// method returns
 			System.out.println("\n" + threadName() + ": Duplicating packet...");
-			send(received, receivePacket.getAddress(), sendPort, serverSocket);
+			Thread DuplicateThread = new Thread(new Delay(received, 
+					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					"DuplicationThread");
+			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
 				System.out.println("\n" + threadName() + ": Invalidating packet opcode.");
@@ -784,7 +816,7 @@ class ToServer implements Runnable
 				received[2] = (byte)32;// throw a space as the first letter in the filename. 
 			} else if (eMdFlag) {
 				// change mode
-				System.out.println("\n" + threadName() + ": Manipulating packet mode.");
+				System.out.println("\n" + threadName() + ": Invalidating packet mode.");
 				byte[] errMode = new byte[0];
 				String newMode = "wrongMode!";
 				ByteArrayOutputStream rec = new ByteArrayOutputStream();
@@ -1041,6 +1073,7 @@ class ToClient implements Runnable
 	boolean eDfFlag;   // delete data field
 	byte errorCode;    // change error code
 	String filename;   // change the filename in RRQ or WRQ
+	private int delay = 0;  // milliseconds to delay packet
 	
 	// counters
 	private int packetCount = 0;  // number of packets received
@@ -1068,6 +1101,7 @@ class ToClient implements Runnable
 	 * @param serverSocket		socket to receive from Server
 	 * @param clientSocket		socket to send to Client
 	 * @param sendPort			port on Client to send packets to
+	 * @param delay				milliseconds to delay a packet
 	 */
 	public ToClient (DatagramPacket receivePacket, 
 			ErrorSim.PacketType packetType, 
@@ -1083,7 +1117,8 @@ class ToClient implements Runnable
 			String filename,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
-			int sendPort) 
+			int sendPort,
+			int delay) 
 	{
 		/* If this Connection thread is to send to Server, the sockets will be
 		   null and must be created.
@@ -1124,6 +1159,7 @@ class ToClient implements Runnable
 		this.eDfFlag = eDfFlag;
 		this.errorCode = errorCode;
 		this.filename = filename;
+		this.delay = delay;
 	}
 
 	/**
@@ -1247,14 +1283,20 @@ class ToClient implements Runnable
 	public byte[] action (byte[] received) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
+			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket),
+					receivePacket.getAddress(), sendPort, serverSocket, delay),
 					"DelayThread");
 			DelayThread.start();
+			return null;  // so delaying does not duplicate
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
-			// re-send data by calling the send method 
+			// re-send packet in another thread as well as in run() after this 
+			// method returns
 			System.out.println("\n" + threadName() + ": Duplicating packet...");
-			send(received, receivePacket.getAddress(), sendPort, serverSocket);
+			Thread DuplicateThread = new Thread(new Delay(received, 
+					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					"DuplicationThread");
+			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
 				System.out.println("\n" + threadName() + ": Invalidating packet opcode.");
@@ -1503,31 +1545,34 @@ class ToClient implements Runnable
  */
 class Delay implements Runnable
 {	
-	public static final int DELAY = 2500;  // milliseconds to delay packet
-	byte[] data;                           // data to put in packet
-	InetAddress addr;                      // InetAddress to send packet to
-	int port;                              // port to send packet to
-	DatagramSocket socket;                 // socket to send packet from
-	DatagramPacket sendPacket;             // packet to delay and send
+	private int delay = 2500;  // milliseconds to delay packet
+	byte[] data;               // data to put in packet
+	InetAddress addr;          // InetAddress to send packet to
+	int port;                  // port to send packet to
+	DatagramSocket socket;     // socket to send packet from
+	DatagramPacket sendPacket; // packet to delay and send
 
 	public Delay (byte[] data, InetAddress addr, int port, 
-			DatagramSocket socket)
+			DatagramSocket socket, int delay)
 	{
 		this.data = data;
 		this.addr = addr;
 		this.port = port;
 		this.socket = socket;
+		this.delay = delay;
 	}
 
 	public void run() 
 	{
-		System.out.println("\n" + threadName() + ": Delaying packet...");
 		// delay the packet
-		try {
-			Thread.sleep(DELAY);
-			System.out.println("\n" + threadName() + ": Packet Delayed.");
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+		if (delay > 0) {
+			try {
+				Thread.sleep(delay);
+				System.out.println("\n" + threadName() + ": Packet Delayed for "
+						+ delay/1000 + " seconds.");
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 		}
 
 		// send the delayed packet
