@@ -674,13 +674,14 @@ class ToServer implements Runnable
 			if (matchType(received[1])) {
 				typeCount++;
 				if (packetNumber == typeCount || packetNumber == packetCount) {
-					action(received);
+					received = action(received);
 				}
 			}
 	
 			// passes Client's packet to Server
-			send(received, receivePacket.getAddress(), 69, serverSocket); 
-
+			if (received != null){
+				send(received, receivePacket.getAddress(), 69, serverSocket); 
+			}
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
 			received = processDatagram(receivePacket);  // print packet data to user
@@ -696,10 +697,6 @@ class ToServer implements Runnable
 					": File Transfer Continuing to Client, in Error Simulation Mode... ");			
 
 			ConnectionThread.start();	// start new connection ToClient thread 
-
-			//TODO - PART OF TEST 
-			boolean happenOnce = false;
-
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
 				received = processDatagram(receivePacket); // print packet data to user
@@ -711,23 +708,14 @@ class ToServer implements Runnable
 				if (matchType(received[1])) {
 					typeCount++;
 					if (packetNumber == typeCount || packetNumber == packetCount) {
-						action(received);
+						received = action(received);
 					}
-				}
-
-				//TODO - TEST - sending delayed packet once:
-				if (!happenOnce) {
-					Thread DelayThread = new Thread(new Delay(received, 
-							receivePacket.getAddress(), sendPort, serverSocket),
-							"DelayThread");
-					DelayThread.start();
-					happenOnce = true;
-				} else {
-					send(received, receivePacket.getAddress(), sendPort, serverSocket);
-				}
+				}	
 				
 				// passes Client's packet to Server
-				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				if (received != null){
+					send(received, receivePacket.getAddress(), sendPort, serverSocket); 
+				}
 			}
 		}
 	}
@@ -741,8 +729,7 @@ class ToServer implements Runnable
 		return Thread.currentThread().getName() + Thread.currentThread().getId();
 	}
 
-	public void action (byte[] received) 
-	{
+	public byte[] action (byte[] received) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			//call the delay thread
 			Thread DelayThread = new Thread(new Delay(received, 
@@ -776,6 +763,8 @@ class ToServer implements Runnable
 						byte[] errRec = new byte[i+errMode.length+1];
 						System.arraycopy(received, 0, errRec, 0, i);
 						System.arraycopy(errMode, 0, errRec, i+1, errMode.length);
+						received = new byte [errRec.length];
+						received = errRec;
 					}
 				}
 			} else if (eBlockNumber != -1) {
@@ -786,7 +775,7 @@ class ToServer implements Runnable
 				// change error code to errorCode
 			}
 		} else if (packetDo == ErrorSim.PacketDo.lose) {
-			return;
+			return null;
 		} else if (packetDo == ErrorSim.PacketDo.send) {
 			if (packetType == ErrorSim.PacketType.RRQ ||
 					packetType == ErrorSim.PacketType.WRQ) {
@@ -797,7 +786,8 @@ class ToServer implements Runnable
 			} else if (packetType == ErrorSim.PacketType.ERROR) {
 				// change error code to errorCode
 			}
-		}			
+		}
+		return received;
 	}
 
 	public boolean matchType (byte op) {
