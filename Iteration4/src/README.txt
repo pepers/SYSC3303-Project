@@ -124,6 +124,11 @@ TESTING
 	Error Code 03, because the disk is full, and files
 	are not able to be written
 
+	ERROR CODE 03 (ALTERNATE)
+	- if you are not able to use the fsutil command above
+	because of lack of privilages, you can add a bunch of 
+	files to your USB drive manually, until it is full
+
 	PATHS THROUGH ERROR SIMULATION MENU
 	- when choosing Error Simulation Mode, instead of 
 	Normal Mode, the following paths through the menu can
@@ -147,36 +152,46 @@ TESTING
 				- coming from Client? or Server?
 	- 2. Delay a packet.
 		- 1. RRQ
-			- which RRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay?
+				- which RRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 2. WRQ
-			- which WRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+- how long of a delay?
+				- which WRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 3. DATA
-			- which DATA (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay?
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 4. ACK
-			- which ACK (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay?
+				- which ACK (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 5. ERROR
-			- which ERROR (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay?
+				- which ERROR (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 	- 3. Duplicate a packet.
 		- 1. RRQ
-			- which RRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- which RRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 2. WRQ
-			- which WRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- which WRQ (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 3. DATA
-			- which DATA (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 4. ACK
-			- which ACK (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- which ACK (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 		- 5. ERROR
-			- which ERROR (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- which ERROR (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
 	- 4. Send a packet.
 		- 1. RRQ
 			- enter a filename
