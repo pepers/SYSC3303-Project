@@ -102,6 +102,9 @@ USE
 
 
 TESTING
+	- the Client and Server both have socket timeouts of
+	2 seconds, in order to be both short enough for testing,
+	and long enough to notice when reading console output
 	- most testing can be done through following the 
 	onscreen console prompts in the Error Simulator,
 	but for those errors that can't be simulated through the 	Error	Simulator:
