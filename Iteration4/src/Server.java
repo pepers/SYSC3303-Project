@@ -579,13 +579,15 @@ class ClientConnection implements Runnable
 								if (!timedOut) {
 									// response timeout, 
 									System.out.println("\n" + threadName() + 
-											": Socket Timeout: Continuing to wait for ACK...");
+											": Socket Timeout: Resending DATA, and continuing to wait for ACK...");
 									send(data);       // send DATA
 									timedOut = true;  // have timed out once on this packet
 								} else {
 									// have timed out a second time
 									System.out.println("\n" + threadName() + 
-											": Socket Timeout Again: Aborting file transfer.");
+											": Socket Timeout Again: Aborting file transfer:");
+									System.out.println(threadName() + 
+											": There may be a problem with the Client's connection.");
 									return;
 								}
 							}		
@@ -664,12 +666,15 @@ class ClientConnection implements Runnable
 							if (!timedOut) {
 								// response timeout, 
 								System.out.println("\n" + threadName() + 
-										": Socket Timeout: Continuing to wait for ACK...");
+										": Socket Timeout: Resending DATA, and continuing to wait for ACK...");
 								timedOut = true;  // have timed out once on this packet
+								send(data); // send DATA
 							} else {
 								// have timed out a second time
 								System.out.println("\n" + threadName() + 
-										": Socket Timeout Again: Aborting file transfer.");
+										": Socket Timeout Again: Aborting file transfer:");
+								System.out.println(threadName() + 
+										": There may be a problem with the Client's connection.");
 								return;
 							}
 						}		
@@ -708,12 +713,6 @@ class ClientConnection implements Runnable
 						return;		
 					}
 				}
-				blockNumber++; // increment DATA block number
-				
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
-					blockNumber = 0;
-				}
 			}			
 			/* done sending last packet */
 			
@@ -744,6 +743,14 @@ class ClientConnection implements Runnable
 			byte[] ack = createAck(blockNumber);	// create initial ACK
 			send(ack);								// send initial ACK
 			byte[] data = new byte[0];		// to hold received data portion of DATA packet
+			
+			blockNumber++; // increment DATA block number
+			
+			// blockNumber goes from 0-127, and then wraps to back to 0
+			if (blockNumber < 0) { 
+				blockNumber = 0;
+			}
+			
 			do {	// DATA transfer from client
 				
 				// dealing with timeout on receiving a packet
@@ -776,32 +783,41 @@ class ClientConnection implements Runnable
 				
 				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 				if (dataPacket[1] == 3) {						// received DATA
-					blockNumber = dataPacket[3];	// get the data block number
-					data = parseData(dataPacket);	// get data from packet
-					try {
-						// gets space left on the drive that we can use
-						long spaceOnDrive = Files.getFileStore(
-								Paths.get("")).getUsableSpace();	
-						
-						// checks if there is enough usable space on the disk
-						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
-							// writes data to file (creates file first, if it doesn't exist yet)
-							Files.write(Paths.get(fileDirectory + filename), 
-									data, StandardOpenOption.CREATE, 
-									StandardOpenOption.APPEND);
-							System.out.println("\n" + threadName() + 
-									": writing data to file: " + filename);
-						} else {
-							// create and send error response packet for "Disk full or allocation exceeded."
-							byte[] error = createError((byte)3, "File (" + 
-									filename + ") too large for disk.");
-							send(error);
-							return;
+					if (dataPacket[3] == blockNumber) { // correct block number
+						data = parseData(dataPacket);	// get data from packet
+						// if last packet was empty, no need to write, end of transfer
+						if (data.length == 0) { 
+							ack = createAck(dataPacket[3]); // create ACK
+							send(ack);                      // send ACK
+							break;
 						}
-					} catch (IOException e) {
-						e.printStackTrace();
-					}							
-					ack = createAck(blockNumber);	// create ACK
+						try {
+							// gets space left on the drive that we can use
+							long spaceOnDrive = Files.getFileStore(
+									Paths.get("")).getUsableSpace();	
+						
+							// checks if there is enough usable space on the disk
+							if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+								// writes data to file (creates file first, if it doesn't exist yet)
+								Files.write(Paths.get(fileDirectory + filename), 
+										data, StandardOpenOption.CREATE, 
+										StandardOpenOption.APPEND);
+								System.out.println("\n" + threadName() + 
+										": writing data to file: " + filename);
+							} else {
+								// create and send error response packet for "Disk full or allocation exceeded."
+								byte[] error = createError((byte)3, "File (" + 
+										filename + ") too large for disk.");
+								send(error);
+								return;
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					} else {
+						System.out.println("\n" + threadName() + ": Received DATA packet out of order: Not writing to file."); 
+					}
+					ack = createAck(dataPacket[3]);	// create ACK
 					send(ack);						// send ACK
 				} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
 					parseError(dataPacket);			// print ERROR info

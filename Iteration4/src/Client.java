@@ -221,7 +221,7 @@ public class Client
 			byte data[] = new byte[MAX_DATA + 4];
 		
 			DatagramPacket packet = new DatagramPacket(data, data.length);  // gets received DatagramPacket
-		
+			
 			try {
 				// set timeout to receive response
 				sendReceiveSocket.setSoTimeout(TIMEOUT); 
@@ -253,8 +253,8 @@ public class Client
 			
 				byte[] received = processDatagram(packet);	// received packet turned into byte[]
 			
-				// DATA && RRQ was sent
-				if ((received[1] == 3) && (req == 1)) {         
+				// DATA && RRQ was sent && block 01
+				if ((received[1] == 3) && (req == 1) && received[3] == 1) {         
 					byte[] justData = parseData(received);  // print DATA info to user		
 					try {
 						// gets space left on the drive that we can use
@@ -318,13 +318,19 @@ public class Client
 	 */
 	public void readReq() 
 	{
-		byte blockNumber = 0;  // block number for ACK and DATA during transfer
+		byte blockNumber = 1;  // block number for ACK and DATA during transfer
 		byte[] data = null;    // data from DATA packet
 		
-		byte[] ack = createAck((byte)1);  // create initial ACK
+		byte[] ack = createAck(blockNumber);  // create initial ACK
 		send(ack, addr, port);            // send ACK
 		
-		do {	// DATA transfer from client
+		do {	// DATA transfer from server
+			blockNumber++; // increment ACK block number
+			
+			// blockNumber goes from 0-127, and then wraps to back to 0
+			if (blockNumber < 0) { 
+				blockNumber = 0;
+			}
 			
 			// dealing with timeout on receiving a packet
 			DatagramPacket receivePacket = null;			
@@ -355,36 +361,45 @@ public class Client
 			
 			byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 			
-			if (dataPacket[1] == 3) {						// received DATA
-				blockNumber = dataPacket[3];	// get the data block number
-				data = parseData(dataPacket);	// get data from packet
-				try {
-					// gets space left on the drive that we can use
-					long spaceOnDrive = Files.getFileStore(
-							Paths.get("")).getUsableSpace();	
-					
-					// checks if there is enough usable space on the disk
-					if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
-						// writes data to file (creates file first, if it doesn't exist yet)
-						Files.write(Paths.get(fileDirectory + filename), data, 
-								StandardOpenOption.CREATE, 
-								StandardOpenOption.APPEND);
-						System.out.println("\nClient: writing data to file: " + 
-								filename);
-					} else {
-						// create and send error response packet for "Disk full or allocation exceeded."
-						byte[] error = createError((byte)3, "File (" + filename 
-								+ ") too large for disk.");
-						send(error, addr, port);
-						return;
+			if (dataPacket[1] == 3) {        // received DATA
+				if (dataPacket[3] == blockNumber) { // correct block number
+					data = parseData(dataPacket);   // get data from packet
+					// if last packet was empty, no need to write, end of transfer
+					if (data.length == 0) { 
+						ack = createAck(dataPacket[3]);   // create ACK
+						send(ack, addr, port);          // send ACK
+						break;
 					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				}							
-				ack = createAck(blockNumber);	// create ACK
-				send(ack, addr, port);						// send ACK
-			} else if (dataPacket[1] == 5) {				// ERROR received instead of DATA
-				parseError(dataPacket);			// print ERROR info
+					try {
+						// gets space left on the drive that we can use
+						long spaceOnDrive = Files.getFileStore(
+								Paths.get("")).getUsableSpace();	
+					
+						// checks if there is enough usable space on the disk
+						if (spaceOnDrive > data.length + 1024) { // +1024 bytes for safety
+							// writes data to file (creates file first, if it doesn't exist yet)
+							Files.write(Paths.get(fileDirectory + filename), data, 
+									StandardOpenOption.CREATE, 
+									StandardOpenOption.APPEND);
+							System.out.println("\nClient: writing data to file: " + 
+									filename);
+						} else {
+							// create and send error response packet for "Disk full or allocation exceeded."
+							byte[] error = createError((byte)3, "File (" + filename 
+									+ ") too large for disk.");
+							send(error, addr, port);
+							return;
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				} else {
+					System.out.println("\nClient: Received DATA packet out of order: Not writing to file."); 
+				}
+				ack = createAck(dataPacket[3]);   // create ACK
+				send(ack, addr, port);          // send ACK
+			} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+				parseError(dataPacket);         // print ERROR info
 				return;
 			} else {
 				
@@ -428,7 +443,7 @@ public class Client
 				
 				// create DATA packet of file being read
 				byte[] data = createData(blockNumber, read);
-				send(data, addr, port);                       // send DATA
+				send(data, addr, port); // send DATA
 				
 				// loop until received ACK is for correct block number
 				while (true) {
@@ -440,8 +455,9 @@ public class Client
 						} catch (SocketTimeoutException e1) {
 							if (!timedOut) {
 								// response timeout, 
-								System.out.println("\nClient: Socket Timeout: Continuing to wait for ACK...");
+								System.out.println("\nClient: Socket Timeout: Resending DATA and continuing to wait for ACK...");
 								timedOut = true;  // have timed out once on this packet
+								send(data, addr, port); // send DATA
 							} else {
 								// have timed out a second time
 								System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
@@ -507,33 +523,59 @@ public class Client
 			
 			byte[] data = createData(blockNumber, read);  // create DATA packet of file being read
 			send(data, addr, port);                       // send DATA
-			blockNumber++;                                // increment DATA block number
 			
-			// blockNumber goes from 0-127, and then wraps to back to 0
-			if (blockNumber < 0) { 
-				blockNumber = 0;
-			}
+			// loop until received ACK is for correct block number
+			while (true) {
+				boolean timedOut = false;  // have already timed out once
+				while (true) {
+					try {
+						receivePacket = receive(); // receive the DatagramPacket
+						break;
+					} catch (SocketTimeoutException e1) {
+						if (!timedOut) {
+							// response timeout, 
+							System.out.println("\nClient: Socket Timeout: Resending DATA and continuing to wait for ACK...");
+							timedOut = true;  // have timed out once on this packet
+							send(data, addr, port); // send DATA
+						} else {
+							// have timed out a second time
+							System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
+							System.out.println("Client: You may try again, but the Server may not be running...");
+							return;
+						}
+					}		
+				}
 			
-			try {
-				receivePacket = receive();  // receive the DatagramPacket
-			} catch (SocketTimeoutException e) {
-				System.out.println("\nClient: Did not receive ACK for last DATA sent.");
-				System.out.println("\nClient: WRQ File Transfer Complete.");
-				return;
-			}           
+				// invalid packet received
+				if (receivePacket == null) {
+					System.out.println("\nClient: Invalid packet received: Aborting file transfer:");
+					System.out.println("Client: You may try to send another request...");
+					return;
+				}
 			
-			// invalid packet received
-			if (receivePacket == null) {
-				return;
-			}
-			
-			byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-			if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
-				parseError(ackPacket);	// print ERROR info and close connection
-				System.out.println("\nClient: Aborting Transfer.");
-				return;
-			} else if (ackPacket[1] == 4) {
-				parseAck(ackPacket);	// print ACK info
+				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
+				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+					parseError(ackPacket);	// print ERROR info and close connection
+					System.out.println("\nClient: Aborting Transfer.");
+					return;
+				} else if (ackPacket[1] == 4) {
+					parseAck(ackPacket);	// print ACK info
+					if (ackPacket[3] == blockNumber) {
+						break;  // got ACK with correct block number, continuing
+					} else if (ackPacket[3] < blockNumber){ // duplicate ACK
+						System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+					} else { // ACK with weird block number 
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+						send(error, addr, port);
+						return;		
+					}
+				} else {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError((byte)4, "Expected ACK as response.");
+					send(error, addr, port);
+					return;		
+				}
 			}
 		}			
 		/* done sending last packet */
@@ -936,6 +978,8 @@ public class Client
 		} 
 		
 		Opcode op = getOpcode(received);	// get opcode
+		if (op == null)
+			return false;
 		
 		// organize by opcode
 		switch (op) {
