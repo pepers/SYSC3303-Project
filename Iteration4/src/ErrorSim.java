@@ -741,9 +741,9 @@ class ToServer implements Runnable
 			send(received, receivePacket.getAddress(), sendPort, serverSocket);
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
-				// change opcode
+				received[1] = (byte)0; // change opcode to an invalid one.
 			} else if (eFnFlag) {
-				// change filename to 'DOESNTEXIST'
+				received[2] = (byte)32;// throw a space as the first letter in the filename. 
 			} else if (eMdFlag) {
 				// change mode
 				System.out.println("\n" + threadName() + ": Manipulating mode:");
@@ -768,11 +768,15 @@ class ToServer implements Runnable
 					}
 				}
 			} else if (eBlockNumber != -1) {
-				// change block number to eBlockNumber
+				received[3] = eBlockNumber;// change block number to eBlockNumber
 			} else if (eDfFlag) {
-				// delete data field
+				for(int i = received.length; i > 3; i--)// delete data field
+				{
+					received[i] = 0; //replace all data field bytes with 0's, essentially deleting data field.
+				}
 			} else if (errorCode != -1) {
-				// change error code to errorCode
+				
+				received[1] = errorCode;// change error code to errorCode
 			}
 		} else if (packetDo == ErrorSim.PacketDo.lose) {
 			return null;
@@ -780,11 +784,44 @@ class ToServer implements Runnable
 			if (packetType == ErrorSim.PacketType.RRQ ||
 					packetType == ErrorSim.PacketType.WRQ) {
 				// change filename to filename
+				String mode = "netascii";
+				received=new byte[filename.length() + mode.length() + 4];
+				
+				// request opcode
+				if (packetType == ErrorSim.PacketType.RRQ)
+				{
+					received[0] = 0;
+					received[1] = 1;
+				}
+				else
+				{
+					received[0] = 0;
+					received[1] = 2;
+				}
+				
+				// convert filename and mode to byte[], with proper encoding
+				byte[] fn = null;	// filename
+				byte[] md = null;	// mode
+				try {
+					fn = filename.getBytes("US-ASCII");
+					md = mode.getBytes("US-ASCII");
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+				
+				// add filename and mode to request 
+				received[fn.length + 3] = 0;		
+				System.arraycopy(fn,0,received,2,fn.length);
+				System.arraycopy(md,0,received,fn.length+3,md.length);
+				received[received.length-1] = 0;
+				
+		
+				
 			} else if (packetType == ErrorSim.PacketType.DATA || 
 					packetType == ErrorSim.PacketType.ACK) {
-				// change blocknumber to eBlockNumber
+				received[3]= eBlockNumber;// change blocknumber to eBlockNumber
 			} else if (packetType == ErrorSim.PacketType.ERROR) {
-				// change error code to errorCode
+				received[3] = errorCode;// change error code to errorCode
 			}
 		}
 		return received;
