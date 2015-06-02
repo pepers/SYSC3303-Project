@@ -369,7 +369,8 @@ public class ErrorSim
 				}
 				if ((packetDo == PacketDo.delay || 
 						packetDo == PacketDo.duplicate ||
-						packetDo == PacketDo.lose) &&
+						packetDo == PacketDo.lose ||
+						packetDo == PacketDo.edit) &&
 						(packetType == PacketType.RRQ || 
 						packetType == PacketType.WRQ)) {
 					choiceInt = 1;
