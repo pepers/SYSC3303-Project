@@ -136,11 +136,9 @@ TESTING
 
 	- 1. Lose a packet.
 		- 1. RRQ
-			- which RRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- coming from Client? or Server?
 		- 2. WRQ
-			- which WRQ (1st, 2nd, 3rd, etc.)
-				- coming from Client? or Server?
+			- coming from Client? or Server?
 		- 3. DATA
 			- which DATA (1st, 2nd, 3rd, etc.)
 				- coming from Client? or Server?
@@ -153,12 +151,10 @@ TESTING
 	- 2. Delay a packet.
 		- 1. RRQ
 			- how long of a delay?
-				- which RRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+				- coming from Client? or Server?
 		- 2. WRQ
-- how long of a delay?
-				- which WRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+			- how long of a delay?
+				- coming from Client? or Server?
 		- 3. DATA
 			- how long of a delay?
 				- which DATA (1st, 2nd, 3rd, etc.)
@@ -173,13 +169,9 @@ TESTING
 					- coming from Client? or Server?
 	- 3. Duplicate a packet.
 		- 1. RRQ
-			- how long of a delay between duplicated packets?
-				- which RRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+			- how long of a delay between duplicated packets?					- coming from Client? or Server?
 		- 2. WRQ
-			- how long of a delay between duplicated packets?
-				- which WRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+			- how long of a delay between duplicated packets?					- coming from Client? or Server?
 		- 3. DATA
 			- how long of a delay between duplicated packets?
 				- which DATA (1st, 2nd, 3rd, etc.)
@@ -216,24 +208,18 @@ TESTING
 	- 5. Edit a packet.
 		- 1. RRQ
 			- 1. make opcode invalid
-				- which RRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
-			- 2. change filename to 'DOESNTEXIST'
-				- which RRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+				- coming from Client? or Server?
+			- 2. make filename invalid
+				- coming from Client? or Server?
 			- 3. make mode invalid
-				- which RRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+				- coming from Client? or Server?
 		- 2. WRQ
 			- 1. make opcode invalid
-				- which WRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
-			- 2. change filename to 'DOESNTEXIST'
-				- which WRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+				- coming from Client? or Server?
+			- 2. make filename invalid
+				- coming from Client? or Server?
 			- 3. make mode invalid
-				- which WRQ (1st, 2nd, 3rd, etc.)
-					- coming from Client? or Server?
+				- coming from Client? or Server?
 		- 3. DATA
 			- 1. make opcode invalid
 				- which DATA (1st, 2nd, 3rd, etc.)
@@ -262,9 +248,9 @@ TESTING
 		DISCLAIMER
 		- Many of the previous paths will produce the same 
 		errors, and many paths won't affect file transfer
-		at all (eg: choosing the 2nd RRQ to edit, there will
-		be only one RRQ in a transfer, and it will be the 
-		first packet).  It is up to the user of the Error
+		at all (eg: if you choose a packet number, but the
+		file transfer isn't long enough to make it to that 
+		packet). It is up to the user of the Error
 		Simulator to understand how file transfer program 
 		works, and how to correctly test for various TFTP
 		errors.

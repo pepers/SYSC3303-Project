@@ -367,21 +367,29 @@ public class ErrorSim
 						}
 					}
 				}
-				while (true) {
-					// choose which packet to manipulate
-					System.out.println("\nError Simulator: Enter a number to indicate which " 
-							+ packetType + " packet to manipulate.");
-					System.out.println("(eg: enter '1' for the first packet, etc.)");
-					try {
-						choiceInt = Integer.parseInt(input.nextLine());  // user's choice
-						if (choiceInt < 1) { 
-							System.out.println("\nI'm sorry, " + choiceInt + " is not a valid choice.  Please try again...");
-						} else {
-							break;
-						}	
-					} catch (NumberFormatException n) {
-						System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
-					}				
+				if ((packetDo == PacketDo.delay || 
+						packetDo == PacketDo.duplicate ||
+						packetDo == PacketDo.lose) &&
+						(packetType == PacketType.RRQ || 
+						packetType == PacketType.WRQ)) {
+					choiceInt = 1;
+				} else {
+					while (true) {
+						// choose which packet to manipulate
+						System.out.println("\nError Simulator: Enter a number to indicate which " 
+								+ packetType + " packet to manipulate.");
+						System.out.println("(eg: enter '1' for the first packet, etc.)");
+						try {
+							choiceInt = Integer.parseInt(input.nextLine());  // user's choice
+							if (choiceInt < 1) { 
+								System.out.println("\nI'm sorry, " + choiceInt + " is not a valid choice.  Please try again...");
+							} else {
+								break;
+							}	
+						} catch (NumberFormatException n) {
+							System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+						}				
+					}
 				}
 				while (true) {
 					// choose where the packets to manipulated are from and going
