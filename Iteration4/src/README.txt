@@ -50,7 +50,7 @@ INSTALL/RUN
 	- add Client.java, Server.java, and ErrorSim.java
 	to the project
 	- compile and run Server.java, then ErrorSim.java, 
-	then Client.java	from within Eclipse
+	then Client.java from within Eclipse
 
 	- if the .java files are in your project \src\ folder, 
 	put your \files\ folder at the same level as \src\
@@ -68,7 +68,8 @@ USE
 	- next choose whether you want to send the read/
 	write request directly to the (S)erver, or through
 	the (E)rror Simulator
-	- next type in the name of the file that you want to 	read/write
+	- next type in the name of the file that you want to
+	read/write
 	- test text files for the Client and Server are 
 	included in their respective folders to facilitate
 	testing, but any file may also be put into those 
@@ -107,7 +108,8 @@ TESTING
 	and long enough to notice when reading console output
 	- most testing can be done through following the 
 	onscreen console prompts in the Error Simulator,
-	but for those errors that can't be simulated through the 	Error	Simulator:
+	but for those errors that can't be simulated through the 
+	Error Simulator:
 
 	ERROR CODE 03
 	- to test Error Code 03 (Disk full), the Eclipse 
@@ -172,9 +174,11 @@ TESTING
 					- coming from Client? or Server?
 	- 3. Duplicate a packet.
 		- 1. RRQ
-			- how long of a delay between duplicated packets?					- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- coming from Client? or Server?
 		- 2. WRQ
-			- how long of a delay between duplicated packets?					- coming from Client? or Server?
+			- how long of a delay between duplicated packets?
+				- coming from Client? or Server?
 		- 3. DATA
 			- how long of a delay between duplicated packets?
 				- which DATA (1st, 2nd, 3rd, etc.)
