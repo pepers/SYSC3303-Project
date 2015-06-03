@@ -43,6 +43,13 @@ FILES
 		test2.txt
 		test3.txt
 		test4.txt
+	Error Code 1-Timing Diagram.png
+	Error Code 2-Timing Diagram.png
+	Error Code 3-Timing Diagram.png
+	Error Code 4-Timing Diagram.png
+	Error Code 5-Timing Diagram.png
+	Error Code 6-Timing Diagram.png
+
 
 
 INSTALL/RUN
