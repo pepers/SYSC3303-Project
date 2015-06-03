@@ -1268,16 +1268,16 @@ class ToClient implements Runnable
 					// create packet according to user specifications, to send
 					byte[] createdPacket = createPacket();
 					
-					// passes Client's packet to Server
+					// passes Server's packet to Client
 					if (createdPacket != null){
 						send(createdPacket, receivePacket.getAddress(), 
-								sendPort, serverSocket); 
+								sendPort, clientSocket); 
 					}
 				}
 				
 				// passes Client's packet to Server
 				if (received != null){
-					send(received, receivePacket.getAddress(), sendPort, serverSocket); 
+					send(received, receivePacket.getAddress(), sendPort, clientSocket); 
 				}
 				
 				receivePacket = receive(serverSocket);  // receive packet from Server
@@ -1307,7 +1307,7 @@ class ToClient implements Runnable
 			// call the delay thread
 			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					receivePacket.getAddress(), sendPort, clientSocket, delay),
 					"DelayThread");
 			DelayThread.start();
 			return null;  // so delaying does not duplicate
@@ -1316,7 +1316,7 @@ class ToClient implements Runnable
 			// method returns
 			System.out.println("\n" + threadName() + ": Duplicating packet...");
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					receivePacket.getAddress(), sendPort, clientSocket, delay),
 					"DuplicationThread");
 			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
