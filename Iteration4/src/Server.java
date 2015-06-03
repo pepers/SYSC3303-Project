@@ -452,6 +452,7 @@ class ClientConnection implements Runnable
 	DatagramPacket receivePacket;			// DatagramPacket received from Client during file transfer
 	DatagramSocket sendReceiveSocket;		// new socket connection with Client for file transfer
 	private static final int TIMEOUT = 2000;// sendReceiveSocket's timeout when receiving
+	private boolean blockNumberWrap = false;// true if block number wraps back to zero
 	
 	public enum Opcode { RRQ, WRQ, ACK, DATA, ERROR }	// opcodes for different DatagramPackets in TFTP
 	
@@ -608,16 +609,33 @@ class ClientConnection implements Runnable
 							return;
 						} else if (ackPacket[1] == 4) {
 							parseAck(ackPacket);	// print ACK info
-							if (ackPacket[3] == blockNumber) {
-								break;  // got ACK with correct block number, continuing
-							} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-								System.out.println("\n" + threadName() + 
-										": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-							} else { // ACK with weird block number 
-								// create and send error response packet for "Illegal TFTP operation."
-								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
-								send(error);
-								return;		
+							if (ackPacket[3] == 0) { // received block numbers wrapped
+								blockNumberWrap = false;
+							}
+							if (!blockNumberWrap){ // block number hasn't wrapped yet
+								if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+									System.out.println("\n" + threadName() + 
+											": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+								} else if (ackPacket[3] == blockNumber) {
+									break;  // got ACK with correct block number, continuing
+								} else { // ACK with weird block number 
+									// create and send error response packet for "Illegal TFTP operation."
+									byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+									send(error);
+									return;		
+								}
+							} else {
+								if (ackPacket[3] > blockNumber){ // duplicate ACK
+									System.out.println("\n" + threadName() + 
+											": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+								} else if (ackPacket[3] == blockNumber) {
+									break;  // got ACK with correct block number, continuing
+								} else { // ACK with weird block number 
+									// create and send error response packet for "Illegal TFTP operation."
+									byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+									send(error);
+									return;		
+								}
 							}
 						} else {
 							// create and send error response packet for "Illegal TFTP operation."
@@ -631,6 +649,7 @@ class ClientConnection implements Runnable
 					// blockNumber goes from 0-127, and then wraps to back to 0
 					if (blockNumber < 0) { 
 						blockNumber = 0;
+						blockNumberWrap = true;
 					}
 				}
 				
@@ -695,16 +714,33 @@ class ClientConnection implements Runnable
 						return;
 					} else if (ackPacket[1] == 4) {
 						parseAck(ackPacket);	// print ACK info
-						if (ackPacket[3] == blockNumber) {
-							break;  // got ACK with correct block number, continuing
-						} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-							System.out.println("\n" + threadName() + 
-									": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else { // ACK with weird block number 
-							// create and send error response packet for "Illegal TFTP operation."
-							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
-							send(error);
-							return;		
+						if (ackPacket[3] == 0) { // received block numbers wrapped
+							blockNumberWrap = false;
+						}
+						if (!blockNumberWrap){ // block number hasn't wrapped yet
+							if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+								System.out.println("\n" + threadName() + 
+										": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else if (ackPacket[3] == blockNumber) {
+								break;  // got ACK with correct block number, continuing
+							} else { // ACK with weird block number 
+								// create and send error response packet for "Illegal TFTP operation."
+								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+								send(error);
+								return;		
+							} 
+						} else {
+							if (ackPacket[3] > blockNumber){ // duplicate ACK
+								System.out.println("\n" + threadName() + 
+										": Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else if (ackPacket[3] == blockNumber) {
+								break;  // got ACK with correct block number, continuing
+							} else { // ACK with weird block number 
+								// create and send error response packet for "Illegal TFTP operation."
+								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+								send(error);
+								return;		
+							}
 						}
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
@@ -750,6 +786,7 @@ class ClientConnection implements Runnable
 			// blockNumber goes from 0-127, and then wraps to back to 0
 			if (blockNumber < 0) { 
 				blockNumber = 0;
+				blockNumberWrap = true;
 			}
 			
 			do {	// DATA transfer from client
@@ -790,6 +827,7 @@ class ClientConnection implements Runnable
 						// blockNumber goes from 0-127, and then wraps to back to 0
 						if (blockNumber < 0) { 
 							blockNumber = 0;
+							blockNumberWrap = true;
 						}
 						data = parseData(dataPacket);	// get data from packet
 						// if last packet was empty, no need to write, end of transfer
@@ -1286,44 +1324,7 @@ class ClientConnection implements Runnable
 		// organize by opcode
 		switch (op) {
 			case RRQ: case WRQ:						// read or write request
-				int f;	// filename finding index
-				for (f = 2; f < len; f++) {
-					if (data[f] == 0) {	// filename is valid
-						break;
-					}
-				}
-				if (f == len) {			// didn't find 0 byte after filename
-					return false;
-				}
-				int m;	// mode finding index
-				for (m = f + 1; m < len; m++) {
-					if (data[m] == 0) {	// mode is valid
-						break;
-					}
-				}
-				if (m == len) {			// didn't find 0 byte after mode
-					return false;
-				}
-			
-				// byte[] to copy mode into
-				byte[] md = new byte[m - f - 1];
-				System.arraycopy(data, f + 1, md, 0, m - f - 1);
-			
-				// make a String out of byte[] for mode
-				String mode = null;
-				try {
-					mode = new String(md, "US-ASCII");
-				} catch (UnsupportedEncodingException e) {
-					e.printStackTrace();
-				}
-			
-				// checks if mode is a valid TFTP mode
-				if (!(mode.equalsIgnoreCase("netascii") || 
-						mode.equalsIgnoreCase("octet") ||
-						mode.equalsIgnoreCase("mail"))) {
-					return false;
-				}
-				break;
+				return false;
 			case DATA:								// DATA packet
 				if (len > MAX_DATA + 4) {
 					return false;

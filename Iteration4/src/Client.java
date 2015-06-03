@@ -42,6 +42,7 @@ public class Client
 	InetAddress addr;												// InetAddress of host responding to request
 	int port;														// port number of host responding to request
 	private byte req;												// request type sent by user 
+	private boolean blockNumberWrap = false;						// true if block number wraps back to zero
 	
 	/**
 	 * opcodes for the different DatagramPackets in TFTP
@@ -330,6 +331,7 @@ public class Client
 		// blockNumber goes from 0-127, and then wraps to back to 0
 		if (blockNumber < 0) { 
 			blockNumber = 0;
+			blockNumberWrap = true;
 		}
 		
 		do {	// DATA transfer from server
@@ -370,6 +372,7 @@ public class Client
 					// blockNumber goes from 0-127, and then wraps to back to 0
 					if (blockNumber < 0) { 
 						blockNumber = 0;
+						blockNumberWrap = true;
 					}
 					data = parseData(dataPacket);   // get data from packet
 					// if last packet was empty, no need to write, end of transfer
@@ -525,15 +528,33 @@ public class Client
 						return;
 					} else if (ackPacket[1] == 4) {
 						parseAck(ackPacket);	// print ACK info
-						if (ackPacket[3] == blockNumber) {
-							break;  // got ACK with correct block number, continuing
-						} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else { // ACK with weird block number 
-							// create and send error response packet for "Illegal TFTP operation."
-							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
-							send(error, addr, port);
-							return;		
+						if (ackPacket[3] == 0) { // received block numbers wrapped
+							blockNumberWrap = false;
+						}
+						if (!blockNumberWrap){ // block number hasn't wrapped yet
+							if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+								System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else if (ackPacket[3] == blockNumber) {
+								break;  // got ACK with correct block number, continuing
+							} else { // ACK with weird block number 
+								// create and send error response packet for "Illegal TFTP operation."
+								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+								send(error, addr, port);
+								return;		
+							} 
+						} else {
+							if (ackPacket[3] > blockNumber){ // duplicate ACK
+								System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else {
+								if (ackPacket[3] == blockNumber) {
+									break;  // got ACK with correct block number, continuing
+								} else { // ACK with weird block number 
+									// create and send error response packet for "Illegal TFTP operation."
+									byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+									send(error, addr, port);
+									return;		
+								}
+							}
 						}
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
@@ -547,6 +568,7 @@ public class Client
 				// blockNumber goes from 0-127, and then wraps to back to 0
 				if (blockNumber < 0) { 
 					blockNumber = 0;
+					blockNumberWrap = true;
 				}
 			}			
 		} catch (FileNotFoundException e) {
@@ -604,15 +626,31 @@ public class Client
 					return;
 				} else if (ackPacket[1] == 4) {
 					parseAck(ackPacket);	// print ACK info
-					if (ackPacket[3] == blockNumber) {
-						break;  // got ACK with correct block number, continuing
-					} else if (ackPacket[3] < blockNumber){ // duplicate ACK
-						System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-					} else { // ACK with weird block number 
-						// create and send error response packet for "Illegal TFTP operation."
-						byte[] error = createError((byte)4, "Received ACK with invalid block number.");
-						send(error, addr, port);
-						return;		
+					if (ackPacket[3] == 0) { // received block numbers wrapped
+						blockNumberWrap = false;
+					}
+					if (!blockNumberWrap){ // block number hasn't wrapped yet
+						if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else if (ackPacket[3] == blockNumber) {
+							break;  // got ACK with correct block number, continuing
+						} else { // ACK with weird block number 
+							// create and send error response packet for "Illegal TFTP operation."
+							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							send(error, addr, port);
+							return;		
+						}
+					} else {
+						if (ackPacket[3] > blockNumber){ // duplicate ACK
+							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else if (ackPacket[3] == blockNumber) {
+							break;  // got ACK with correct block number, continuing
+						} else { // ACK with weird block number 
+							// create and send error response packet for "Illegal TFTP operation."
+							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							send(error, addr, port);
+							return;		
+						}
 					}
 				} else {
 					// create and send error response packet for "Illegal TFTP operation."
