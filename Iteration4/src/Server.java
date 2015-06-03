@@ -743,6 +743,7 @@ class ClientConnection implements Runnable
 			byte[] ack = createAck(blockNumber);	// create initial ACK
 			send(ack);								// send initial ACK
 			byte[] data = new byte[0];		// to hold received data portion of DATA packet
+			byte[] dataPacket = new byte[0];
 			
 			blockNumber++; // increment DATA block number
 			
@@ -781,9 +782,15 @@ class ClientConnection implements Runnable
 					return;
 				}
 				
-				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+				dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 				if (dataPacket[1] == 3) {						// received DATA
 					if (dataPacket[3] == blockNumber) { // correct block number
+						blockNumber++; // increment ACK block number
+						
+						// blockNumber goes from 0-127, and then wraps to back to 0
+						if (blockNumber < 0) { 
+							blockNumber = 0;
+						}
 						data = parseData(dataPacket);	// get data from packet
 						// if last packet was empty, no need to write, end of transfer
 						if (data.length == 0) { 
@@ -815,7 +822,8 @@ class ClientConnection implements Runnable
 							e.printStackTrace();
 						}
 					} else {
-						System.out.println("\n" + threadName() + ": Received DATA packet out of order: Not writing to file."); 
+						System.out.println("\n" + threadName() + ": Received DATA packet out of order: Not writing to file.");
+						data = new byte[MAX_DATA]; // so we don't quit yet
 					}
 					ack = createAck(dataPacket[3]);	// create ACK
 					send(ack);						// send ACK
@@ -836,7 +844,7 @@ class ClientConnection implements Runnable
 						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
 						return;
 					}
-					byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+					dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 					
 					if (dataPacket[1] == 3) {        // received DATA					
 						ack = createAck(dataPacket[3]);   // create ACK

@@ -320,17 +320,19 @@ public class Client
 	{
 		byte blockNumber = 1;  // block number for ACK and DATA during transfer
 		byte[] data = new byte[0];    // data from DATA packet
+		byte[] dataPacket = new byte[0];
 		
 		byte[] ack = createAck(blockNumber);  // create initial ACK
 		send(ack, addr, port);            // send ACK
 		
+		blockNumber++; // increment ACK block number
+		
+		// blockNumber goes from 0-127, and then wraps to back to 0
+		if (blockNumber < 0) { 
+			blockNumber = 0;
+		}
+		
 		do {	// DATA transfer from server
-			blockNumber++; // increment ACK block number
-			
-			// blockNumber goes from 0-127, and then wraps to back to 0
-			if (blockNumber < 0) { 
-				blockNumber = 0;
-			}
 			
 			// dealing with timeout on receiving a packet
 			DatagramPacket receivePacket = null;			
@@ -359,10 +361,16 @@ public class Client
 				return;
 			}
 			
-			byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+			dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 			
 			if (dataPacket[1] == 3) {        // received DATA
 				if (dataPacket[3] == blockNumber) { // correct block number
+					blockNumber++; // increment ACK block number
+					
+					// blockNumber goes from 0-127, and then wraps to back to 0
+					if (blockNumber < 0) { 
+						blockNumber = 0;
+					}
 					data = parseData(dataPacket);   // get data from packet
 					// if last packet was empty, no need to write, end of transfer
 					if (data.length == 0) { 
@@ -394,7 +402,8 @@ public class Client
 						e.printStackTrace();
 					}
 				} else {
-					System.out.println("\nClient: Received DATA packet out of order: Not writing to file."); 
+					System.out.println("\nClient: Received DATA packet out of order: Not writing to file.");
+					data = new byte[MAX_DATA]; // so we don't quit yet
 				}
 				ack = createAck(dataPacket[3]);   // create ACK
 				send(ack, addr, port);          // send ACK
@@ -421,7 +430,7 @@ public class Client
 					System.out.println("\nClient: RRQ File Transfer Complete.");
 					return;
 				}
-				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+				dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
 				
 				if (dataPacket[1] == 3) {        // received DATA					
 					ack = createAck(dataPacket[3]);   // create ACK
