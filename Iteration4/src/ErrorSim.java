@@ -748,7 +748,7 @@ class ToServer implements Runnable
 				// user wants to manipulate this particular packet
 				if (packetNumber == typeCount) {
 					// manipulate packet
-					received = action(received);
+					received = action(received, 69);
 				}
 			} else if (packetDo == ErrorSim.PacketDo.send && 
 					packetNumber == packetCount) {
@@ -791,7 +791,7 @@ class ToServer implements Runnable
 					// user wants to manipulate this particular packet
 					if (packetNumber == typeCount) {
 						// manipulate packet
-						received = action(received);
+						received = action(received, sendPort);
 					}
 				} else if (packetDo == ErrorSim.PacketDo.send && 
 						packetNumber == packetCount) {
@@ -829,12 +829,12 @@ class ToServer implements Runnable
 	 * @param received	received data byte[]
 	 * @return			received data byte[] after editing
 	 */
-	public byte[] action (byte[] received) {
+	public byte[] action (byte[] received, int port) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					receivePacket.getAddress(), port, serverSocket, delay),
 					"DelayThread");
 			DelayThread.start();
 			return null;  // so delaying packet does not duplicate
@@ -843,7 +843,7 @@ class ToServer implements Runnable
 			// method returns
 			System.out.println("\n" + threadName() + ": Duplicating packet...");
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, serverSocket, delay),
+					receivePacket.getAddress(), port, serverSocket, delay),
 					"DuplicationThread");
 			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
@@ -1279,7 +1279,7 @@ class ToClient implements Runnable
 					// user wants to manipulate this particular packet
 					if (packetNumber == typeCount) {
 						// manipulate packet
-						received = action(received);
+						received = action(received, sendPort);
 					}
 				} else if (packetDo == ErrorSim.PacketDo.send && 
 						packetNumber == packetCount) {
@@ -1320,12 +1320,12 @@ class ToClient implements Runnable
 	 * @param received	received data byte[]
 	 * @return			received data byte[] after editing
 	 */
-	public byte[] action (byte[] received) {
+	public byte[] action (byte[] received, int port) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, clientSocket, delay),
+					receivePacket.getAddress(), port, clientSocket, delay),
 					"DelayThread");
 			DelayThread.start();
 			return null;  // so delaying does not duplicate
@@ -1334,7 +1334,7 @@ class ToClient implements Runnable
 			// method returns
 			System.out.println("\n" + threadName() + ": Duplicating packet...");
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), sendPort, clientSocket, delay),
+					receivePacket.getAddress(), port, clientSocket, delay),
 					"DuplicationThread");
 			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
