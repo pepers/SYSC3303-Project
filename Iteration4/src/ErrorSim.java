@@ -126,7 +126,7 @@ public class ErrorSim
 					System.out.println("\t 3. Duplicate a packet.");
 					System.out.println("\t 4. Send a packet.");
 					System.out.println("\t 5. Edit a packet.");
-					System.out.println("(type the number corresponding to your choice...");
+					System.out.println("(type the number corresponding to your choice...)");
 					choice = input.nextLine();  // user's choice
 					if (choice.equals("1")) { 
 						packetDo = PacketDo.lose;
@@ -156,7 +156,7 @@ public class ErrorSim
 					System.out.println("\t 3. DATA packet.");
 					System.out.println("\t 4. ACK packet.");
 					System.out.println("\t 5. ERROR packet.");
-					System.out.println("(type the number corresponding to your choice...");
+					System.out.println("(type the number corresponding to your choice...)");
 					choice = input.nextLine();  // user's choice
 					if (choice.equals("1")) { 
 						packetType = PacketType.RRQ;
