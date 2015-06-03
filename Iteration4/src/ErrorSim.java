@@ -662,7 +662,7 @@ class ToServer implements Runnable
 		/*
 		 * NORMAL MODE
 		 */
-		if (packetDo == null || !sendToServer) {
+		if (!sendToServer) {
 			// received data from DatagramPacket					
 			byte[] received = new byte[receivePacket.getLength()];
 			System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), received, 0, 
@@ -678,13 +678,26 @@ class ToServer implements Runnable
 			receivePacket = receive(serverSocket);
 			received = processDatagram(receivePacket);  // print packet data to user
 			sendPort = receivePacket.getPort();  // get port on Server to send to
-
-			// start new ToClient connection in normal mode			
-			Thread ConnectionThread = new Thread(new ToClient(
-					receivePacket, serverSocket, clientSocket, clientPort), 
-					"TransferToClient");
-			System.out.println("\n" + threadName() + 
-					": File Transfer Continuing to Client, in Normal Mode... ");			
+			
+			Thread ConnectionThread = null;
+			
+			if (packetDo == null) {
+				// start new ToClient connection in normal mode			
+				ConnectionThread = new Thread(new ToClient(
+						receivePacket, serverSocket, clientSocket, clientPort), 
+						"TransferToClient");
+				System.out.println("\n" + threadName() + 
+						": File Transfer Continuing to Client, in Normal Mode... ");
+			} else {
+				// start new ToClient connection in error simulation mode			
+				ConnectionThread = new Thread(new ToClient(
+						receivePacket, packetType, packetDo, sendToServer, 
+						packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
+						eDfFlag, errorCode,filename, serverSocket, clientSocket, 
+						clientPort, delay), "TransferToClient");
+				System.out.println("\n" + threadName() + 
+						": File Transfer Continuing to Client, in Error Simulation Mode... ");			
+			}
 
 
 			ConnectionThread.start();	// start new connection ToClient thread 
