@@ -823,8 +823,41 @@ class ClientConnection implements Runnable
 					parseError(dataPacket);			// print ERROR info
 				}						
 			} while (data.length == MAX_DATA);
+			
+			// dallying - in case final ACK is not received by Client
+			System.out.println("\n" + threadName() + ": Dallying in case final ACK was not received...");
+			DatagramPacket receivePacket = null;			
+			while (true) {
+				try {
+					receivePacket = receive(); // receive the DatagramPacket
+					
+					// invalid packet received
+					if (receivePacket == null) {
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						return;
+					}
+					byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+					
+					if (dataPacket[1] == 3) {        // received DATA					
+						ack = createAck(dataPacket[3]);   // create ACK
+						send(ack);          // send ACK
+					} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+						parseError(dataPacket);         // print ERROR info
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						return;
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError((byte)4, "Was expecting DATA packet.");
+						send(error);
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						return;		
+					}
+				} catch (SocketTimeoutException e1) {
+					System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+					break;
+				}
+			}
 		}
-		System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
 	}
 	
 	/**

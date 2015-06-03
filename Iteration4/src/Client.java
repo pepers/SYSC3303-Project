@@ -402,11 +402,46 @@ public class Client
 				parseError(dataPacket);         // print ERROR info
 				return;
 			} else {
-				
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError((byte)4, "Was expecting DATA packet.");
+				send(error, addr, port);
+				return;		
 			}
 		} while (data.length == MAX_DATA);
+		
+		// dallying - in case final ACK is not received by Server
+		System.out.println("\nClient: Dallying in case final ACK was not received...");
+		DatagramPacket receivePacket = null;			
+		while (true) {
+			try {
+				receivePacket = receive(); // receive the DatagramPacket
 				
-		System.out.println("\nClient: RRQ File Transfer Complete.");
+				// invalid packet received
+				if (receivePacket == null) {
+					System.out.println("\nClient: RRQ File Transfer Complete.");
+					return;
+				}
+				byte[] dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+				
+				if (dataPacket[1] == 3) {        // received DATA					
+					ack = createAck(dataPacket[3]);   // create ACK
+					send(ack, addr, port);          // send ACK
+				} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+					parseError(dataPacket);         // print ERROR info
+					System.out.println("\nClient: RRQ File Transfer Complete.");
+					return;
+				} else {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError((byte)4, "Was expecting DATA packet.");
+					send(error, addr, port);
+					System.out.println("\nClient: RRQ File Transfer Complete.");
+					return;		
+				}
+			} catch (SocketTimeoutException e1) {
+				System.out.println("\nClient: RRQ File Transfer Complete.");
+				break;
+			}
+		}
 	}
 	
 	/**
