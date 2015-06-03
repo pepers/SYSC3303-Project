@@ -319,7 +319,7 @@ public class Client
 	public void readReq() 
 	{
 		byte blockNumber = 1;  // block number for ACK and DATA during transfer
-		byte[] data = null;    // data from DATA packet
+		byte[] data = new byte[0];    // data from DATA packet
 		
 		byte[] ack = createAck(blockNumber);  // create initial ACK
 		send(ack, addr, port);            // send ACK
