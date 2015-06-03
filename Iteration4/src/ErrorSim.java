@@ -374,6 +374,23 @@ public class ErrorSim
 						(packetType == PacketType.RRQ || 
 						packetType == PacketType.WRQ)) {
 					choiceInt = 1;
+				} else if (packetDo == PacketDo.send) {
+					while (true) {
+						// choose when to send packet
+						System.out.println("\nError Simulator: Enter a number to indicate when the Error Simulator should send the " 
+								+ packetType + " packet.");
+						System.out.println("(eg: enter '1' for the first packet sent to a specific host, etc.)");
+						try {
+							choiceInt = Integer.parseInt(input.nextLine());  // user's choice
+							if (choiceInt < 1) { 
+								System.out.println("\nI'm sorry, " + choiceInt + " is not a valid choice.  Please try again...");
+							} else {
+								break;
+							}	
+						} catch (NumberFormatException n) {
+							System.out.println("\nI'm sorry, you must enter a number.  Please try again...");
+						}				
+					}
 				} else {
 					while (true) {
 						// choose which packet to manipulate
@@ -944,12 +961,13 @@ class ToServer implements Runnable
 			try {
 				msg = message.getBytes("US-ASCII");
 			} catch (UnsupportedEncodingException e) { }
-			packetData = new byte[4 + msg.length];
+			packetData = new byte[5 + msg.length];
 			packetData[0] = 0;
 			packetData[1] = 5;
 			packetData[2] = 0;
 			packetData[3] = errorCode;// change error code to errorCode
-			System.arraycopy(msg, 0, packetData, 4, msg.length);		
+			System.arraycopy(msg, 0, packetData, 4, msg.length);	
+			packetData[packetData.length-1] = 0;
 		}
 	
 		return packetData;
@@ -1421,7 +1439,7 @@ class ToClient implements Runnable
 			packetData[1] = 3;
 			packetData[2] = 0;
 			packetData[3] = eBlockNumber;
-			System.arraycopy(d, 0, packetData, 4, d.length);				
+			System.arraycopy(d, 0, packetData, 4, d.length);
 		} else if (packetType == ErrorSim.PacketType.ACK) {
 			packetData = new byte[4];
 			packetData[0] = 0;
@@ -1434,12 +1452,13 @@ class ToClient implements Runnable
 			try {
 				msg = message.getBytes("US-ASCII");
 			} catch (UnsupportedEncodingException e) { }
-			packetData = new byte[4 + msg.length];
+			packetData = new byte[5 + msg.length];
 			packetData[0] = 0;
 			packetData[1] = 5;
 			packetData[2] = 0;
 			packetData[3] = errorCode;// change error code to errorCode
-			System.arraycopy(msg, 0, packetData, 4, msg.length);		
+			System.arraycopy(msg, 0, packetData, 4, msg.length);	
+			packetData[packetData.length-1] = 0;
 		}
 	
 		return packetData;
@@ -1591,7 +1610,7 @@ class Delay implements Runnable
 			try {
 				Thread.sleep(delay);
 				System.out.println("\n" + threadName() + ": Packet Delayed for "
-						+ delay/1000 + " seconds.");
+						+ delay/1000.0 + " seconds.");
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
