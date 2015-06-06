@@ -131,7 +131,7 @@ public class Client
 			sDest = ", through the Error Simulator.";
 		}		
 
-		System.out.println("\nYou have chosen to send your request to the Server at " 
+		System.out.println("\nClient: You have chosen to send your request to the Server at " 
 				+ inet.getHostAddress() + sDest);
 		
 		// loop until user chooses to not send another request and quit
@@ -154,7 +154,7 @@ public class Client
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input
 		while (true) {
-			System.out.println("\nWould you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
+			System.out.println("\nWould you like to make a (R)ead Request, a (W)rite Request, (E)nter a new destination, or (Q)uit?");
 			String choice = input.nextLine();	// user's choice
 			if (choice.equalsIgnoreCase("R")) {			// read request
 				op = Opcode.RRQ;
@@ -167,6 +167,50 @@ public class Client
 			} else if (choice.equalsIgnoreCase("Q")) {	// quit
 				System.out.println("\nGoodbye!");
 				System.exit(0);
+			} else if (choice.equalsIgnoreCase("E")) {  // enter new InetAddress of Server
+				// determines the InetAddress to send the request to
+				while (true) {
+					System.out.println("\nWhat is the Internet Address of the Server that you want to send a request to?");
+					System.out.println("(enter the ip address or host name)");
+					choice = input.nextLine();	// user's choice
+					try {
+						inet = InetAddress.getByName(choice); // get InetAddress from choice
+						break;
+					} catch (UnknownHostException e) {
+						System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
+								+ choice + "\".  Please try again...");
+					}			
+				}
+				
+				// determines the port to send the request to
+				while (true) {
+					System.out.println("\nWhere would you like to send your request: ");
+					System.out.println("- directly to the (S)erver ");
+					System.out.println("- to the Server, but through the (E)rror Simulator first");
+					System.out.println("- I've changed my mind, I want to (Q)uit instead");
+					choice = input.nextLine();	// user's choice
+					if (choice.equalsIgnoreCase("S")) {			// request to Server
+						dest = 69;
+						break;
+					} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
+						dest = 68;
+						break;
+					} else if (choice.equalsIgnoreCase("Q")) {	// quit
+						System.out.println("\nGoodbye!");
+						System.exit(0);
+					} else {
+						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}
+				}
+				
+				// String representation of port destination
+				String sDest = ", directly.";
+				if (dest == 68) {
+					sDest = ", through the Error Simulator.";
+				}		
+
+				System.out.println("\nClient: You have chosen to send your request to the Server at " 
+						+ inet.getHostAddress() + sDest + "\n");
 			} else {
 				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 			}
