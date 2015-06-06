@@ -85,10 +85,59 @@ public class Client
 	{
 		Client c = new Client();
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
-				
+		
+		// determines the port to send the request to
+		input = new Scanner(System.in);		// scans user input
+		int dest; // the port destination of the user's request
+		while (true) {
+			System.out.println("Where would you like to send your request: ");
+			System.out.println("- directly to the (S)erver ");
+			System.out.println("- to the Server, but through the (E)rror Simulator first");
+			System.out.println("- I've changed my mind, I want to (Q)uit instead");
+			String choice = input.nextLine();	// user's choice
+			if (choice.equalsIgnoreCase("S")) {			// request to Server
+				dest = 69;
+				break;
+			} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
+				dest = 68;
+				break;
+			} else if (choice.equalsIgnoreCase("Q")) {	// quit
+				System.out.println("\nGoodbye!");
+				System.exit(0);
+			} else {
+				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+			}
+		}
+		
+		// String representation of port destination
+		String sDest = "Server";
+		if (dest == 68) {
+			sDest = "Error Simulator";
+		}
+		
+		// determines the InetAddress to send the request to
+		InetAddress inet;
+		while (true) {
+			System.out.println("\nWhat is the Internet Address of the " + sDest +
+					" that you want to send a request to?");
+			System.out.println("(enter the ip address or host name)");
+			String choice = input.nextLine();	// user's choice
+			try {
+				inet = InetAddress.getByName(choice); // get InetAddress from choice
+				break;
+			} catch (UnknownHostException e) {
+				System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
+						+ choice + "\".  Please try again...");
+			}			
+		}
+		
+
+		System.out.println("\nYou have chosen to send your request to the " +
+				sDest + " at " + inet.getHostAddress() + ".");
+		
 		// loop until user chooses to not send another request and quit
 		while(true) {
-			c.ui();	// start the user interface to send request
+			c.ui(dest, inet);	// start the user interface to send request
 			c.connection();	// receive and send packets with Server or ErrorSim
 		}
 	}
@@ -97,8 +146,10 @@ public class Client
 	 * The simple console text user interface for the client program.  User navigates 
 	 * through menus to send request DatagramPacket.
 	 * 
+	 * @param dest	the destination port (68 for ErrorSim, 69 for Server)
+	 * @param inet	the InetAddress to send the request to 
 	 */
-	public void ui() 
+	public void ui(int dest, InetAddress inet) 
 	{	
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
@@ -113,30 +164,6 @@ public class Client
 			} else if (choice.equalsIgnoreCase("W")) {	// write request
 				op = Opcode.WRQ;
 				System.out.println("\nClient: You have chosen to send a write request.");
-				break;
-			} else if (choice.equalsIgnoreCase("Q")) {	// quit
-				System.out.println("\nGoodbye!");
-				System.exit(0);
-			} else {
-				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
-			}
-		}
-		
-		// determines where the user wants to send the request
-		int dest; // the port destination of the user's request
-		while (true) {
-			System.out.println("Where would you like to send your request: ");
-			System.out.println("- directly to the (S)erver ");
-			System.out.println("- to the Server, but through the (E)rror Simulator first");
-			System.out.println("- I've changed my mind, I want to (Q)uit instead");
-			String choice = input.nextLine();	// user's choice
-			if (choice.equalsIgnoreCase("S")) {			// request to Server
-				dest = 69;
-				System.out.println("\nClient: You have chosen to send your request to the Server.");
-				break;
-			} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
-				dest = 68;
-				System.out.println("\nClient: You have chosen to send your request to the Error Simulator.");
 				break;
 			} else if (choice.equalsIgnoreCase("Q")) {	// quit
 				System.out.println("\nGoodbye!");
@@ -199,15 +226,12 @@ public class Client
 		}
 		
 		req = op.op(); // 1 for RRQ, 2 for WRQ
-		byte[] request = createRequest((int)req, filename, mode);	// get the request byte[] to send
+		
+		// get the request byte[] to send
+		byte[] request = createRequest((int)req, filename, mode);	
 				
-		// send request to correct port destination
-		try{
-			send(request, InetAddress.getLocalHost(), dest);
-		} catch (UnknownHostException e) {
-			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
-			System.exit(1);			
-		}
+		// send request to correct port and InetAddress destination
+		send(request, inet, dest);
 	}
 	
 	/**
