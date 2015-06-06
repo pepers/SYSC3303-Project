@@ -85,12 +85,28 @@ public class Client
 	{
 		Client c = new Client();
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
+				
+		input = new Scanner(System.in);		// scans user input
+		
+		// determines the InetAddress to send the request to
+		InetAddress inet;
+		while (true) {
+			System.out.println("What is the Internet Address of the Server that you want to send a request to?");
+			System.out.println("(enter the ip address or host name)");
+			String choice = input.nextLine();	// user's choice
+			try {
+				inet = InetAddress.getByName(choice); // get InetAddress from choice
+				break;
+			} catch (UnknownHostException e) {
+				System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
+						+ choice + "\".  Please try again...");
+			}			
+		}
 		
 		// determines the port to send the request to
-		input = new Scanner(System.in);		// scans user input
 		int dest; // the port destination of the user's request
 		while (true) {
-			System.out.println("Where would you like to send your request: ");
+			System.out.println("\nWhere would you like to send your request: ");
 			System.out.println("- directly to the (S)erver ");
 			System.out.println("- to the Server, but through the (E)rror Simulator first");
 			System.out.println("- I've changed my mind, I want to (Q)uit instead");
@@ -110,30 +126,13 @@ public class Client
 		}
 		
 		// String representation of port destination
-		String sDest = "Server";
+		String sDest = ", directly.";
 		if (dest == 68) {
-			sDest = "Error Simulator";
-		}
-		
-		// determines the InetAddress to send the request to
-		InetAddress inet;
-		while (true) {
-			System.out.println("\nWhat is the Internet Address of the " + sDest +
-					" that you want to send a request to?");
-			System.out.println("(enter the ip address or host name)");
-			String choice = input.nextLine();	// user's choice
-			try {
-				inet = InetAddress.getByName(choice); // get InetAddress from choice
-				break;
-			} catch (UnknownHostException e) {
-				System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
-						+ choice + "\".  Please try again...");
-			}			
-		}
-		
+			sDest = ", through the Error Simulator.";
+		}		
 
-		System.out.println("\nYou have chosen to send your request to the " +
-				sDest + " at " + inet.getHostAddress() + ".");
+		System.out.println("\nYou have chosen to send your request to the Server at " 
+				+ inet.getHostAddress() + sDest);
 		
 		// loop until user chooses to not send another request and quit
 		while(true) {
