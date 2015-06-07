@@ -347,20 +347,19 @@ public class Server
 				if (len > MAX_DATA + 4) {
 					return false;
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
 			case 4:								// ACK packet
 				if (len != 4) { 
 					return false; 
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
 			case 5:								// ERROR packet
 				if (data[len - 1] != 0) {
 					return false;	// error message not terminated with 0 byte
 				}
+				int ec = twoBytesToInt(data[2], data[3]); // get error code
 				for (int i = 0; i<8; i++) {
-					if (data[3] == (byte)i) {
+					if (ec == i) {
 						return true;	// found a valid error code
 					}
 				}
@@ -1328,20 +1327,19 @@ class ClientConnection implements Runnable
 				if (len > MAX_DATA + 4) {
 					return false;
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
 			case 4:								// ACK packet
 				if (len != 4) { 
 					return false; 
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
 			case 5:								// ERROR packet
 				if (data[len - 1] != 0) {
 					return false;	// error message not terminated with 0 byte
 				}
+				int ec = twoBytesToInt(data[2], data[3]); // get error code
 				for (int i = 0; i<8; i++) {
-					if (data[3] == (byte)i) {
+					if (ec == i) {
 						return true;	// found a valid error code
 					}
 				}
