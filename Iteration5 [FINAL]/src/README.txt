@@ -70,11 +70,14 @@ INSTALL/RUN
 USE	
 	CLIENT
 	- follow onscreen console prompts from the Client
-	- first choose whether you want to send a (R)ead 
-	Request, a (W)rite Request, or (Q)uit
+	- first enter the InetAddress of the Server.  This 
+	may also be entered as a machine name.
 	- next choose whether you want to send the read/
 	write request directly to the (S)erver, or through
 	the (E)rror Simulator
+	- then choose whether you want to send a (R)ead 
+	Request, a (W)rite Request, (E)nter a new destination,
+	or (Q)uit
 	- next type in the name of the file that you want to
 	read/write
 	- test text files for the Client and Server are 
@@ -208,11 +211,11 @@ TESTING
 				- which packet (1st, 2nd, 3rd, etc.)
 					- sending to Client? or Server?
 		- 3. DATA
-			- enter a block number (0-127)
+			- enter a block number (0-65535)
 				- which packet (1st, 2nd, 3rd, etc.)
 					- sending to Client? or Server?
 		- 4. ACK
-			- enter a block number (0-127)
+			- enter a block number (0-65535)
 				- which packet (1st, 2nd, 3rd, etc.)
 					- sending to Client? or Server?
 		- 5. ERROR
@@ -227,6 +230,8 @@ TESTING
 				- coming from Client? or Server?
 			- 3. make mode invalid
 				- coming from Client? or Server?
+			- 4. change TID
+				- coming from Client? or Server?
 		- 2. WRQ
 			- 1. make opcode invalid
 				- coming from Client? or Server?
@@ -234,21 +239,29 @@ TESTING
 				- coming from Client? or Server?
 			- 3. make mode invalid
 				- coming from Client? or Server?
+			- 4. change TID
+				- coming from Client? or Server?
 		- 3. DATA
 			- 1. make opcode invalid
 				- which DATA (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
-			- 2. change block number (0-127)
+			- 2. change block number (0-65535)
 				- which DATA (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
 			- 3. delete data field
+				- which DATA (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			- 4. change TID
 				- which DATA (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
 		- 4. ACK
 			1. make opcode invalid
 				- which ACK (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
-			2. change block number (0-127)
+			2. change block number (0-65535)
+				- which ACK (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			3. change TID
 				- which ACK (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
 		- 5. ERROR
@@ -256,6 +269,9 @@ TESTING
 				- which ERROR (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
 			2. change error code (0-8, 8 is invalid)
+				- which ERROR (1st, 2nd, 3rd, etc.)
+					- coming from Client? or Server?
+			3. change TID
 				- which ERROR (1st, 2nd, 3rd, etc.)
 					- coming from Client? or Server?
 		
