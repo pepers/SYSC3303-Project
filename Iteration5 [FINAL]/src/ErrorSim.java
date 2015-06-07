@@ -573,22 +573,22 @@ class ToServer implements Runnable
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket serverSocket, clientSocket, unknownSocket;
 
-	int sendPort;  // port to send to
+	int sendPort = 0;  // port to send to
 
 	// choices when entering Error Simulation Mode
 	private ErrorSim.PacketType packetType = null;
 	private ErrorSim.PacketDo packetDo = null;
 	private boolean sendToServer = false; // true if sending to server, false if client
-	private int packetNumber; // number of packet to be manipulated
-	boolean eOpFlag;   // change opcode 
-	boolean eFnFlag;   // change filename
-	boolean eMdFlag;   // change mode
-	int eBlockNumber;  // change block number
-	boolean eDfFlag;   // delete data field
-	int errorCode;     // change error code
-	String filename;   // change the filename in RRQ or WRQ
-	private int delay = 0;  // milliseconds to delay packet
-	boolean unknownTID;  // if true, send from a different port
+	private int packetNumber = 0; // number of packet to be manipulated
+	boolean eOpFlag = false;   	  // change opcode 
+	boolean eFnFlag = false;      // change filename
+	boolean eMdFlag = false;      // change mode
+	int eBlockNumber = 0;         // change block number
+	boolean eDfFlag = false;      // delete data field
+	int errorCode = 0;            // change error code
+	String filename = "";         // change the filename in RRQ or WRQ
+	private int delay = 0;        // milliseconds to delay packet
+	boolean unknownTID = false;   // if true, send from a different port
 	
 	// counters
 	private int packetCount = 0;  // number of packets received
@@ -743,7 +743,7 @@ class ToServer implements Runnable
 
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
-			received = processDatagram(receivePacket);  // print packet data to user
+			received = receivePacket.getData(); // gets received data
 			sendPort = receivePacket.getPort();  // get port on Server to send to
 			
 			Thread ConnectionThread = null;
@@ -771,7 +771,7 @@ class ToServer implements Runnable
 
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
-				received = processDatagram(receivePacket); // print packet data to user
+				received = receivePacket.getData(); // gets received data
 
 				// passes Client's packet to Server
 				send(received, receivePacket.getAddress(), sendPort, serverSocket);
@@ -816,24 +816,27 @@ class ToServer implements Runnable
 			if (received != null){
 				send(received, receivePacket.getAddress(), 69, serverSocket); 
 			}
+			
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
-			received = processDatagram(receivePacket);  // print packet data to user
+			received = receivePacket.getData(); // gets received data
 			sendPort = receivePacket.getPort();  // get port on Server to send to
-
+			
 			// start new ToClient connection in error simulation mode			
 			Thread ConnectionThread = new Thread(new ToClient(
 					receivePacket, packetType, packetDo, sendToServer, 
 					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
 					clientPort, delay, unknownTID), "TransferToClient");
+			
 			System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 					ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");		
 
 			ConnectionThread.start();	// start new connection ToClient thread 
+			
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
-				received = processDatagram(receivePacket); // print packet data to user
+				received = receivePacket.getData(); // gets received data
 
 				// determines if packet received is the type of packet the user
 				// wants to manipulate
@@ -1078,9 +1081,11 @@ class ToServer implements Runnable
 			try {
 				// block until a DatagramPacket is received 
 				System.out.println("\n" + threadName() + 
-						": Listening for packets...");
-				
+						": Listening for packets...");				
 				socket.receive(receivePacket); // receive packet
+			} catch(IOException e) {
+				return null;  // socket was closed, return null
+			}
 				
 				byte[] packetData = receivePacket.getData();  // the received packet's data
 				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
@@ -1108,28 +1113,9 @@ class ToServer implements Runnable
 				
 				packetCount++;  // keep track of number of packets received
 
-				break;
-			} catch(IOException e) {
-				return null;  // socket was closed, return null
-			}
+				break;	
 		}
-
 		return receivePacket;
-	}
-
-	/**
-	 * Makes an appropriately sized byte[] from a DatagramPacket
-	 * 
-	 * @param packet	the received DatagramPacket
-	 * @return			the data from the DatagramPacket
-	 */
-	public byte[] processDatagram (DatagramPacket packet) 
-	{
-		byte[] data = new byte[packet.getLength()];
-		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
-				packet.getLength());
-
-		return data;
 	}
 
 	/**
@@ -1163,9 +1149,10 @@ class ToServer implements Runnable
 		}
 
 		// sending with unknown TID
-		if (matchType(op) && 
-				packetDo == ErrorSim.PacketDo.edit && 
-				packetNumber == typeCount) {
+		if ((matchType(op)) && 
+				(packetDo == ErrorSim.PacketDo.edit) && 
+				(packetNumber == typeCount) &&
+				unknownTID == true) {
 			System.out.println(threadName() + ": Changing socket to send from (will create an unknown TID).");
 			socket = unknownSocket;  // change socket to send with 
 		}
@@ -1184,9 +1171,10 @@ class ToServer implements Runnable
 		}
 		
 		// receive with unknown TID
-		if (matchType(op) && 
-				packetDo == ErrorSim.PacketDo.edit && 
-				packetNumber == typeCount) {
+		if ((matchType(op)) && 
+				(packetDo == ErrorSim.PacketDo.edit) && 
+				(packetNumber == typeCount) &&
+				unknownTID == true) {
 			receive(socket); // receive error info
 		}
 	}
@@ -1546,7 +1534,7 @@ class ToClient implements Runnable
 				}
 				
 				receivePacket = receive(serverSocket);  // receive packet from Server
-				received = processDatagram(receivePacket); // print packet data to user
+				received = processDatagram(receivePacket); 
 			}
 		}
 	}
@@ -1849,9 +1837,10 @@ class ToClient implements Runnable
 		}
 
 		// sending with unknown TID
-		if (matchType(op) && 
-				packetDo == ErrorSim.PacketDo.edit && 
-				packetNumber == typeCount) {
+		if ((matchType(op)) && 
+				(packetDo == ErrorSim.PacketDo.edit) && 
+				(packetNumber == typeCount) &&
+				unknownTID == true) {
 			System.out.println(threadName() + ": Changing socket to send from (will create an unknown TID).");
 			socket = unknownSocket;  // change socket to send with 
 		}
@@ -1870,9 +1859,10 @@ class ToClient implements Runnable
 		}
 		
 		// receive with unknown TID
-		if (matchType(op) && 
-				packetDo == ErrorSim.PacketDo.edit && 
-				packetNumber == typeCount) {
+		if ((matchType(op)) && 
+				(packetDo == ErrorSim.PacketDo.edit) && 
+				(packetNumber == typeCount) &&
+				unknownTID == true) {
 			receive(socket); // receive error info
 		}
 	}

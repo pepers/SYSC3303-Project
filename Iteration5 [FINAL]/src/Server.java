@@ -77,9 +77,7 @@ public class Server
 				break;
 			}
 			if (!isValidPacket(datagram)) {				// check if packet was valid, if not: send error
-				System.out.println("Server: Invalid packet received.");
-				byte[] error = createError((byte)4, "Invalid packet.");
-				makeConnection(datagram, error);
+				// error packet created and sent within isValidPacket method
 			} else {
 				byte[] request = processDatagram(datagram);	// received request packet turned into byte[]
 				int op = twoBytesToInt(request[0], request[1]);	// check type of packet received
@@ -297,6 +295,9 @@ public class Server
 		
 		// check size of packet
 		if (len < 4) {
+			// create and send error response packet for "Illegal TFTP operation."
+			byte[] error = createError(4, "Packet is less than 4 bytes in size.");
+			makeConnection(received, error);
 			return false;
 		} 
 		
@@ -312,6 +313,9 @@ public class Server
 					}
 				}
 				if (f == len) {			// didn't find 0 byte after filename
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Request does not contain null terminated filename.");
+					makeConnection(received, error);
 					return false;
 				}
 				int m;	// mode finding index
@@ -321,13 +325,16 @@ public class Server
 					}
 				}
 				if (m == len) {			// didn't find 0 byte after mode
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Request does not contain null terminated mode.");
+					makeConnection(received, error);
 					return false;
 				}
-				
+			
 				// byte[] to copy mode into
 				byte[] md = new byte[m - f - 1];
 				System.arraycopy(data, f + 1, md, 0, m - f - 1);
-				
+			
 				// make a String out of byte[] for mode
 				String mode = null;
 				try {
@@ -335,26 +342,38 @@ public class Server
 				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
 				}
-				
+			
 				// checks if mode is a valid TFTP mode
 				if (!(mode.equalsIgnoreCase("netascii") || 
 						mode.equalsIgnoreCase("octet") ||
 						mode.equalsIgnoreCase("mail"))) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Mode is not a valid TFTP mode choice.");
+					makeConnection(received, error);
 					return false;
 				}
 				break;
 			case 3:								// DATA packet
 				if (len > MAX_DATA + 4) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Data packet is too large.");
+					makeConnection(received, error);
 					return false;
 				}
 				break;
 			case 4:								// ACK packet
 				if (len != 4) { 
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Ack packet is not 4 bytes in size.");
+					makeConnection(received, error);
 					return false; 
 				}
 				break;
 			case 5:								// ERROR packet
 				if (data[len - 1] != 0) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Error message is not null terminated.");
+					makeConnection(received, error);
 					return false;	// error message not terminated with 0 byte
 				}
 				int ec = twoBytesToInt(data[2], data[3]); // get error code
@@ -363,9 +382,16 @@ public class Server
 						return true;	// found a valid error code
 					}
 				}
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError(4, "Error code is not a valid TFTP error code.");
+				makeConnection(received, error);
 				return false; 			// not a valid error code
-			default: return false;					// invalid opcode
-		}		
+			default: 
+				// create and send error response packet for "Illegal TFTP operation."
+				error = createError(4, "Invalid TFTP opcode.");
+				makeConnection(received, error);
+				return false;					// invalid opcode
+		}
 		
 		return true;
 	}
@@ -554,9 +580,6 @@ class ClientConnection implements Runnable
 		System.out.println("\n"); // for formatting
 		if (op == 1) {			// received a RRQ
 			readReq();
-			try {
-				in.close(); // close buffered reader after RRQ
-			} catch (IOException e) { } 
 		} else if (op == 2) {	// received a WRQ
 			writeReq();
 		} else {						// ERROR received from server
@@ -630,6 +653,9 @@ class ClientConnection implements Runnable
 											": Socket Timeout Again: Aborting file transfer:");
 									System.out.println(threadName() + 
 											": There may be a problem with the Client's connection.");
+									try {
+										in.close(); // close buffered reader after RRQ
+									} catch (IOException e) { } 
 									return;
 								}
 							}		
@@ -639,6 +665,9 @@ class ClientConnection implements Runnable
 						if (receivePacket == null) {
 							System.out.println(threadName() + 
 									": Invalid packet received: Aborting file transfer:");
+							try {
+								in.close(); // close buffered reader after RRQ
+							} catch (IOException e) { } 
 							return;
 						}
 					
@@ -649,6 +678,9 @@ class ClientConnection implements Runnable
 							parseError(ackPacket);	// print ERROR info and close connection
 							System.out.println(threadName() + 
 									": Aborting Transfer.");
+							try {
+								in.close(); // close buffered reader after RRQ
+							} catch (IOException e) { } 
 							return;
 						} else if (op == 4) {
 							parseAck(ackPacket);	// print ACK info
@@ -666,6 +698,9 @@ class ClientConnection implements Runnable
 									// create and send error response packet for "Illegal TFTP operation."
 									byte[] error = createError(4, "Received ACK with invalid block number.");
 									send(error);
+									try {
+										in.close(); // close buffered reader after RRQ
+									} catch (IOException e) { } 
 									return;		
 								}
 							} else {
@@ -678,6 +713,9 @@ class ClientConnection implements Runnable
 									// create and send error response packet for "Illegal TFTP operation."
 									byte[] error = createError(4, "Received ACK with invalid block number.");
 									send(error);
+									try {
+										in.close(); // close buffered reader after RRQ
+									} catch (IOException e) { } 
 									return;		
 								}
 							}
@@ -685,6 +723,9 @@ class ClientConnection implements Runnable
 							// create and send error response packet for "Illegal TFTP operation."
 							byte[] error = createError(4, "Expected ACK as response.");
 							send(error);
+							try {
+								in.close(); // close buffered reader after RRQ
+							} catch (IOException e) { } 
 							return;		
 						}
 					}
@@ -704,6 +745,9 @@ class ClientConnection implements Runnable
 				byte[] error = createError(1, "File (" + filename + 
 						") does not exist.");
 				send(error);
+				try {
+					in.close(); // close buffered reader after RRQ
+				} catch (IOException e1) { } 
 				return; // quit client connection thread
 			} catch (IOException e) {
 				System.out.println("\nError: could not read from BufferedInputStream.");
@@ -738,6 +782,9 @@ class ClientConnection implements Runnable
 										": Socket Timeout Again: Aborting file transfer:");
 								System.out.println(threadName() + 
 										": There may be a problem with the Client's connection.");
+								try {
+									in.close(); // close buffered reader after RRQ
+								} catch (IOException e) { } 
 								return;
 							}
 						}		
@@ -747,6 +794,9 @@ class ClientConnection implements Runnable
 					if (receivePacket == null) {
 						System.out.println(threadName() + 
 								": Invalid packet received: Aborting file transfer:");
+						try {
+							in.close(); // close buffered reader after RRQ
+						} catch (IOException e) { } 
 						return;
 					}
 				
@@ -757,6 +807,9 @@ class ClientConnection implements Runnable
 						parseError(ackPacket);	// print ERROR info and close connection
 						System.out.println(threadName() + 
 								": Aborting Transfer.");
+						try {
+							in.close(); // close buffered reader after RRQ
+						} catch (IOException e) { } 
 						return;
 					} else if (op == 4) {
 						parseAck(ackPacket);	// print ACK info
@@ -774,6 +827,9 @@ class ClientConnection implements Runnable
 								// create and send error response packet for "Illegal TFTP operation."
 								byte[] error = createError(4, "Received ACK with invalid block number.");
 								send(error);
+								try {
+									in.close(); // close buffered reader after RRQ
+								} catch (IOException e) { } 
 								return;		
 							} 
 						} else {
@@ -786,6 +842,9 @@ class ClientConnection implements Runnable
 								// create and send error response packet for "Illegal TFTP operation."
 								byte[] error = createError(4, "Received ACK with invalid block number.");
 								send(error);
+								try {
+									in.close(); // close buffered reader after RRQ
+								} catch (IOException e) { } 
 								return;		
 							}
 						}
@@ -793,6 +852,9 @@ class ClientConnection implements Runnable
 						// create and send error response packet for "Illegal TFTP operation."
 						byte[] error = createError(4, "Expected ACK as response.");
 						send(error);
+						try {
+							in.close(); // close buffered reader after RRQ
+						} catch (IOException e) { } 
 						return;		
 					}
 				}
@@ -804,9 +866,15 @@ class ClientConnection implements Runnable
 			// create and send error response packet for "File not found."
 			byte[] error = createError(1, "File (" + filename + ") does not exist.");
 			send(error);
+			try {
+				in.close(); // close buffered reader after RRQ
+			} catch (IOException e) { } 
 			return;
 		}
 		System.out.println("\n" + threadName() + ": RRQ File Transfer Complete");
+		try {
+			in.close(); // close buffered reader after RRQ
+		} catch (IOException e) { } 
 	}
 	
 	/**
@@ -1109,9 +1177,7 @@ class ClientConnection implements Runnable
 			
 			// checks if the received packet is a valid TFTP packet
 			if (!isValidPacket(packet)) {
-				// create and send error response packet for "Illegal TFTP operation."
-				byte[] error = createError(4, "Invalid packet.");
-				send(error);
+				// error packet is created and sent from within the isValidPacket method
 				return null;
 				
 			// valid packet
@@ -1339,6 +1405,9 @@ class ClientConnection implements Runnable
 		
 		// check size of packet
 		if (len < 4) {
+			// create and send error response packet for "Illegal TFTP operation."
+			byte[] error = createError(4, "Packet is less than 4 bytes in size.");
+			send(error);
 			return false;
 		} 
 		
@@ -1347,19 +1416,31 @@ class ClientConnection implements Runnable
 		// organize by opcode
 		switch (op) {
 			case 1: case 2:						// read or write request
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError(4, "Request packets are not accepted at this port.");
+				send(error);
 				return false;
 			case 3:								// DATA packet
 				if (len > MAX_DATA + 4) {
+					// create and send error response packet for "Illegal TFTP operation."
+					error = createError(4, "Data packet is too large.");
+					send(error);
 					return false;
 				}
 				break;
 			case 4:								// ACK packet
 				if (len != 4) { 
+					// create and send error response packet for "Illegal TFTP operation."
+					error = createError(4, "Ack packet is not 4 bytes in size.");
+					send(error);
 					return false; 
 				}
 				break;
 			case 5:								// ERROR packet
 				if (data[len - 1] != 0) {
+					// create and send error response packet for "Illegal TFTP operation."
+					error = createError(4, "Error message is not null terminated.");
+					send(error);
 					return false;	// error message not terminated with 0 byte
 				}
 				int ec = twoBytesToInt(data[2], data[3]); // get error code
@@ -1368,8 +1449,15 @@ class ClientConnection implements Runnable
 						return true;	// found a valid error code
 					}
 				}
+				// create and send error response packet for "Illegal TFTP operation."
+				error = createError(4, "Error code is not a valid TFTP error code.");
+				send(error);
 				return false; 			// not a valid error code
-			default: return false;					// invalid opcode
+			default: 
+				// create and send error response packet for "Illegal TFTP operation."
+				error = createError(4, "Invalid TFTP opcode.");
+				send(error);
+				return false;					// invalid opcode
 		}		
 		return true;
 	}
