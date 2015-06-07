@@ -34,9 +34,9 @@ public class ErrorSim
 	private static boolean eOpFlag = false; // make opcode invalid
 	private static boolean eFnFlag = false; // change filename
 	private static boolean eMdFlag = false; // make mode invalid
-	private static byte eBlockNumber = -1;   // block number to change to
+	private static int eBlockNumber = 70000;   // block number to change to
 	private static boolean eDfFlag = false; // delete the data field in DATA
-	private static byte errorCode = -1;      // change error code
+	private static int errorCode = 10;      // change error code
 	private static String filename = null;  // filename for RRQ or WRQ to send
 	private static int delay = 0;  // milliseconds to delay packet
 
@@ -79,12 +79,14 @@ public class ErrorSim
 						receivePacket, packetType, packetDo, sendToServer, 
 						choiceInt, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
 						errorCode,filename, null, null, sendPort, delay), "TransferToServer");
-				System.out.println("\nError Simulator: New File Transfer Starting to Server, in Error Simulation Mode... ");			
+				System.out.println("\nError Simulator: " + ConnectionThread.getName() + 
+						ConnectionThread.getId() + " will connect to the server, in Error Simulation Mode...");
 			} else {
 				// start new connection to server in normal mode			
 				ConnectionThread = new Thread(new ToServer(receivePacket, 
 						null, null, sendPort), "TransferToServer" );
-				System.out.println("\nError Simulator: New File Transfer Starting to Server, in Normal Mode... ");		
+				System.out.println("\nError Simulator: " + ConnectionThread.getName() + 
+						ConnectionThread.getId() + " will connect to the server, in Normal Mode...");
 			}
 
 			ConnectionThread.start();	// start new connection thread
@@ -203,14 +205,14 @@ public class ErrorSim
 					} else if (packetType == PacketType.DATA ||
 							packetType == PacketType.ACK) {
 						while(true) {
-							System.out.println("\nError Simulator: Enter a Block Number between 0-127 for your "
+							System.out.println("\nError Simulator: Enter a Block Number between 0-65535 for your "
 									+ packetType.name() + " packet...");
 							try {
 								int bnInt = Integer.parseInt(input.nextLine());  // user's choice
-								if (bnInt < 0 || bnInt > 127) { 
+								if (bnInt < 0 || bnInt > 65535) { 
 									System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
 								} else {
-									eBlockNumber = (byte)bnInt;
+									eBlockNumber = bnInt;
 									break;
 								}	
 							} catch (NumberFormatException n) {
@@ -227,7 +229,7 @@ public class ErrorSim
 								if (ecInt < 0 || ecInt > 8) { 
 									System.out.println("\nI'm sorry, " + ecInt + " is not a valid choice.  Please try again...");
 								} else {
-									errorCode = (byte)ecInt;
+									errorCode = ecInt;
 									break;
 								}	
 							} catch (NumberFormatException n) {
@@ -277,13 +279,13 @@ public class ErrorSim
 							} else if (choice.equals("2")) {
 								// choose the block number
 								while (true) {
-									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Block Number to...");
+									System.out.println("\nError Simulator: Enter a number between 0-65535 to change the Block Number to...");
 									try {
 										int bnInt = Integer.parseInt(input.nextLine());  // user's choice
-										if (bnInt < 0 || bnInt > 127) { 
+										if (bnInt < 0 || bnInt > 65535) { 
 											System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
 										} else {
-											eBlockNumber = (byte)bnInt;
+											eBlockNumber = bnInt;
 											break;
 										}	
 									} catch (NumberFormatException n) {
@@ -313,13 +315,13 @@ public class ErrorSim
 							} else if (choice.equals("2")) {
 								// choose the block number
 								while (true) {
-									System.out.println("\nError Simulator: Enter a number between 0-127 to change the Block Number to...");
+									System.out.println("\nError Simulator: Enter a number between 0-65535 to change the Block Number to...");
 									try {
 										int bnInt = Integer.parseInt(input.nextLine());  // user's choice
-										if (bnInt < 0 || bnInt > 127) { 
+										if (bnInt < 0 || bnInt > 65535) { 
 											System.out.println("\nI'm sorry, " + bnInt + " is not a valid choice.  Please try again...");
 										} else {
-											eBlockNumber = (byte)bnInt;
+											eBlockNumber = bnInt;
 											break;
 										}	
 									} catch (NumberFormatException n) {
@@ -352,7 +354,7 @@ public class ErrorSim
 										if (ecInt < 0 || ecInt > 8) { 
 											System.out.println("\nI'm sorry, " + ecInt + " is not a valid choice.  Please try again...");
 										} else {
-											errorCode = (byte)ecInt;
+											errorCode = ecInt;
 											break;
 										}	
 									} catch (NumberFormatException n) {
@@ -489,23 +491,33 @@ public class ErrorSim
 				// block until a DatagramPacket is received via sendSocket 
 				System.out.println("\nError Simulator: Listening for packets...");
 				socket.receive(receivePacket);
-
-				// print out thread and port info
-				System.out.println("\nError Simulator: packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + 
-						" : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + 
-						" bytes: \n");
-
-				// get data from packet
-				byte[] packetData = new byte[receivePacket.getLength()];
-				System.arraycopy(receivePacket.getData(), receivePacket.getOffset(), 
-						packetData, 0, receivePacket.getLength());
-
-				// display data to user
-				System.out.println(Arrays.toString(packetData));
-
-
+				
+				byte[] packetData = receivePacket.getData();  // the received packet's data
+				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
+				String type = "";  // type of packet
+				
+				// get packet info based on type of TFTP packet
+				switch (op) {
+					case 1: type = "Read Request packet";
+						break;
+					case 2: type = "Write Request packet";
+						break;
+					case 3: type = "Data packet";
+						break;
+					case 4: type = "Acknowledgment packet";
+						break;
+					case 5: type = "Error packet";
+						break;
+					default: type = "Invalid TFTP packet";
+						break;
+				}				
+				
+				// print out packet info
+				String direction = "<--";
+				System.out.printf("Error Simulator: %30s %3s %-30s   bytes: %3d   - %s \n", 
+						socket.getLocalSocketAddress(), direction, receivePacket.getSocketAddress(),
+						receivePacket.getLength(), type);
+				
 				break;
 			} catch(IOException e) {
 				return null;  // socket was closed, return null
@@ -513,6 +525,23 @@ public class ErrorSim
 		}
 
 		return receivePacket;
+	}
+	
+	/**
+	 * Deals with two signed bytes and combines them into one int.
+	 * 
+	 * @param one	first byte
+	 * @param two	second byte
+	 * @return		two bytes combined into an int (value: 0 to 65535)
+	 */
+	public static int twoBytesToInt(byte one, byte two) 
+	{
+		// add 256 if needed to compensate for signed bytes in Java
+		int value1 = one < 0 ? one + 256 : one;
+		int value2 = two < 0 ? two + 256 : two;
+		
+		// left shift value1 and combine with value2 into one int
+		return (value2 | (value1 << 8));
 	}
 }
 
@@ -538,9 +567,9 @@ class ToServer implements Runnable
 	boolean eOpFlag;   // change opcode 
 	boolean eFnFlag;   // change filename
 	boolean eMdFlag;   // change mode
-	byte eBlockNumber; // change block number
+	int eBlockNumber;  // change block number
 	boolean eDfFlag;   // delete data field
-	byte errorCode;    // change error code
+	int errorCode;     // change error code
 	String filename;   // change the filename in RRQ or WRQ
 	private int delay = 0;  // milliseconds to delay packet
 	
@@ -581,9 +610,9 @@ class ToServer implements Runnable
 			boolean eOpFlag, 
 			boolean eFnFlag, 
 			boolean eMdFlag, 
-			byte eBlockNumber, 
+			int eBlockNumber, 
 			boolean eDfFlag, 
-			byte errorCode,
+			int errorCode,
 			String filename,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
@@ -703,8 +732,8 @@ class ToServer implements Runnable
 				ConnectionThread = new Thread(new ToClient(
 						receivePacket, serverSocket, clientSocket, clientPort), 
 						"TransferToClient");
-				System.out.println("\n" + threadName() + 
-						": File Transfer Continuing to Client, in Normal Mode... ");
+				System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
+						ConnectionThread.getId() + " will connect to the client, in Normal Mode...");
 			} else {
 				// start new ToClient connection in error simulation mode			
 				ConnectionThread = new Thread(new ToClient(
@@ -712,8 +741,8 @@ class ToServer implements Runnable
 						packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 						eDfFlag, errorCode,filename, serverSocket, clientSocket, 
 						clientPort, delay), "TransferToClient");
-				System.out.println("\n" + threadName() + 
-						": File Transfer Continuing to Client, in Error Simulation Mode... ");			
+				System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
+						ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");	
 			}
 
 
@@ -776,8 +805,8 @@ class ToServer implements Runnable
 					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
 					clientPort, delay), "TransferToClient");
-			System.out.println("\n" + threadName() + 
-					": File Transfer Continuing to Client, in Error Simulation Mode... ");			
+			System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
+					ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");		
 
 			ConnectionThread.start();	// start new connection ToClient thread 
 			while (true) {	
@@ -832,30 +861,34 @@ class ToServer implements Runnable
 	public byte[] action (byte[] received, int port) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
-			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
 					receivePacket.getAddress(), port, serverSocket, delay),
 					"DelayThread");
+			System.out.println(threadName() + ": " + DelayThread.getName() + 
+					DelayThread.getId() + " will delay the packet for " + 
+					delay/1000.0 + " seconds."); 
 			DelayThread.start();
 			return null;  // so delaying packet does not duplicate
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
-			System.out.println("\n" + threadName() + ": Duplicating packet...");
 			Thread DuplicateThread = new Thread(new Delay(received, 
 					receivePacket.getAddress(), port, serverSocket, delay),
 					"DuplicationThread");
+			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
+					DuplicateThread.getId() + " will send a duplicate of the packet after "
+					+ delay/1000.0 + " seconds.");
 			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
-				System.out.println("\n" + threadName() + ": Invalidating packet opcode.");
+				System.out.println(threadName() + ": Invalidating packet opcode.");
 				received[1] = (byte)0; // change opcode to an invalid one.
 			} else if (eFnFlag) {
-				System.out.println("\n" + threadName() + ": Manipulating packet filename.");
+				System.out.println(threadName() + ": Manipulating packet filename.");
 				received[2] = (byte)32;// throw a space as the first letter in the filename. 
 			} else if (eMdFlag) {
 				// change mode
-				System.out.println("\n" + threadName() + ": Invalidating packet mode.");
+				System.out.println(threadName() + ": Invalidating packet mode.");
 				byte[] errMode = new byte[0];
 				String newMode = "wrongMode!";
 				ByteArrayOutputStream rec = new ByteArrayOutputStream();
@@ -873,22 +906,25 @@ class ToServer implements Runnable
 						received = errRec;
 					}
 				}
-			} else if (eBlockNumber != -1) {
-				System.out.println("\n" + threadName() + ": Manipulating packet block number.");
-				received[3] = eBlockNumber;// change block number to eBlockNumber
+			} else if (eBlockNumber != 70000) {
+				System.out.println(threadName() + ": Changing packet's block number to "
+						+ eBlockNumber + ".");
+				received[2] = (byte)(eBlockNumber / 256);
+				received[3] = (byte)(eBlockNumber % 256);
 			} else if (eDfFlag) {
-				System.out.println("\n" + threadName() + ": Deleting packet's data field.");
+				System.out.println(threadName() + ": Deleting packet's data field.");
 				// delete the DATA packet's data field
 				byte[] temp = new byte[4];
 				System.arraycopy(received, 0, temp, 0, 4);
 				received = temp;
-			} else if (errorCode != -1) {	
-				System.out.println("\n" + threadName() + ": Changing packet's error code to " 
+			} else if (errorCode != 10) {	
+				System.out.println(threadName() + ": Changing packet's error code to " 
 						+ errorCode + ".");
-				received[3] = errorCode; // change error code to errorCode
+				received[2] = (byte)(errorCode / 256);
+				received[3] = (byte)(errorCode % 256);
 			}
 		} else if (packetDo == ErrorSim.PacketDo.lose) {
-			System.out.println("\n" + threadName() + ": Losing packet.");
+			System.out.println(threadName() + ": Losing packet.");
 			return null;
 		} 
 		
@@ -900,7 +936,8 @@ class ToServer implements Runnable
 	 * 
 	 * @return	packet data to send
 	 */
-	public byte[] createPacket() {
+	public byte[] createPacket() 
+	{
 		byte[] packetData = null; // packet data to send
 		if (packetType == ErrorSim.PacketType.RRQ ||
 				packetType == ErrorSim.PacketType.WRQ) {
@@ -909,15 +946,12 @@ class ToServer implements Runnable
 			packetData=new byte[filename.length() + mode.length() + 4];
 			
 			// request opcode
-			if (packetType == ErrorSim.PacketType.RRQ)
-			{
-				System.out.println("\n" + threadName() + ": Creating RRQ packet.");
+			if (packetType == ErrorSim.PacketType.RRQ){
+				System.out.println(threadName() + ": Creating RRQ packet.");
 				packetData[0] = 0;
 				packetData[1] = 1;
-			}
-			else
-			{
-				System.out.println("\n" + threadName() + ": Creating WRQ packet.");
+			} else {
+				System.out.println(threadName() + ": Creating WRQ packet.");
 				packetData[0] = 0;
 				packetData[1] = 2;
 			}
@@ -938,6 +972,7 @@ class ToServer implements Runnable
 			System.arraycopy(md,0,packetData,fn.length+3,md.length);
 			packetData[packetData.length-1] = 0;				
 		} else if (packetType == ErrorSim.PacketType.DATA) {
+			System.out.println(threadName() + ": Creating DATA packet.");
 			String data = "*** ADDED SOME DATA ***";
 			byte[] d = null;	// data
 			try {
@@ -946,16 +981,18 @@ class ToServer implements Runnable
 			packetData = new byte[4 + d.length];
 			packetData[0] = 0;
 			packetData[1] = 3;
-			packetData[2] = 0;
-			packetData[3] = eBlockNumber;
+			packetData[2] = (byte)(eBlockNumber / 256);
+			packetData[3] = (byte)(eBlockNumber % 256);
 			System.arraycopy(d, 0, packetData, 4, d.length);				
 		} else if (packetType == ErrorSim.PacketType.ACK) {
+			System.out.println(threadName() + ": Creating ACK packet.");
 			packetData = new byte[4];
 			packetData[0] = 0;
 			packetData[1] = 4;
-			packetData[2] = 0;
-			packetData[3]= eBlockNumber;// change blocknumber to eBlockNumber
+			packetData[2] = (byte)(eBlockNumber / 256);
+			packetData[3] = (byte)(eBlockNumber % 256);
 		} else if (packetType == ErrorSim.PacketType.ERROR) {
+			System.out.println(threadName() + ": Creating ERROR packet.");
 			String message = "This is a message from your friendly neighbourhood Error Simulator.";
 			byte[] msg = null;	// error message
 			try {
@@ -964,8 +1001,8 @@ class ToServer implements Runnable
 			packetData = new byte[5 + msg.length];
 			packetData[0] = 0;
 			packetData[1] = 5;
-			packetData[2] = 0;
-			packetData[3] = errorCode;// change error code to errorCode
+			packetData[2] = (byte)(errorCode / 256);
+			packetData[3] = (byte)(errorCode % 256);
 			System.arraycopy(msg, 0, packetData, 4, msg.length);	
 			packetData[packetData.length-1] = 0;
 		}
@@ -980,7 +1017,8 @@ class ToServer implements Runnable
 	 * @param op	received packet opcode byte
 	 * @return		true if it matches, false if it is the wrong packet type
 	 */
-	public boolean matchType (byte op) {
+	public boolean matchType (byte op) 
+	{
 		// determine which type of packet was received
 		switch (op) {
 		case 1: if (packetType == ErrorSim.PacketType.RRQ){ return true; }	// RRQ
@@ -1018,14 +1056,32 @@ class ToServer implements Runnable
 				// block until a DatagramPacket is received 
 				System.out.println("\n" + threadName() + 
 						": Listening for packets...");
-				socket.receive(receivePacket);
+				
+				socket.receive(receivePacket); // receive packet
+				
+				byte[] packetData = receivePacket.getData();  // the received packet's data
+				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
+				String type = "";  // type of packet
+				
+				// get packet info based on type of TFTP packet
+				switch (op) {
+					case 1: case 2: type = parseRequest(packetData);
+						break;
+					case 3: type = parseData(packetData);
+						break;
+					case 4: type = parseAck(packetData);
+						break;
+					case 5: type = parseError(packetData);
+						break;
+					default:
+						break;
+				}
 
-				// print out thread and port info
-				System.out.println("\n" + threadName() + ": packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + 
-						" : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + 
-						" bytes: \n");
+				// print out packet info
+				String direction = "<--";
+				System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+						socket.getLocalSocketAddress(), direction, receivePacket.getSocketAddress(),
+						receivePacket.getLength(), type);
 				
 				packetCount++;  // keep track of number of packets received
 
@@ -1050,9 +1106,6 @@ class ToServer implements Runnable
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
 				packet.getLength());
 
-		// display info to user
-		System.out.println(Arrays.toString(data));
-
 		return data;
 	}
 
@@ -1069,22 +1122,198 @@ class ToServer implements Runnable
 	{	
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
-
-		// print out packet info to user
-		System.out.println("\n" + threadName() + ": Sending packet: ");
-		System.out.println("To host: " + addr + " : " + port);
-		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-		System.out.println(Arrays.toString(data) + "\n");
+		
+		// type of packet being sent 
+		int op = twoBytesToInt(data[0], data[1]);
+		String type = "";
+		switch (op) {
+			case 1: case 2: type = parseRequest(data); 
+				break;
+			case 3: type = parseData(data);
+				break;
+			case 4: type = parseAck(data);
+				break;
+			case 5: type = parseError(data);
+				break;
+			default: 
+				break;
+		}
 
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println(threadName() + ": Packet sent using port " 
-					+ socket.getLocalPort() + ".");
+			// print out packet info
+			String direction = "-->";
+			System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+					socket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
+					sendPacket.getLength(), type);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+	
+	/**
+	 * Deals with two signed bytes and combines them into one int.
+	 * 
+	 * @param one	first byte
+	 * @param two	second byte
+	 * @return		two bytes combined into an int (value: 0 to 65535)
+	 */
+	public int twoBytesToInt(byte one, byte two) 
+	{
+		// add 256 if needed to compensate for signed bytes in Java
+		int value1 = one < 0 ? one + 256 : one;
+		int value2 = two < 0 ? two + 256 : two;
+		
+		// left shift value1 and combine with value2 into one int
+		return (value2 | (value1 << 8));
+	}
+	
+	/**
+	 * Parse the read/write request byte[].
+	 * 
+	 * @param request	the read/write byte[]
+	 * @return			String representation of RRQ or WRQ
+	 */
+	public String parseRequest(byte[] request) 
+	{
+		String req = "";  // request type
+		
+		// get opcode
+		int op = twoBytesToInt(request[0], request[1]);
+		
+		// determine if RRQ or WRQ
+		if (op == 1) {
+			req = "Read Request   filename=\"";
+		} else {
+			req = "Write Request   filename=\"";
+		}	
+		
+		String filename = getFilename(request);  // gets the filename
+		String mode = getMode(request); // gets the mode
+		
+		return req + filename + "\"   mode=\"" + mode + "\"";
+	}
+	
+	/**
+	 * Gets the filename from the request packet.
+	 * 
+	 * @param received	the received data
+	 * @return			the filename from the request packet as a String
+	 */
+	public String getFilename(byte[] received) 
+	{		
+		// find the end of filename
+		int end = 2;	// end index of filename bytes
+		for (int i = 2; i < received.length - 1; i++) {
+			if  (received[i] == 0) {
+				end = i;
+			}
+		}
+		
+		// byte[] to copy filename into
+		byte[] file = new byte[end - 2];
+		System.arraycopy(received, 2, file, 0, end - 2);
+		
+		// make a String out of byte[] for filename
+		String filename = null;
+		try {
+			filename = new String(file, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}	
+		
+		return filename;
+	}
+	
+	/**
+	 * Gets the mode from the request packet.
+	 * 
+	 * @param received	the received data
+	 * @return			the mode from the request packet as a String
+	 */
+	public String getMode(byte[] received) 
+	{		
+		int len = received.length; // length of data
+		int f;	// filename finding index
+		for (f = 2; f < len; f++) {
+			if (received[f] == 0) {	// end of filename
+				break;
+			}
+		}
+		int m;	// mode finding index
+		for (m = f + 1; m < len; m++) {
+			if (received[m] == 0) {	// end of mode
+				break;
+			}
+		}
+		
+		// byte[] to copy mode into
+		byte[] md = new byte[m - f - 1];
+		System.arraycopy(received, f + 1, md, 0, m - f - 1);
+		
+		// make a String out of byte[] for mode
+		String mode = null;
+		try {
+			mode = new String(md, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		return mode;
+	}
+	
+	/**
+	 * Parse the acknowledgment byte[].
+	 * 
+	 * @param ack	the acknowledge byte[]
+	 * @return		String representation of ACK
+	 */
+	public String parseAck (byte[] ack) 
+	{
+		// get block number
+		int blockNumber = twoBytesToInt(ack[2], ack[3]);
+		
+		return "Acknowledgment #" + Integer.toString(blockNumber);
+	}
+	
+	/**
+	 * Parse the data byte[].
+	 * 
+	 * @param data	the data byte[]
+	 * @return		String representation of DATA
+	 */
+	public String parseData (byte[] data) 
+	{
+		// get block number
+		int blockNumber = twoBytesToInt(data[2], data[3]);
+		
+		return "Data packet    #" + Integer.toString(blockNumber);
+	}
+	
+	/**
+	 * Parse the error byte[].
+	 * 
+	 * @param error	the error byte[]
+	 * @return 		String representation of ERROR
+	 */
+	public String parseError (byte[] error) 
+	{
+		// get error code
+		int errorCode = twoBytesToInt(error[2], error[3]);
+
+		// get the error message
+		byte[] errorMsg = new byte[error.length - 5];
+		System.arraycopy(error, 4, errorMsg , 0, error.length - 5);
+		String message = null;
+		try {
+			message = new String(errorMsg, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}		
+		
+		return "Error " + Integer.toString(errorCode) + ": \"" + message + "\"";
 	}
 }
 
@@ -1109,9 +1338,9 @@ class ToClient implements Runnable
 	boolean eOpFlag;   // change opcode 
 	boolean eFnFlag;   // change filename
 	boolean eMdFlag;   // change mode
-	byte eBlockNumber; // change block number
+	int eBlockNumber;  // change block number
 	boolean eDfFlag;   // delete data field
-	byte errorCode;    // change error code
+	int errorCode;     // change error code
 	String filename;   // change the filename in RRQ or WRQ
 	private int delay = 0;  // milliseconds to delay packet
 	
@@ -1151,9 +1380,9 @@ class ToClient implements Runnable
 			boolean eOpFlag, 
 			boolean eFnFlag, 
 			boolean eMdFlag, 
-			byte eBlockNumber, 
+			int eBlockNumber, 
 			boolean eDfFlag, 
-			byte errorCode,
+			int errorCode,
 			String filename,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
@@ -1323,30 +1552,34 @@ class ToClient implements Runnable
 	public byte[] action (byte[] received, int port) {
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
-			System.out.println("\n" + threadName() + ": Delaying packet...");
 			Thread DelayThread = new Thread(new Delay(received, 
 					receivePacket.getAddress(), port, clientSocket, delay),
 					"DelayThread");
+			System.out.println(threadName() + ": " + DelayThread.getName() + 
+					DelayThread.getId() + " will delay the packet for " + 
+					delay/1000.0 + " seconds."); 
 			DelayThread.start();
-			return null;  // so delaying does not duplicate
+			return null;  // so delaying packet does not duplicate
 		} else if (packetDo == ErrorSim.PacketDo.duplicate) {
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
-			System.out.println("\n" + threadName() + ": Duplicating packet...");
 			Thread DuplicateThread = new Thread(new Delay(received, 
 					receivePacket.getAddress(), port, clientSocket, delay),
 					"DuplicationThread");
+			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
+					DuplicateThread.getId() + " will send a duplicate of the packet after "
+					+ delay/1000.0 + " seconds.");
 			DuplicateThread.start();
 		} else if (packetDo == ErrorSim.PacketDo.edit) {
 			if (eOpFlag) {
-				System.out.println("\n" + threadName() + ": Invalidating packet opcode.");
+				System.out.println(threadName() + ": Invalidating packet opcode.");
 				received[1] = (byte)0; // change opcode to an invalid one.
 			} else if (eFnFlag) {
-				System.out.println("\n" + threadName() + ": Manipulating packet filename.");
+				System.out.println(threadName() + ": Manipulating packet filename.");
 				received[2] = (byte)32;// throw a space as the first letter in the filename. 
 			} else if (eMdFlag) {
 				// change mode
-				System.out.println("\n" + threadName() + ": Manipulating packet mode.");
+				System.out.println(threadName() + ": Invalidating packet mode.");
 				byte[] errMode = new byte[0];
 				String newMode = "wrongMode!";
 				ByteArrayOutputStream rec = new ByteArrayOutputStream();
@@ -1364,22 +1597,25 @@ class ToClient implements Runnable
 						received = errRec;
 					}
 				}
-			} else if (eBlockNumber != -1) {
-				System.out.println("\n" + threadName() + ": Manipulating packet block number.");
-				received[3] = eBlockNumber;// change block number to eBlockNumber
+			} else if (eBlockNumber != 70000) {
+				System.out.println(threadName() + ": Changing packet's block number to "
+						+ eBlockNumber + ".");
+				received[2] = (byte)(eBlockNumber / 256);
+				received[3] = (byte)(eBlockNumber % 256);
 			} else if (eDfFlag) {
-				System.out.println("\n" + threadName() + ": Deleting packet's data field.");
+				System.out.println(threadName() + ": Deleting packet's data field.");
 				// delete the DATA packet's data field
 				byte[] temp = new byte[4];
 				System.arraycopy(received, 0, temp, 0, 4);
 				received = temp;
-			} else if (errorCode != -1) {	
-				System.out.println("\n" + threadName() + ": Changing packet's error code to " 
+			} else if (errorCode != 10) {	
+				System.out.println(threadName() + ": Changing packet's error code to " 
 						+ errorCode + ".");
-				received[3] = errorCode; // change error code to errorCode
+				received[2] = (byte)(errorCode / 256);
+				received[3] = (byte)(errorCode % 256);
 			}
 		} else if (packetDo == ErrorSim.PacketDo.lose) {
-			System.out.println("\n" + threadName() + ": Losing packet.");
+			System.out.println(threadName() + ": Losing packet.");
 			return null;
 		} 
 		
@@ -1391,7 +1627,8 @@ class ToClient implements Runnable
 	 * 
 	 * @return	packet data to send
 	 */
-	public byte[] createPacket() {
+	public byte[] createPacket() 
+	{
 		byte[] packetData = null; // packet data to send
 		if (packetType == ErrorSim.PacketType.RRQ ||
 				packetType == ErrorSim.PacketType.WRQ) {
@@ -1400,15 +1637,12 @@ class ToClient implements Runnable
 			packetData=new byte[filename.length() + mode.length() + 4];
 			
 			// request opcode
-			if (packetType == ErrorSim.PacketType.RRQ)
-			{
-				System.out.println("\n" + threadName() + ": Creating RRQ packet.");
+			if (packetType == ErrorSim.PacketType.RRQ) {
+				System.out.println(threadName() + ": Creating RRQ packet.");
 				packetData[0] = 0;
 				packetData[1] = 1;
-			}
-			else
-			{
-				System.out.println("\n" + threadName() + ": Creating WRQ packet.");
+			} else {
+				System.out.println(threadName() + ": Creating WRQ packet.");
 				packetData[0] = 0;
 				packetData[1] = 2;
 			}
@@ -1429,6 +1663,7 @@ class ToClient implements Runnable
 			System.arraycopy(md,0,packetData,fn.length+3,md.length);
 			packetData[packetData.length-1] = 0;				
 		} else if (packetType == ErrorSim.PacketType.DATA) {
+			System.out.println(threadName() + ": Creating DATA packet.");
 			String data = "*** ADDED SOME DATA ***";
 			byte[] d = null;	// data
 			try {
@@ -1437,16 +1672,18 @@ class ToClient implements Runnable
 			packetData = new byte[4 + d.length];
 			packetData[0] = 0;
 			packetData[1] = 3;
-			packetData[2] = 0;
-			packetData[3] = eBlockNumber;
+			packetData[2] = (byte)(eBlockNumber / 256);
+			packetData[3] = (byte)(eBlockNumber % 256);
 			System.arraycopy(d, 0, packetData, 4, d.length);
 		} else if (packetType == ErrorSim.PacketType.ACK) {
+			System.out.println(threadName() + ": Creating ACK packet.");
 			packetData = new byte[4];
 			packetData[0] = 0;
 			packetData[1] = 4;
-			packetData[2] = 0;
-			packetData[3]= eBlockNumber;// change blocknumber to eBlockNumber
+			packetData[2] = (byte)(eBlockNumber / 256);
+			packetData[3] = (byte)(eBlockNumber % 256);
 		} else if (packetType == ErrorSim.PacketType.ERROR) {
+			System.out.println(threadName() + ": Creating ERROR packet.");
 			String message = "This is a message from your friendly neighbourhood Error Simulator.";
 			byte[] msg = null;	// error message
 			try {
@@ -1455,8 +1692,8 @@ class ToClient implements Runnable
 			packetData = new byte[5 + msg.length];
 			packetData[0] = 0;
 			packetData[1] = 5;
-			packetData[2] = 0;
-			packetData[3] = errorCode;// change error code to errorCode
+			packetData[2] = (byte)(errorCode / 256);
+			packetData[3] = (byte)(errorCode % 256);
 			System.arraycopy(msg, 0, packetData, 4, msg.length);	
 			packetData[packetData.length-1] = 0;
 		}
@@ -1471,7 +1708,8 @@ class ToClient implements Runnable
 	 * @param op	received packet opcode byte
 	 * @return		true if it matches, false if it is the wrong packet type
 	 */
-	public boolean matchType (byte op) {
+	public boolean matchType (byte op) 
+	{
 		// determine which type of packet was received
 		switch (op) {
 		case 1: if (packetType == ErrorSim.PacketType.RRQ){ return true; }	// RRQ
@@ -1509,14 +1747,32 @@ class ToClient implements Runnable
 				// block until a DatagramPacket is received 
 				System.out.println("\n" + threadName() + 
 						": Listening for packets...");
-				socket.receive(receivePacket);
+				
+				socket.receive(receivePacket); // receive packet
+				
+				byte[] packetData = receivePacket.getData();  // the received packet's data
+				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
+				String type = "";  // type of packet
+				
+				// get packet info based on type of TFTP packet
+				switch (op) {
+					case 1: case 2: type = parseRequest(packetData);
+						break;
+					case 3: type = parseData(packetData);
+						break;
+					case 4: type = parseAck(packetData);
+						break;
+					case 5: type = parseError(packetData);
+						break;
+					default:
+						break;
+				}
 
-				// print out thread and port info
-				System.out.println("\n" + threadName() + ": packet received: ");
-				System.out.println("From host: " + receivePacket.getAddress() + 
-						" : " + receivePacket.getPort());
-				System.out.print("Containing " + receivePacket.getLength() + 
-						" bytes: \n");
+				// print out packet info
+				String direction = "<--";
+				System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+						socket.getLocalSocketAddress(), direction, receivePacket.getSocketAddress(),
+						receivePacket.getLength(), type);
 				
 				packetCount++;  // keep track of number of packets received
 
@@ -1557,23 +1813,199 @@ class ToClient implements Runnable
 	{	
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
-
-		// print out packet info to user
-		System.out.println("\n" + threadName() + ": Sending packet: ");
-		System.out.println("To host: " + addr + " : " + port);
-		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-		System.out.println(Arrays.toString(data) + "\n");
+		
+		// type of packet being sent 
+		int op = twoBytesToInt(data[0], data[1]);
+		String type = "";
+		switch (op) {
+			case 1: case 2: type = parseRequest(data); 
+				break;
+			case 3: type = parseData(data);
+				break;
+			case 4: type = parseAck(data);
+				break;
+			case 5: type = parseError(data);
+				break;
+			default: 
+				break;
+		}
 
 		// send the packet
 		try {
 			socket.send(sendPacket);
-			System.out.println(threadName() + ": Packet sent using port " 
-					+ socket.getLocalPort() + ".");
+			// print out packet info
+			String direction = "-->";
+			System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+					socket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
+					sendPacket.getLength(), type);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
-	}	
+	}
+	
+	/**
+	 * Deals with two signed bytes and combines them into one int.
+	 * 
+	 * @param one	first byte
+	 * @param two	second byte
+	 * @return		two bytes combined into an int (value: 0 to 65535)
+	 */
+	public int twoBytesToInt(byte one, byte two) 
+	{
+		// add 256 if needed to compensate for signed bytes in Java
+		int value1 = one < 0 ? one + 256 : one;
+		int value2 = two < 0 ? two + 256 : two;
+		
+		// left shift value1 and combine with value2 into one int
+		return (value2 | (value1 << 8));
+	}
+	
+	/**
+	 * Parse the read/write request byte[].
+	 * 
+	 * @param request	the read/write byte[]
+	 * @return			String representation of RRQ or WRQ
+	 */
+	public String parseRequest(byte[] request) 
+	{
+		String req = "";  // request type
+		
+		// get opcode
+		int op = twoBytesToInt(request[0], request[1]);
+		
+		// determine if RRQ or WRQ
+		if (op == 1) {
+			req = "Read Request   filename=\"";
+		} else {
+			req = "Write Request   filename=\"";
+		}	
+		
+		String filename = getFilename(request);  // gets the filename
+		String mode = getMode(request); // gets the mode
+		
+		return req + filename + "\"   mode=\"" + mode + "\"";
+	}
+	
+	/**
+	 * Gets the filename from the request packet.
+	 * 
+	 * @param received	the received data
+	 * @return			the filename from the request packet as a String
+	 */
+	public String getFilename(byte[] received) 
+	{		
+		// find the end of filename
+		int end = 2;	// end index of filename bytes
+		for (int i = 2; i < received.length - 1; i++) {
+			if  (received[i] == 0) {
+				end = i;
+			}
+		}
+		
+		// byte[] to copy filename into
+		byte[] file = new byte[end - 2];
+		System.arraycopy(received, 2, file, 0, end - 2);
+		
+		// make a String out of byte[] for filename
+		String filename = null;
+		try {
+			filename = new String(file, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}	
+		
+		return filename;
+	}
+	
+	/**
+	 * Gets the mode from the request packet.
+	 * 
+	 * @param received	the received data
+	 * @return			the mode from the request packet as a String
+	 */
+	public String getMode(byte[] received) 
+	{		
+		int len = received.length; // length of data
+		int f;	// filename finding index
+		for (f = 2; f < len; f++) {
+			if (received[f] == 0) {	// end of filename
+				break;
+			}
+		}
+		int m;	// mode finding index
+		for (m = f + 1; m < len; m++) {
+			if (received[m] == 0) {	// end of mode
+				break;
+			}
+		}
+		
+		// byte[] to copy mode into
+		byte[] md = new byte[m - f - 1];
+		System.arraycopy(received, f + 1, md, 0, m - f - 1);
+		
+		// make a String out of byte[] for mode
+		String mode = null;
+		try {
+			mode = new String(md, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		
+		return mode;
+	}
+	
+	/**
+	 * Parse the acknowledgment byte[].
+	 * 
+	 * @param ack	the acknowledge byte[]
+	 * @return		String representation of ACK
+	 */
+	public String parseAck (byte[] ack) 
+	{
+		// get block number
+		int blockNumber = twoBytesToInt(ack[2], ack[3]);
+		
+		return "Acknowledgment #" + Integer.toString(blockNumber);
+	}
+	
+	/**
+	 * Parse the data byte[].
+	 * 
+	 * @param data	the data byte[]
+	 * @return		String representation of DATA
+	 */
+	public String parseData (byte[] data) 
+	{
+		// get block number
+		int blockNumber = twoBytesToInt(data[2], data[3]);
+		
+		return "Data packet    #" + Integer.toString(blockNumber);
+	}
+	
+	/**
+	 * Parse the error byte[].
+	 * 
+	 * @param error	the error byte[]
+	 * @return 		String representation of ERROR
+	 */
+	public String parseError (byte[] error) 
+	{
+		// get error code
+		int errorCode = twoBytesToInt(error[2], error[3]);
+
+		// get the error message
+		byte[] errorMsg = new byte[error.length - 5];
+		System.arraycopy(error, 4, errorMsg , 0, error.length - 5);
+		String message = null;
+		try {
+			message = new String(errorMsg, "US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}		
+		
+		return "Error " + Integer.toString(errorCode) + ": \"" + message + "\"";
+	}
 }
 
 
@@ -1606,8 +2038,6 @@ class Delay implements Runnable
 		if (delay > 0) {
 			try {
 				Thread.sleep(delay);
-				System.out.println("\n" + threadName() + ": Packet Delayed for "
-						+ delay/1000.0 + " seconds.");
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
@@ -1618,17 +2048,39 @@ class Delay implements Runnable
 		// create new DatagramPacket to send to client
 		sendPacket = new DatagramPacket(data, data.length, addr, port);
 
-		// print out packet info to user
-		System.out.println("\n" + threadName() + ": Sending packet: ");
-		System.out.println("To host: " + addr + " : " + port);
-		System.out.print("Containing " + sendPacket.getLength() + " bytes: \n");
-		System.out.println(Arrays.toString(data) + "\n");
-
+		byte[] packetData = sendPacket.getData();  // the packet's data
+		int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
+		String type = "";  // type of packet
+		
+		// get packet info based on type of TFTP packet
+		switch (op) {
+			case 1: type = "Read Request packet";
+				break;
+			case 2: type = "Write Request packet";
+				break;
+			case 3: type = "Data packet";
+				break;
+			case 4: type = "Acknowledgment packet";
+				break;
+			case 5: type = "Error packet";
+				break;
+			default: type = "Invalid TFTP packet";
+				break;
+		}			
+		
 		// send the packet
 		try {
-			socket.send(sendPacket);
-			System.out.println("\n" + threadName() + ": Packet sent using port " 
-					+ socket.getLocalPort() + ".");
+			// packet delay info
+			System.out.println("\n" + threadName() + ": Packet Delayed for "
+					+ delay/1000.0 + " seconds.");
+			
+			socket.send(sendPacket); // send the packet
+			
+			// print out packet info
+			String direction = "-->";
+			System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+					socket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
+					sendPacket.getLength(), type);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -1644,6 +2096,23 @@ class Delay implements Runnable
 	public String threadName () 
 	{
 		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	/**
+	 * Deals with two signed bytes and combines them into one int.
+	 * 
+	 * @param one	first byte
+	 * @param two	second byte
+	 * @return		two bytes combined into an int (value: 0 to 65535)
+	 */
+	public static int twoBytesToInt(byte one, byte two) 
+	{
+		// add 256 if needed to compensate for signed bytes in Java
+		int value1 = one < 0 ? one + 256 : one;
+		int value2 = two < 0 ? two + 256 : two;
+		
+		// left shift value1 and combine with value2 into one int
+		return (value2 | (value1 << 8));
 	}
 }
 

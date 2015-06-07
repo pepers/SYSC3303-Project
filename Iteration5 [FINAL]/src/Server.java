@@ -401,7 +401,8 @@ public class Server
 	 * @param two	second byte
 	 * @return		two bytes combined into an int (value: 0 to 65535)
 	 */
-	public int twoBytesToInt(byte one, byte two) {
+	public int twoBytesToInt(byte one, byte two) 
+	{
 		// add 256 if needed to compensate for signed bytes in Java
 		int value1 = one < 0 ? one + 256 : one;
 		int value2 = two < 0 ? two + 256 : two;
@@ -971,7 +972,8 @@ class ClientConnection implements Runnable
 	 * @param two	second byte
 	 * @return		two bytes combined into an int (value: 0 to 65535)
 	 */
-	public int twoBytesToInt(byte one, byte two) {
+	public int twoBytesToInt(byte one, byte two) 
+	{
 		// add 256 if needed to compensate for signed bytes in Java
 		int value1 = one < 0 ? one + 256 : one;
 		int value2 = two < 0 ? two + 256 : two;
@@ -1197,7 +1199,8 @@ class ClientConnection implements Runnable
 	 * @param data	the data byte[]
 	 * @return		String representation of DATA
 	 */
-	public String parseData (byte[] data) {
+	public String parseData (byte[] data) 
+	{
 		// get block number
 		int blockNumber = twoBytesToInt(data[2], data[3]);
 		
