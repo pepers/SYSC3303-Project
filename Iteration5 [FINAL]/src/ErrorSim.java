@@ -2,7 +2,6 @@
 
 import java.io.*;
 import java.net.*;
-import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -39,6 +38,7 @@ public class ErrorSim
 	private static int errorCode = 10;      // change error code
 	private static String filename = null;  // filename for RRQ or WRQ to send
 	private static int delay = 0;  // milliseconds to delay packet
+	private static boolean unknownTID = false; // if true, send packet of choice from a different port
 
 	public ErrorSim() 
 	{		
@@ -78,7 +78,7 @@ public class ErrorSim
 				ConnectionThread = new Thread(new ToServer(
 						receivePacket, packetType, packetDo, sendToServer, 
 						choiceInt, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, eDfFlag,
-						errorCode,filename, null, null, sendPort, delay), "TransferToServer");
+						errorCode,filename, null, null, sendPort, delay, unknownTID), "TransferToServer");
 				System.out.println("\nError Simulator: " + ConnectionThread.getName() + 
 						ConnectionThread.getId() + " will connect to the server, in Error Simulation Mode...");
 			} else {
@@ -249,6 +249,7 @@ public class ErrorSim
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Replace first character of filename with a space (invalidating filename).");
 							System.out.println("\t 3. Make Mode invalid.");
+							System.out.println("\t 4. Change TID.");
 							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
@@ -259,6 +260,9 @@ public class ErrorSim
 								break;
 							} else if (choice.equals("3")) {
 								eMdFlag = true;
+								break;
+							} else if (choice.equals("4")) {
+								unknownTID = true;
 								break;
 							} else {
 								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
@@ -271,6 +275,7 @@ public class ErrorSim
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Block Number.");
 							System.out.println("\t 3. Delete Data field.");
+							System.out.println("\t 4. Change TID.");
 							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
@@ -297,6 +302,9 @@ public class ErrorSim
 							} else if (choice.equals("3")) {
 								eDfFlag = true;
 								break;
+							} else if (choice.equals("4")) {
+								unknownTID = true;
+								break;
 							} else {
 								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 							}
@@ -307,6 +315,7 @@ public class ErrorSim
 							System.out.println("\nError Simulator: What would you like to edit in the ACK packet?");
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Block Number.");
+							System.out.println("\t 3. Change TID.");
 							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
@@ -330,6 +339,9 @@ public class ErrorSim
 									break;
 								}
 								break;
+							} else if (choice.equals("3")) {
+								unknownTID = true;
+								break;
 							} else {
 								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 							}
@@ -340,6 +352,7 @@ public class ErrorSim
 							System.out.println("\nError Simulator: What would you like to edit in the ERROR packet?");
 							System.out.println("\t 1. Make Opcode invalid.");
 							System.out.println("\t 2. Change Error Code.");
+							System.out.println("\t 3. Change TID.");
 							System.out.println("(type the number corresponding to your choice...)");
 							choice = input.nextLine();  // user's choice
 							if (choice.equals("1")) { 
@@ -362,6 +375,9 @@ public class ErrorSim
 									}				
 									break;
 								}
+								break;
+							} else if (choice.equals("3")) {
+								unknownTID = true;
 								break;
 							} else {
 								System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
@@ -555,7 +571,7 @@ class ToServer implements Runnable
 {	
 	// UDP DatagramPackets and sockets used to send/receive
 	private DatagramPacket sendPacket, receivePacket;
-	private DatagramSocket serverSocket, clientSocket;
+	private DatagramSocket serverSocket, clientSocket, unknownSocket;
 
 	int sendPort;  // port to send to
 
@@ -572,6 +588,7 @@ class ToServer implements Runnable
 	int errorCode;     // change error code
 	String filename;   // change the filename in RRQ or WRQ
 	private int delay = 0;  // milliseconds to delay packet
+	boolean unknownTID;  // if true, send from a different port
 	
 	// counters
 	private int packetCount = 0;  // number of packets received
@@ -601,6 +618,7 @@ class ToServer implements Runnable
 	 * @param clientSocket		socket to receive from Client
 	 * @param sendPort			port on Server to send packets to
 	 * @param delay				milliseconds to delay packet for
+	 * @param unknownTID 		if true, send from a different port
 	 */
 	public ToServer (DatagramPacket receivePacket, 
 			ErrorSim.PacketType packetType, 
@@ -617,14 +635,10 @@ class ToServer implements Runnable
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
 			int sendPort,
-			int delay) 
+			int delay,
+			boolean unknownTID) 
 	{
-		/* If this Connection thread is to send to Server, the sockets will be
-		   null and must be created.
-
-		   If this Connection thread is to send to Client, sockets will have 
-		   been passed to it, and will not need to be created.
-		 */ 		
+		// create sockets for server and client connections		
 		if (serverSocket == null) {
 			try {			
 				// create new socket to send/receive TFTP packets to/from Server
@@ -659,6 +673,18 @@ class ToServer implements Runnable
 		this.errorCode = errorCode;
 		this.filename = filename;
 		this.delay = delay;
+		this.unknownTID = unknownTID;
+		
+		if (unknownTID) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Server
+				// using an unknown TID
+				unknownSocket = new DatagramSocket();		
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
 	}
 
 	/**
@@ -675,12 +701,7 @@ class ToServer implements Runnable
 			DatagramSocket clientSocket,
 			int sendPort) 
 	{
-		/* If this Connection thread is to send to Server, the sockets will be
-			null and must be created.
-
-		   If this Connection thread is to send to Client, sockets will have 
-			been passed to it, and will not need to be created.
-		 */ 		
+		// create sockets for server and client connections			
 		if (serverSocket == null) {
 			try {			
 				// create new socket to send/receive TFTP packets to/from Server
@@ -740,7 +761,7 @@ class ToServer implements Runnable
 						receivePacket, packetType, packetDo, sendToServer, 
 						packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 						eDfFlag, errorCode,filename, serverSocket, clientSocket, 
-						clientPort, delay), "TransferToClient");
+						clientPort, delay, unknownTID), "TransferToClient");
 				System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 						ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");	
 			}
@@ -772,7 +793,8 @@ class ToServer implements Runnable
 
 			// determines if packet received is the type of packet the user
 			// wants to manipulate
-			if (matchType(received[1])) {
+			int op = twoBytesToInt(received[0], received[1]); // get opcode
+			if (matchType(op)) {
 				typeCount++;
 				// user wants to manipulate this particular packet
 				if (packetNumber == typeCount) {
@@ -804,7 +826,7 @@ class ToServer implements Runnable
 					receivePacket, packetType, packetDo, sendToServer, 
 					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
-					clientPort, delay), "TransferToClient");
+					clientPort, delay, unknownTID), "TransferToClient");
 			System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 					ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");		
 
@@ -815,7 +837,8 @@ class ToServer implements Runnable
 
 				// determines if packet received is the type of packet the user
 				// wants to manipulate
-				if (matchType(received[1])) {
+				op = twoBytesToInt(received[0], received[1]); // get opcode
+				if (matchType(op)) {
 					typeCount++;
 					// user wants to manipulate this particular packet
 					if (packetNumber == typeCount) {
@@ -1017,7 +1040,7 @@ class ToServer implements Runnable
 	 * @param op	received packet opcode byte
 	 * @return		true if it matches, false if it is the wrong packet type
 	 */
-	public boolean matchType (byte op) 
+	public boolean matchType (int op) 
 	{
 		// determine which type of packet was received
 		switch (op) {
@@ -1139,6 +1162,14 @@ class ToServer implements Runnable
 				break;
 		}
 
+		// sending with unknown TID
+		if (matchType(op) && 
+				packetDo == ErrorSim.PacketDo.edit && 
+				packetNumber == typeCount) {
+			System.out.println(threadName() + ": Changing socket to send from (will create an unknown TID).");
+			socket = unknownSocket;  // change socket to send with 
+		}
+
 		// send the packet
 		try {
 			socket.send(sendPacket);
@@ -1150,6 +1181,13 @@ class ToServer implements Runnable
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
+		}
+		
+		// receive with unknown TID
+		if (matchType(op) && 
+				packetDo == ErrorSim.PacketDo.edit && 
+				packetNumber == typeCount) {
+			receive(socket); // receive error info
 		}
 	}
 	
@@ -1326,7 +1364,7 @@ class ToClient implements Runnable
 {	
 	// UDP DatagramPackets and sockets used to send/receive
 	private DatagramPacket sendPacket, receivePacket;
-	private DatagramSocket serverSocket, clientSocket;
+	private DatagramSocket serverSocket, clientSocket, unknownSocket;
 
 	int sendPort;  // port to send to
 
@@ -1343,6 +1381,7 @@ class ToClient implements Runnable
 	int errorCode;     // change error code
 	String filename;   // change the filename in RRQ or WRQ
 	private int delay = 0;  // milliseconds to delay packet
+	boolean unknownTID;  // if true, send from a different port
 	
 	// counters
 	private int packetCount = 0;  // number of packets received
@@ -1371,6 +1410,7 @@ class ToClient implements Runnable
 	 * @param clientSocket		socket to send to Client
 	 * @param sendPort			port on Client to send packets to
 	 * @param delay				milliseconds to delay a packet
+	 * @param unknownTID 		if true, send from a different port
 	 */
 	public ToClient (DatagramPacket receivePacket, 
 			ErrorSim.PacketType packetType, 
@@ -1387,26 +1427,9 @@ class ToClient implements Runnable
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
 			int sendPort,
-			int delay) 
+			int delay,
+			boolean unknownTID) 
 	{
-		/* If this Connection thread is to send to Server, the sockets will be
-		   null and must be created.
-
-		   If this Connection thread is to send to Client, sockets will have 
-		   been passed to it, and will not need to be created.
-		 */ 		
-		if (serverSocket == null) {
-			try {			
-				// create new socket to send/receive TFTP packets to/from Server
-				serverSocket = new DatagramSocket();			
-				// open new socket to send/receive to/from Client
-				clientSocket = new DatagramSocket();			
-			} catch (SocketException se) {
-				se.printStackTrace();
-				System.exit(1);
-			} 
-		}
-
 		// sockets
 		this.serverSocket = serverSocket;
 		this.clientSocket = clientSocket;
@@ -1429,6 +1452,18 @@ class ToClient implements Runnable
 		this.errorCode = errorCode;
 		this.filename = filename;
 		this.delay = delay;
+		this.unknownTID = unknownTID;
+		
+		if (unknownTID) {
+			try {			
+				// create new socket to send/receive TFTP packets to/from Client
+				// using an unknown TID
+				unknownSocket = new DatagramSocket();		
+			} catch (SocketException se) {
+				se.printStackTrace();
+				System.exit(1);
+			} 
+		}
 	}
 
 	/**
@@ -1445,24 +1480,6 @@ class ToClient implements Runnable
 			DatagramSocket clientSocket,
 			int sendPort) 
 	{
-		/* If this Connection thread is to send to Server, the sockets will be
-			null and must be created.
-
-		   If this Connection thread is to send to Client, sockets will have 
-			been passed to it, and will not need to be created.
-		 */ 		
-		if (serverSocket == null) {
-			try {			
-				// create new socket to send/receive TFTP packets to/from Server
-				serverSocket = new DatagramSocket();			
-				// open new socket to send/receive to/from Client
-				clientSocket = new DatagramSocket();			
-			} catch (SocketException se) {
-				se.printStackTrace();
-				System.exit(1);
-			} 
-		}
-
 		// sockets
 		this.serverSocket = serverSocket;
 		this.clientSocket = clientSocket;
@@ -1503,7 +1520,8 @@ class ToClient implements Runnable
 			while (true) {				
 				// determines if packet received is the type of packet the user
 				// wants to manipulate
-				if (matchType(received[1])) {
+				int op = twoBytesToInt(received[0], received[1]); // get opcode
+				if (matchType(op)) {
 					typeCount++;
 					// user wants to manipulate this particular packet
 					if (packetNumber == typeCount) {
@@ -1708,7 +1726,7 @@ class ToClient implements Runnable
 	 * @param op	received packet opcode byte
 	 * @return		true if it matches, false if it is the wrong packet type
 	 */
-	public boolean matchType (byte op) 
+	public boolean matchType (int op) 
 	{
 		// determine which type of packet was received
 		switch (op) {
@@ -1830,6 +1848,14 @@ class ToClient implements Runnable
 				break;
 		}
 
+		// sending with unknown TID
+		if (matchType(op) && 
+				packetDo == ErrorSim.PacketDo.edit && 
+				packetNumber == typeCount) {
+			System.out.println(threadName() + ": Changing socket to send from (will create an unknown TID).");
+			socket = unknownSocket;  // change socket to send with 
+		}
+
 		// send the packet
 		try {
 			socket.send(sendPacket);
@@ -1841,6 +1867,13 @@ class ToClient implements Runnable
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
+		}
+		
+		// receive with unknown TID
+		if (matchType(op) && 
+				packetDo == ErrorSim.PacketDo.edit && 
+				packetNumber == typeCount) {
+			receive(socket); // receive error info
 		}
 	}
 	

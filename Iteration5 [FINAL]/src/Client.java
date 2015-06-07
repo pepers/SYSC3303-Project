@@ -386,6 +386,9 @@ public class Client
 					if (blockNumber == 0) {
 						parseAck(received);  // print ACK info to user				
 						writeReq();  // start file transfer for WRQ
+						try {
+							in.close(); // close buffered reader after WRQ
+						} catch (IOException e) { } 
 						break;
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
@@ -1056,23 +1059,14 @@ public class Client
 				throw new SocketTimeoutException();  // timed out
 			}
 			
-			
-			// check for wrong transfer ID 
-			if (!((packet.getAddress().equals(addr)) && 
-					(packet.getPort() == port))) {				
-				// create and send error response packet for "Unknown transfer ID."
-				byte[] error = createError(5, 
-						"Your packet was sent to the wrong place.");
-				send(error, packet.getAddress(), packet.getPort());
-			// packet came from the right place	
+			// checks if the received packet is a valid TFTP packet
+			if (!isValidPacket(packet)) {
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError(4, "Invalid packet.");
+				send(error, addr, port);
+				return null;
+			// valid packet
 			} else {
-				// checks if the received packet is a valid TFTP packet
-				if (!isValidPacket(packet)) {
-					// create and send error response packet for "Illegal TFTP operation."
-					byte[] error = createError(4, "Invalid packet.");
-					send(error, addr, port);
-					return null;
-				}
 				
 				byte[] packetData = packet.getData();  // the received packet's data
 				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
@@ -1098,7 +1092,18 @@ public class Client
 						sendReceiveSocket.getLocalSocketAddress(), direction, packet.getSocketAddress(),
 						packet.getLength(), type);
 				
-				break;  // correct transfer ID and valid packet
+				// check for wrong transfer ID 
+				if (!((packet.getAddress().equals(addr)) && 
+						(packet.getPort() == port))) {				
+					// create and send error response packet for "Unknown transfer ID."
+					byte[] error = createError(5, 
+							"Your packet was sent to the wrong place.");
+					send(error, packet.getAddress(), packet.getPort());
+					
+				// packet came from the right place	
+				} else {
+					break;  // correct transfer ID and valid packet
+				}
 			}
 		}
 		

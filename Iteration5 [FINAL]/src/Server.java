@@ -554,6 +554,9 @@ class ClientConnection implements Runnable
 		System.out.println("\n"); // for formatting
 		if (op == 1) {			// received a RRQ
 			readReq();
+			try {
+				in.close(); // close buffered reader after RRQ
+			} catch (IOException e) { } 
 		} else if (op == 2) {	// received a WRQ
 			writeReq();
 		} else {						// ERROR received from server
@@ -962,7 +965,9 @@ class ClientConnection implements Runnable
 	{
 		System.out.println("\n" + threadName() + 
 				": Closing connection and shutting down thread.");
-		Thread.currentThread().interrupt();	// close ClientConnection thread to stop transfer
+		
+		// close ClientConnection thread to stop transfer
+		Thread.currentThread().interrupt();	
 	}
 	
 	/**
@@ -1102,38 +1107,15 @@ class ClientConnection implements Runnable
 				throw new SocketTimeoutException();  // timed out
 			}
 			
-			// check for wrong transfer ID 
-			if (!((packet.getAddress().equals(addr)) && (packet.getPort() == port))) {
-				// create and send error response packet for "Unknown transfer ID."
-				byte[] error = createError((byte)5, 
-						"Your packet was sent to the wrong place.");
+			// checks if the received packet is a valid TFTP packet
+			if (!isValidPacket(packet)) {
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError(4, "Invalid packet.");
+				send(error);
+				return null;
 				
-				// create new DatagramPacket to send to send error
-				sendPacket = new DatagramPacket(error, error.length, 
-						packet.getAddress(), packet.getPort());
-				
-				String type = parseError(data); // get error packet data
-				
-				// send the packet
-				try {
-					sendReceiveSocket.send(sendPacket);
-					// print out packet info
-					String direction = "-->";
-					System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
-							sendReceiveSocket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
-							sendPacket.getLength(), type);
-				} catch (IOException e) {
-					e.printStackTrace();
-					System.exit(1);
-				}
+			// valid packet
 			} else {
-				// checks if the received packet is a valid TFTP packet
-				if (!isValidPacket(packet)) {
-					// create and send error response packet for "Illegal TFTP operation."
-					byte[] error = createError((byte)4, "Invalid packet.");
-					send(error);
-					closeConnection();  // close this ClientConnection thread
-				}
 				
 				byte[] packetData = packet.getData();  // the received packet's data
 				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
@@ -1157,7 +1139,36 @@ class ClientConnection implements Runnable
 						sendReceiveSocket.getLocalSocketAddress(), direction, packet.getSocketAddress(),
 						packet.getLength(), type);
 				
-				break;  // correct transfer ID and valid packet
+				// check for wrong transfer ID 
+				if (!((packet.getAddress().equals(addr)) && 
+						(packet.getPort() == port))) {				
+					// create and send error response packet for "Unknown transfer ID."
+					byte[] error = createError(5, 
+							"Your packet was sent to the wrong place.");
+					
+					// create new DatagramPacket to send to unknown host
+					sendPacket = new DatagramPacket(error, error.length, 
+							packet.getAddress(), packet.getPort());
+					
+					type = parseError(error);
+					
+					// send the packet
+					try {
+						sendReceiveSocket.send(sendPacket);
+						// print out packet info
+						direction = "-->";
+						System.out.printf(threadName() + ": %30s %3s %-30s   bytes: %3d   - %s \n", 
+								sendReceiveSocket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
+								sendPacket.getLength(), type);
+					} catch (IOException e) {
+						e.printStackTrace();
+						System.exit(1);
+					}
+					
+				// packet came from the right place	
+				} else {
+					break;  // correct transfer ID and valid packet
+				}
 			}
 		}
 		
