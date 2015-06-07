@@ -337,49 +337,61 @@ public class Client
 						sendReceiveSocket.getLocalSocketAddress(), direction, packet.getSocketAddress(),
 						packet.getLength(), type);
 				
-				// DATA && RRQ was sent && block 01
-				if ((received[1] == 3) && (req == 1) && received[3] == 1) {         
-					byte[] justData = getData(received);  // print DATA info to user		
-					try {
-						// gets space left on the drive that we can use
-						long spaceOnDrive = Files.getFileStore(
-								Paths.get("")).getUsableSpace();	
+				// DATA && RRQ was sent && block number is 1
+				if ((op == 3) && (req == 1)) {
+					int blockNumber = twoBytesToInt(received[2], received[3]); // get block number
+					if (blockNumber == 1) {
+						byte[] justData = getData(received);  // print DATA info to user		
+						try {
+							// gets space left on the drive that we can use
+							long spaceOnDrive = Files.getFileStore(
+									Paths.get("")).getUsableSpace();	
 						
-						// checks if there is enough usable space on the disk
-						if (spaceOnDrive > data.length) {
-							// writes data to file (creates file first, if it doesn't exist yet)
-							Files.write(Paths.get(fileDirectory + filename), 
-									justData, StandardOpenOption.CREATE, 
-									StandardOpenOption.APPEND);
-							System.out.println("Client: Writing data to file: "
-									+ filename);
-						} else {
-							// create and send error response packet for "Disk full or allocation exceeded."
-							byte[] error = createError(3, "File (" + 
-									filename + ") too large for disk.");
-							send(error, addr, port);
-							return;
+							// checks if there is enough usable space on the disk
+							if (spaceOnDrive > data.length) {
+								// writes data to file (creates file first, if it doesn't exist yet)
+								Files.write(Paths.get(fileDirectory + filename), 
+										justData, StandardOpenOption.CREATE, 
+										StandardOpenOption.APPEND);
+								System.out.println("Client: Writing data to file: "
+										+ filename);
+							} else {
+								// create and send error response packet for "Disk full or allocation exceeded."
+								byte[] error = createError(3, "File (" + 
+										filename + ") too large for disk.");
+								send(error, addr, port);
+								return;
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+						}					
+					
+						if (justData.length < MAX_DATA) {
+							byte[] ack = createAck(1);  // create initial ACK
+							send(ack, addr, port);            // send ACK
+							System.out.println("\nClient: RRQ File Transfer Complete.");
+							break;
 						}
-					} catch (IOException e) {
-						e.printStackTrace();
-					}					
 					
-					if (justData.length < MAX_DATA) {
-						byte[] ack = createAck(received[3]);  // create initial ACK
-						send(ack, addr, port);            // send ACK
-						System.out.println("\nClient: RRQ File Transfer Complete.");
+						readReq();                        // start file transfer for RRQ
 						break;
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError(4, "Was expecting block number 1.");
+						send(error, addr, port);
 					}
-					
-					readReq();                        // start file transfer for RRQ
-					break;
-				
-				// ACK && it is block number 0 && WRQ was sent
-				} else if ((received[1] == 4) && (received[3] == 0) && (req == 2)) {  
-					parseAck(received);  // print ACK info to user				
-					writeReq();  // start file transfer for WRQ
-					break;
-			
+				// ACK && WRQ was sent && block number is 0
+				} else if ((op == 4) && (req == 2)) {  
+					int blockNumber = twoBytesToInt(received[2], received[3]); // get block number
+					if (blockNumber == 0) {
+						parseAck(received);  // print ACK info to user				
+						writeReq();  // start file transfer for WRQ
+						break;
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError(4, "Was expecting block number 0.");
+						send(error, addr, port);
+					}
 				// ERROR - in case we sent to the wrong place, we want to know
 				} else if (received[1] == 5) {  
 					parseError(received);  // print error info to user
@@ -387,9 +399,13 @@ public class Client
 				
 				// useless packet
 				} else {                        
-					// create and send error response packet for "Unknown transfer ID."
-					byte[] error = createError(5, 
-							"Your packet was sent to the wrong place.");
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error;
+					if (req == 1) {
+						error = createError(4, "Was expecting a Data Packet.");
+					} else {
+						error = createError(4, "Was expecting an Acknowledgement Packet.");
+					}
 					send(error, addr, port);
 				}
 			}
@@ -402,7 +418,7 @@ public class Client
 	 */
 	public void readReq() 
 	{		
-		byte blockNumber = 1;  // block number for ACK and DATA during transfer
+		int blockNumber = 1;  // block number for ACK and DATA during transfer
 		byte[] data = new byte[0];    // data from DATA packet
 		byte[] dataPacket = new byte[0];
 		
@@ -411,8 +427,8 @@ public class Client
 		
 		blockNumber++; // increment ACK block number
 		
-		// blockNumber goes from 0-127, and then wraps to back to 0
-		if (blockNumber < 0) { 
+		// blockNumber goes from 0-65535, and then wraps to back to 0
+		if (blockNumber > 65535) { 
 			blockNumber = 0;
 			blockNumberWrap = true;
 		}
@@ -447,20 +463,23 @@ public class Client
 			}
 			
 			dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+			int op = twoBytesToInt(dataPacket[0], dataPacket[1]); // get opcode
 			
-			if (dataPacket[1] == 3) {        // received DATA
-				if (dataPacket[3] == blockNumber) { // correct block number
+			if (op == 3) {        // received DATA
+				int bn = twoBytesToInt(dataPacket[2], dataPacket[3]); // get block number
+				if (bn == blockNumber) { // correct block number
 					blockNumber++; // increment ACK block number
 					
-					// blockNumber goes from 0-127, and then wraps to back to 0
-					if (blockNumber < 0) { 
+					// blockNumber goes from 0-65535, and then wraps to back to 0
+					if (blockNumber > 65535) { 
 						blockNumber = 0;
 						blockNumberWrap = true;
 					}
+					
 					data = getData(dataPacket);   // get data from packet
 					// if last packet was empty, no need to write, end of transfer
 					if (data.length == 0) { 
-						ack = createAck(dataPacket[3]);   // create ACK
+						ack = createAck(bn);   // create ACK
 						send(ack, addr, port);          // send ACK
 						break;
 					}
@@ -491,9 +510,9 @@ public class Client
 					System.out.println("Client: Received DATA packet out of order: Not writing to file.");
 					data = new byte[MAX_DATA]; // so we don't quit yet
 				}
-				ack = createAck(dataPacket[3]);   // create ACK
+				ack = createAck(bn);   // create ACK
 				send(ack, addr, port);          // send ACK
-			} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+			} else if (op == 5) { // ERROR received instead of DATA
 				parseError(dataPacket);         // print ERROR info
 				return;
 			} else {
@@ -517,11 +536,13 @@ public class Client
 					return;
 				}
 				dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+				int op = twoBytesToInt(dataPacket[0], dataPacket[1]); // get opcode
 				
-				if (dataPacket[1] == 3) {        // received DATA					
-					ack = createAck(dataPacket[3]);   // create ACK
+				if (op == 3) {        // received DATA	
+					int bn = twoBytesToInt(dataPacket[2], dataPacket[3]); // get block number
+					ack = createAck(bn);   // create ACK
 					send(ack, addr, port);          // send ACK
-				} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+				} else if (op == 5) { // ERROR received instead of DATA
 					parseError(dataPacket);         // print ERROR info
 					System.out.println("\nClient: RRQ File Transfer Complete.");
 					return;
@@ -558,7 +579,7 @@ public class Client
 			
 		byte[] read = new byte[MAX_DATA];  // to hold bytes read
 		int bytes = 0;                     // number of bytes read
-		byte blockNumber = 1;              // DATA block number
+		int blockNumber = 1;              // DATA block number
 		
 		// read up to 512 bytes from file
 		try {			
@@ -605,19 +626,22 @@ public class Client
 					}
 				
 					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+					int op = twoBytesToInt(ackPacket[0], ackPacket[1]); // get opcode
+					
+					if (op == 5) {                            // ERROR received instead of ACK
 						parseError(ackPacket);	// print ERROR info and close connection
 						System.out.println("Client: Aborting Transfer.");
 						return;
-					} else if (ackPacket[1] == 4) {
+					} else if (op == 4) {
 						parseAck(ackPacket);	// print ACK info
-						if (ackPacket[3] == 0) { // received block numbers wrapped
+						int bn = twoBytesToInt(ackPacket[2], ackPacket[3]); // get block number
+						if (bn == 0) { // received block numbers wrapped
 							blockNumberWrap = false;
 						}
 						if (!blockNumberWrap){ // block number hasn't wrapped yet
-							if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+							if (bn < blockNumber){ // duplicate ACK) {
 								System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-							} else if (ackPacket[3] == blockNumber) {
+							} else if (bn == blockNumber) {
 								break;  // got ACK with correct block number, continuing
 							} else { // ACK with weird block number 
 								// create and send error response packet for "Illegal TFTP operation."
@@ -626,10 +650,10 @@ public class Client
 								return;		
 							} 
 						} else {
-							if (ackPacket[3] > blockNumber){ // duplicate ACK
+							if (bn > blockNumber){ // duplicate ACK
 								System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
 							} else {
-								if (ackPacket[3] == blockNumber) {
+								if (bn == blockNumber) {
 									break;  // got ACK with correct block number, continuing
 								} else { // ACK with weird block number 
 									// create and send error response packet for "Illegal TFTP operation."
@@ -648,8 +672,8 @@ public class Client
 				}
 				blockNumber++; // increment DATA block number
 				
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
+				// blockNumber goes from 0-65535, and then wraps to back to 0
+				if (blockNumber > 65535) { 
 					blockNumber = 0;
 					blockNumberWrap = true;
 				}
@@ -703,19 +727,22 @@ public class Client
 				}
 			
 				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+				int op = twoBytesToInt(ackPacket[0], ackPacket[1]); // get opcode
+				
+				if (op == 5) {                            // ERROR received instead of ACK
 					parseError(ackPacket);	// print ERROR info and close connection
 					System.out.println("Client: Aborting Transfer.");
 					return;
-				} else if (ackPacket[1] == 4) {
+				} else if (op == 4) {
 					parseAck(ackPacket);	// print ACK info
-					if (ackPacket[3] == 0) { // received block numbers wrapped
+					int bn = twoBytesToInt(ackPacket[2], ackPacket[3]); // get block number
+					if (bn == 0) { // received block numbers wrapped
 						blockNumberWrap = false;
 					}
 					if (!blockNumberWrap){ // block number hasn't wrapped yet
-						if (ackPacket[3] < blockNumber){ // duplicate ACK) {
+						if (bn < blockNumber){ // duplicate ACK) {
 							System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else if (ackPacket[3] == blockNumber) {
+						} else if (bn == blockNumber) {
 							break;  // got ACK with correct block number, continuing
 						} else { // ACK with weird block number 
 							// create and send error response packet for "Illegal TFTP operation."
@@ -724,9 +751,9 @@ public class Client
 							return;		
 						}
 					} else {
-						if (ackPacket[3] > blockNumber){ // duplicate ACK
+						if (bn > blockNumber){ // duplicate ACK
 							System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else if (ackPacket[3] == blockNumber) {
+						} else if (bn == blockNumber) {
 							break;  // got ACK with correct block number, continuing
 						} else { // ACK with weird block number 
 							// create and send error response packet for "Illegal TFTP operation."
@@ -788,7 +815,7 @@ public class Client
 	 * @param blockNumber	the data block number that is being acknowledged
 	 * @return				the acknowledgment byte[]
 	 */
-	public byte[] createAck (byte blockNumber) 
+	public byte[] createAck (int blockNumber) 
 	{
 		byte[] ack = new byte[4];
 		
@@ -811,7 +838,7 @@ public class Client
 	 * @param passedData	the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] passedData) 
+	public byte[] createData (int blockNumber, byte[] passedData) 
 	{
 		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
 		
