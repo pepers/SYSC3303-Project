@@ -964,6 +964,7 @@ public class Client
 	 */
 	public void send (byte[] data, InetAddress iAddr, int portNum) 
 	{
+		// create new DatagramPacket to send to server
 		sendPacket = new DatagramPacket(data, data.length, iAddr, portNum);
 		
 		// type of packet being sent 
@@ -1032,8 +1033,8 @@ public class Client
 			if (!((packet.getAddress().equals(addr)) && 
 					(packet.getPort() == port))) {				
 				// create and send error response packet for "Unknown transfer ID."
-				String errorMsg = "Your packet was sent to the wrong place.";
-				byte[] error = createError(5, errorMsg);
+				byte[] error = createError(5, 
+						"Your packet was sent to the wrong place.");
 				send(error, packet.getAddress(), packet.getPort());
 			// packet came from the right place	
 			} else {
@@ -1115,17 +1116,15 @@ public class Client
 	 */
 	public boolean isValidPacket (DatagramPacket received) 
 	{
-		int len = received.getLength();				            // number of data bytes in packet
-		byte[] data = new byte[len];                            // new byte[] for storing received data 
-		System.arraycopy(received.getData(), 0, data, 0, len);  // copy over data
+		byte[] data = received.getData();         // get data from received packet
+		int len = received.getLength();				       // number of data bytes in packet
 		
 		// check size of packet
 		if (len < 4) {
 			return false;
 		} 
 		
-		byte[] receivedData = received.getData(); // get data from received packet
-		int op = twoBytesToInt(receivedData[0], receivedData[1]);	// get opcode
+		int op = twoBytesToInt(data[0], data[1]);	// get opcode
 		
 		// organize by opcode
 		switch (op) {
