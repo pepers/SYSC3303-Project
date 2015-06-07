@@ -743,7 +743,7 @@ class ToServer implements Runnable
 
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
-			received = receivePacket.getData(); // gets received data
+			received = processDatagram(receivePacket); // gets received data without extra null bytes
 			sendPort = receivePacket.getPort();  // get port on Server to send to
 			
 			Thread ConnectionThread = null;
@@ -771,7 +771,7 @@ class ToServer implements Runnable
 
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
-				received = receivePacket.getData(); // gets received data
+				received = processDatagram(receivePacket); // gets received data without extra null bytes
 
 				// passes Client's packet to Server
 				send(received, receivePacket.getAddress(), sendPort, serverSocket);
@@ -819,7 +819,7 @@ class ToServer implements Runnable
 			
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
-			received = receivePacket.getData(); // gets received data
+			received = processDatagram(receivePacket); // gets received data without extra null bytes
 			sendPort = receivePacket.getPort();  // get port on Server to send to
 			
 			// start new ToClient connection in error simulation mode			
@@ -836,7 +836,7 @@ class ToServer implements Runnable
 			
 			while (true) {	
 				receivePacket = receive(clientSocket); // receive packet from Client
-				received = receivePacket.getData(); // gets received data
+				received = processDatagram(receivePacket); // gets received data without extra null bytes
 
 				// determines if packet received is the type of packet the user
 				// wants to manipulate
@@ -875,6 +875,21 @@ class ToServer implements Runnable
 	 */
 	public String threadName () {
 		return Thread.currentThread().getName() + Thread.currentThread().getId();
+	}
+	
+	/**
+	 * Makes an appropriately sized byte[] from a DatagramPacket
+	 * 
+	 * @param packet	the received DatagramPacket
+	 * @return			the data from the DatagramPacket
+	 */
+	public byte[] processDatagram (DatagramPacket packet) 
+	{
+		int len = packet.getLength(); // number of data bytes in packet
+		byte[] data = new byte[len];  // new byte[] for storing received data 
+		System.arraycopy(packet.getData(), 0, data, 0, len);  // copy over data
+		
+		return data;
 	}
 
 	/**
