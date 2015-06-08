@@ -994,7 +994,7 @@ class ClientConnection implements Runnable
 					
 					// invalid packet received
 					if (receivePacket == null) {
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;
 					}
 					dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
@@ -1006,13 +1006,13 @@ class ClientConnection implements Runnable
 						send(ack);          // send ACK
 					} else if (op == 5) { // ERROR received instead of DATA
 						parseError(dataPacket);         // print ERROR info
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
 						byte[] error = createError(4, "Was expecting DATA packet.");
 						send(error);
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;		
 					}
 				} catch (SocketTimeoutException e1) {

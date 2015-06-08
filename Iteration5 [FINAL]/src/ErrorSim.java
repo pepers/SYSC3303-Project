@@ -922,7 +922,7 @@ class ToServer implements Runnable
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, serverSocket, delay),
+					saddr, port, serverSocket, delay),
 					"DelayThread");
 			System.out.println(threadName() + ": " + DelayThread.getName() + 
 					DelayThread.getId() + " will delay the packet for " + 
@@ -933,7 +933,7 @@ class ToServer implements Runnable
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, serverSocket, delay),
+					saddr, port, serverSocket, delay),
 					"DuplicationThread");
 			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
 					DuplicateThread.getId() + " will send a duplicate of the packet after "
@@ -1449,7 +1449,8 @@ class ToClient implements Runnable
 			String filename,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
-			int sendPort,InetAddress clientAddress,
+			int sendPort,
+			InetAddress clientAddress,
 			int delay,
 			boolean unknownTID) 
 	{
@@ -1595,7 +1596,7 @@ class ToClient implements Runnable
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, clientSocket, delay),
+					clientAddress, port, clientSocket, delay),
 					"DelayThread");
 			System.out.println(threadName() + ": " + DelayThread.getName() + 
 					DelayThread.getId() + " will delay the packet for " + 
@@ -1606,7 +1607,7 @@ class ToClient implements Runnable
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, clientSocket, delay),
+					clientAddress, port, clientSocket, delay),
 					"DuplicationThread");
 			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
 					DuplicateThread.getId() + " will send a duplicate of the packet after "
