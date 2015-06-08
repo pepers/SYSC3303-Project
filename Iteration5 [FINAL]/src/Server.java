@@ -866,9 +866,6 @@ class ClientConnection implements Runnable
 			// create and send error response packet for "File not found."
 			byte[] error = createError(1, "File (" + filename + ") does not exist.");
 			send(error);
-			try {
-				in.close(); // close buffered reader after RRQ
-			} catch (IOException e) { } 
 			return;
 		}
 		System.out.println("\n" + threadName() + ": RRQ File Transfer Complete");

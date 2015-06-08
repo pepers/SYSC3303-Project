@@ -44,6 +44,15 @@ public class Client
 	private boolean blockNumberWrap = false;						// true if block number wraps back to zero
 	
 	/**
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
+	 * 
 	 * opcodes for the different DatagramPackets in TFTP
 	 */
 	public enum Opcode 
