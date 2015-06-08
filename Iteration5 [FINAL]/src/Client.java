@@ -13,7 +13,6 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -25,7 +24,7 @@ import java.util.Scanner;
  * @author	Matthew Pepers
  * @author	Mohammed Hamza
  * @author	Scott Savage
- * @version	4
+ * @version	5
  */
 public class Client 
 {	
@@ -86,9 +85,58 @@ public class Client
 	{
 		Client c = new Client();
 		System.out.println("***** Welcome to Group #2's SYSC3303 TFTP Client Program *****\n");
+				
+		input = new Scanner(System.in);		// scans user input
+		
+		// determines the InetAddress to send the request to
+		InetAddress inet;
+		while (true) {
+			System.out.println("What is the Internet Address of the Server that you want to send a request to?");
+			System.out.println("(enter the ip address or host name)");
+			String choice = input.nextLine();	// user's choice
+			try {
+				inet = InetAddress.getByName(choice); // get InetAddress from choice
+				break;
+			} catch (UnknownHostException e) {
+				System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
+						+ choice + "\".  Please try again...");
+			}			
+		}
+		
+		// determines the port to send the request to
+		int dest; // the port destination of the user's request
+		while (true) {
+			System.out.println("\nWhere would you like to send your request: ");
+			System.out.println("- directly to the (S)erver ");
+			System.out.println("- to the Server, but through the (E)rror Simulator first");
+			System.out.println("- I've changed my mind, I want to (Q)uit instead");
+			String choice = input.nextLine();	// user's choice
+			if (choice.equalsIgnoreCase("S")) {			// request to Server
+				dest = 69;
+				break;
+			} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
+				dest = 68;
+				break;
+			} else if (choice.equalsIgnoreCase("Q")) {	// quit
+				System.out.println("\nGoodbye!");
+				System.exit(0);
+			} else {
+				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+			}
+		}
+		
+		// String representation of port destination
+		String sDest = ", directly.";
+		if (dest == 68) {
+			sDest = ", through the Error Simulator.";
+		}		
+
+		System.out.println("\nClient: You have chosen to send your request to the Server at " 
+				+ inet.getHostAddress() + sDest);
+		
 		// loop until user chooses to not send another request and quit
 		while(true) {
-			c.ui();	// start the user interface to send request
+			c.ui(dest, inet);	// start the user interface to send request
 			c.connection();	// receive and send packets with Server or ErrorSim
 		}
 	}
@@ -97,14 +145,16 @@ public class Client
 	 * The simple console text user interface for the client program.  User navigates 
 	 * through menus to send request DatagramPacket.
 	 * 
+	 * @param dest	the destination port (68 for ErrorSim, 69 for Server)
+	 * @param inet	the InetAddress to send the request to 
 	 */
-	public void ui() 
+	public void ui(int dest, InetAddress inet) 
 	{	
 		// determine if user wants to send a read request or a write request
 		Opcode op;	// the user's choice of request to send
 		input = new Scanner(System.in);		// scans user input
 		while (true) {
-			System.out.println("\nWould you like to make a (R)ead Request, (W)rite Request, or (Q)uit?");
+			System.out.println("\nWould you like to make a (R)ead Request, a (W)rite Request, (E)nter a new destination, or (Q)uit?");
 			String choice = input.nextLine();	// user's choice
 			if (choice.equalsIgnoreCase("R")) {			// read request
 				op = Opcode.RRQ;
@@ -117,30 +167,50 @@ public class Client
 			} else if (choice.equalsIgnoreCase("Q")) {	// quit
 				System.out.println("\nGoodbye!");
 				System.exit(0);
-			} else {
-				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
-			}
-		}
-		
-		// determines where the user wants to send the request
-		int dest; // the port destination of the user's request
-		while (true) {
-			System.out.println("Where would you like to send your request: ");
-			System.out.println("- directly to the (S)erver ");
-			System.out.println("- to the Server, but through the (E)rror Simulator first");
-			System.out.println("- I've changed my mind, I want to (Q)uit instead");
-			String choice = input.nextLine();	// user's choice
-			if (choice.equalsIgnoreCase("S")) {			// request to Server
-				dest = 69;
-				System.out.println("\nClient: You have chosen to send your request to the Server.");
-				break;
-			} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
-				dest = 68;
-				System.out.println("\nClient: You have chosen to send your request to the Error Simulator.");
-				break;
-			} else if (choice.equalsIgnoreCase("Q")) {	// quit
-				System.out.println("\nGoodbye!");
-				System.exit(0);
+			} else if (choice.equalsIgnoreCase("E")) {  // enter new InetAddress of Server
+				// determines the InetAddress to send the request to
+				while (true) {
+					System.out.println("\nWhat is the Internet Address of the Server that you want to send a request to?");
+					System.out.println("(enter the ip address or host name)");
+					choice = input.nextLine();	// user's choice
+					try {
+						inet = InetAddress.getByName(choice); // get InetAddress from choice
+						break;
+					} catch (UnknownHostException e) {
+						System.out.println("\nI'm sorry, no IP Address could be found for the host \"" 
+								+ choice + "\".  Please try again...");
+					}			
+				}
+				
+				// determines the port to send the request to
+				while (true) {
+					System.out.println("\nWhere would you like to send your request: ");
+					System.out.println("- directly to the (S)erver ");
+					System.out.println("- to the Server, but through the (E)rror Simulator first");
+					System.out.println("- I've changed my mind, I want to (Q)uit instead");
+					choice = input.nextLine();	// user's choice
+					if (choice.equalsIgnoreCase("S")) {			// request to Server
+						dest = 69;
+						break;
+					} else if (choice.equalsIgnoreCase("E")) {	// request to Error Simulator
+						dest = 68;
+						break;
+					} else if (choice.equalsIgnoreCase("Q")) {	// quit
+						System.out.println("\nGoodbye!");
+						System.exit(0);
+					} else {
+						System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
+					}
+				}
+				
+				// String representation of port destination
+				String sDest = ", directly.";
+				if (dest == 68) {
+					sDest = ", through the Error Simulator.";
+				}		
+
+				System.out.println("\nClient: You have chosen to send your request to the Server at " 
+						+ inet.getHostAddress() + sDest + "\n");
 			} else {
 				System.out.println("\nI'm sorry, that is not a valid choice.  Please try again...");
 			}
@@ -155,7 +225,7 @@ public class Client
 			if (op == Opcode.RRQ) {
 				if (!(Files.exists(Paths.get(fileDirectory + filename)))) {	// file doesn't exist
 					System.out.println("\nClient: You have chosen the file: " + 
-							filename + ", to be received in " + mode + " mode.");	
+							filename + ", to be received in " + mode + " mode. \n");	
 					break;
 				} else{														// file already exists
 					System.out.println("\nClient: I'm sorry, " + fileDirectory + 
@@ -177,7 +247,7 @@ public class Client
 				if (Files.isReadable(Paths.get(fileDirectory + filename))) {	// file exists and is readable
 					System.out.println("\nClient: You have chosen the file: " + 
 							fileDirectory + filename + ", to be sent in " + 
-							mode + " mode.");
+							mode + " mode. \n");
 					break;
 				} else {														// file does not exist
 					System.out.println("\nClient: I'm sorry, " + fileDirectory +
@@ -199,15 +269,12 @@ public class Client
 		}
 		
 		req = op.op(); // 1 for RRQ, 2 for WRQ
-		byte[] request = createRequest(req, filename, mode);	// get the request byte[] to send
+		
+		// get the request byte[] to send
+		byte[] request = createRequest((int)req, filename, mode);	
 				
-		// send request to correct port destination
-		try{
-			send(request, InetAddress.getLocalHost(), dest);
-		} catch (UnknownHostException e) {
-			System.out.println("\nClient: Error, InetAddress could not be found. Shutting Down...");
-			System.exit(1);			
-		}
+		// send request to correct port and InetAddress destination
+		send(request, inet, dest);
 	}
 	
 	/**
@@ -228,11 +295,12 @@ public class Client
 				sendReceiveSocket.setSoTimeout(TIMEOUT); 
 				
 				// block until a DatagramPacket is received via sendReceiveSocket 
+				System.out.println("\nClient: Waiting for packet...");
 				sendReceiveSocket.receive(packet);
 			} catch(IOException e) {
 				// receiving response to read/write request has timed out
-				System.out.println("\nClient: Did not receive a response to your request.");
-				System.out.println("You may try again, but the Server may not be running...");				
+				System.out.println("Client: Did not receive a response to your request.");
+				System.out.println("Client: You may try again, but the Server may not be running...");				
 				return;
 			} 
 			
@@ -241,62 +309,88 @@ public class Client
 		
 			// checks if the received packet is a valid TFTP packet
 			if (!isValidPacket(packet)) {
-				// create and send error response packet for "Illegal TFTP operation."
-				byte[] error = createError((byte)4, "Invalid packet.");
-				send(error, addr, port);
-			} else {
-				// print out thread and port info, from which the packet was sent
-				System.out.println("\nClient: packet received: ");
-				System.out.println("From host: " + packet.getAddress() + " : " + 
-						packet.getPort());
-				System.out.println("Containing " + packet.getLength() + 
-						" bytes: ");			
-			
+				// error is sent from within isValidPacket method
+				return;
+			} else {			
 				byte[] received = processDatagram(packet);	// received packet turned into byte[]
-			
-				// DATA && RRQ was sent && block 01
-				if ((received[1] == 3) && (req == 1) && received[3] == 1) {         
-					byte[] justData = parseData(received);  // print DATA info to user		
-					try {
-						// gets space left on the drive that we can use
-						long spaceOnDrive = Files.getFileStore(
-								Paths.get("")).getUsableSpace();	
-						
-						// checks if there is enough usable space on the disk
-						if (spaceOnDrive > data.length) {
-							// writes data to file (creates file first, if it doesn't exist yet)
-							Files.write(Paths.get(fileDirectory + filename), 
-									justData, StandardOpenOption.CREATE, 
-									StandardOpenOption.APPEND);
-							System.out.println("\nClient: writing data to file: "
-									+ filename);
-						} else {
-							// create and send error response packet for "Disk full or allocation exceeded."
-							byte[] error = createError((byte)3, "File (" + 
-									filename + ") too large for disk.");
-							send(error, addr, port);
-							return;
-						}
-					} catch (IOException e) {
-						e.printStackTrace();
-					}					
-					
-					if (justData.length < MAX_DATA) {
-						byte[] ack = createAck(received[3]);  // create initial ACK
-						send(ack, addr, port);            // send ACK
-						System.out.println("\nClient: RRQ File Transfer Complete.");
-						break;
-					}
-					
-					readReq();                        // start file transfer for RRQ
-					break;
+				int op = twoBytesToInt(received[0], received[1]); // get the opcode
+				String type = "";  // type of packet
 				
-				// ACK && it is block number 0 && WRQ was sent
-				} else if ((received[1] == 4) && (received[3] == 0) && (req == 2)) {  
-					parseAck(received);  // print ACK info to user				
-					writeReq();  // start file transfer for WRQ
-					break;
-			
+				// get packet info based on type of TFTP packet
+				switch (op) {
+					case 1: case 2: type = parseRequest(received);
+						break;
+					case 3: type = parseData(received);
+						break;
+					case 4: type = parseAck(received);
+						break;
+					case 5: type = parseError(received);
+						break;
+					default:
+						break;
+				}
+				
+				// print out packet info
+				String direction = "<--";
+				System.out.printf("Client: %30s %3s %-30s   bytes: %3d   - %s \n", 
+						sendReceiveSocket.getLocalSocketAddress(), direction, packet.getSocketAddress(),
+						packet.getLength(), type);
+				
+				// DATA && RRQ was sent && block number is 1
+				if ((op == 3) && (req == 1)) {
+					int blockNumber = twoBytesToInt(received[2], received[3]); // get block number
+					if (blockNumber == 1) {
+						byte[] justData = getData(received);  // print DATA info to user		
+						try {
+							// gets space left on the drive that we can use
+							long spaceOnDrive = Files.getFileStore(
+									Paths.get("")).getUsableSpace();	
+						
+							// checks if there is enough usable space on the disk
+							if (spaceOnDrive > data.length) {
+								// writes data to file (creates file first, if it doesn't exist yet)
+								Files.write(Paths.get(fileDirectory + filename), 
+										justData, StandardOpenOption.CREATE, 
+										StandardOpenOption.APPEND);
+								System.out.println("Client: Writing data to file: "
+										+ filename);
+							} else {
+								// create and send error response packet for "Disk full or allocation exceeded."
+								byte[] error = createError(3, "File (" + 
+										filename + ") too large for disk.");
+								send(error, addr, port);
+								return;
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+						}					
+					
+						if (justData.length < MAX_DATA) {
+							byte[] ack = createAck(1);  // create initial ACK
+							send(ack, addr, port);            // send ACK
+							System.out.println("\nClient: RRQ File Transfer Complete.");
+							break;
+						}
+					
+						readReq();                        // start file transfer for RRQ
+						break;
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError(4, "Was expecting block number 1.");
+						send(error, addr, port);
+					}
+				// ACK && WRQ was sent && block number is 0
+				} else if ((op == 4) && (req == 2)) {  
+					int blockNumber = twoBytesToInt(received[2], received[3]); // get block number
+					if (blockNumber == 0) {
+						parseAck(received);  // print ACK info to user				
+						writeReq();  // start file transfer for WRQ
+						break;
+					} else {
+						// create and send error response packet for "Illegal TFTP operation."
+						byte[] error = createError(4, "Was expecting block number 0.");
+						send(error, addr, port);
+					}
 				// ERROR - in case we sent to the wrong place, we want to know
 				} else if (received[1] == 5) {  
 					parseError(received);  // print error info to user
@@ -304,9 +398,13 @@ public class Client
 				
 				// useless packet
 				} else {                        
-					// create and send error response packet for "Unknown transfer ID."
-					byte[] error = createError((byte)5, 
-							"Your packet was sent to the wrong place.");
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error;
+					if (req == 1) {
+						error = createError(4, "Was expecting a Data Packet.");
+					} else {
+						error = createError(4, "Was expecting an Acknowledgement Packet.");
+					}
 					send(error, addr, port);
 				}
 			}
@@ -318,8 +416,8 @@ public class Client
 	 * 
 	 */
 	public void readReq() 
-	{
-		byte blockNumber = 1;  // block number for ACK and DATA during transfer
+	{		
+		int blockNumber = 1;  // block number for ACK and DATA during transfer
 		byte[] data = new byte[0];    // data from DATA packet
 		byte[] dataPacket = new byte[0];
 		
@@ -328,8 +426,8 @@ public class Client
 		
 		blockNumber++; // increment ACK block number
 		
-		// blockNumber goes from 0-127, and then wraps to back to 0
-		if (blockNumber < 0) { 
+		// blockNumber goes from 0-65535, and then wraps to back to 0
+		if (blockNumber > 65535) { 
 			blockNumber = 0;
 			blockNumberWrap = true;
 		}
@@ -346,13 +444,13 @@ public class Client
 				} catch (SocketTimeoutException e1) {
 					if (!timedOut) {
 						// response timeout, re-send last ACK
-						System.out.println("\nClient: Socket Timeout: Resending last ACK...");
+						System.out.println("Client: Socket Timeout: Resending last ACK...");
 						send(ack, addr, port);
 						timedOut = true;  // have timed out once on this packet
 					} else {
 						// have timed out a second time after re-sending the last packet
-						System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
-						System.out.println("\nClient: You may try again, but the Server may not be running...");
+						System.out.println("Client: Socket Timeout Again: Aborting file transfer:");
+						System.out.println("Client: You may try again, but the Server may not be running...");
 						return;
 					}
 				}
@@ -364,20 +462,23 @@ public class Client
 			}
 			
 			dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+			int op = twoBytesToInt(dataPacket[0], dataPacket[1]); // get opcode
 			
-			if (dataPacket[1] == 3) {        // received DATA
-				if (dataPacket[3] == blockNumber) { // correct block number
+			if (op == 3) {        // received DATA
+				int bn = twoBytesToInt(dataPacket[2], dataPacket[3]); // get block number
+				if (bn == blockNumber) { // correct block number
 					blockNumber++; // increment ACK block number
 					
-					// blockNumber goes from 0-127, and then wraps to back to 0
-					if (blockNumber < 0) { 
+					// blockNumber goes from 0-65535, and then wraps to back to 0
+					if (blockNumber > 65535) { 
 						blockNumber = 0;
 						blockNumberWrap = true;
 					}
-					data = parseData(dataPacket);   // get data from packet
+					
+					data = getData(dataPacket);   // get data from packet
 					// if last packet was empty, no need to write, end of transfer
 					if (data.length == 0) { 
-						ack = createAck(dataPacket[3]);   // create ACK
+						ack = createAck(bn);   // create ACK
 						send(ack, addr, port);          // send ACK
 						break;
 					}
@@ -392,11 +493,11 @@ public class Client
 							Files.write(Paths.get(fileDirectory + filename), data, 
 									StandardOpenOption.CREATE, 
 									StandardOpenOption.APPEND);
-							System.out.println("\nClient: writing data to file: " + 
+							System.out.println("Client: Writing data to file: " + 
 									filename);
 						} else {
 							// create and send error response packet for "Disk full or allocation exceeded."
-							byte[] error = createError((byte)3, "File (" + filename 
+							byte[] error = createError(3, "File (" + filename 
 									+ ") too large for disk.");
 							send(error, addr, port);
 							return;
@@ -405,17 +506,17 @@ public class Client
 						e.printStackTrace();
 					}
 				} else {
-					System.out.println("\nClient: Received DATA packet out of order: Not writing to file.");
+					System.out.println("Client: Received DATA packet out of order: Not writing to file.");
 					data = new byte[MAX_DATA]; // so we don't quit yet
 				}
-				ack = createAck(dataPacket[3]);   // create ACK
+				ack = createAck(bn);   // create ACK
 				send(ack, addr, port);          // send ACK
-			} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+			} else if (op == 5) { // ERROR received instead of DATA
 				parseError(dataPacket);         // print ERROR info
 				return;
 			} else {
 				// create and send error response packet for "Illegal TFTP operation."
-				byte[] error = createError((byte)4, "Was expecting DATA packet.");
+				byte[] error = createError(4, "Was expecting DATA packet.");
 				send(error, addr, port);
 				return;		
 			}
@@ -434,17 +535,19 @@ public class Client
 					return;
 				}
 				dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
+				int op = twoBytesToInt(dataPacket[0], dataPacket[1]); // get opcode
 				
-				if (dataPacket[1] == 3) {        // received DATA					
-					ack = createAck(dataPacket[3]);   // create ACK
+				if (op == 3) {        // received DATA	
+					int bn = twoBytesToInt(dataPacket[2], dataPacket[3]); // get block number
+					ack = createAck(bn);   // create ACK
 					send(ack, addr, port);          // send ACK
-				} else if (dataPacket[1] == 5) { // ERROR received instead of DATA
+				} else if (op == 5) { // ERROR received instead of DATA
 					parseError(dataPacket);         // print ERROR info
 					System.out.println("\nClient: RRQ File Transfer Complete.");
 					return;
 				} else {
 					// create and send error response packet for "Illegal TFTP operation."
-					byte[] error = createError((byte)4, "Was expecting DATA packet.");
+					byte[] error = createError(4, "Was expecting DATA packet.");
 					send(error, addr, port);
 					System.out.println("\nClient: RRQ File Transfer Complete.");
 					return;		
@@ -467,7 +570,7 @@ public class Client
 					filename));	// reads from file during WRQ
 		} catch (FileNotFoundException e) {
 			// create and send error response packet for "Access violation."
-			byte[] error = createError((byte)2, "File (" + filename + 
+			byte[] error = createError(2, "File (" + filename + 
 					") exists on client, but is not readable.");
 			send(error, addr, port);
 			return;
@@ -475,12 +578,12 @@ public class Client
 			
 		byte[] read = new byte[MAX_DATA];  // to hold bytes read
 		int bytes = 0;                     // number of bytes read
-		byte blockNumber = 1;              // DATA block number
+		int blockNumber = 1;              // DATA block number
 		
 		// read up to 512 bytes from file
 		try {			
 			while ((bytes = in.read(read)) != -1) {
-				System.out.println("\nClient: Read " + bytes + " bytes, from " 
+				System.out.println("Client: Read " + bytes + " bytes, from " 
 						+ fileDirectory + filename);
 				
 				// get rid of extra buffer
@@ -502,13 +605,16 @@ public class Client
 						} catch (SocketTimeoutException e1) {
 							if (!timedOut) {
 								// response timeout, 
-								System.out.println("\nClient: Socket Timeout: Resending DATA and continuing to wait for ACK...");
+								System.out.println("Client: Socket Timeout: Resending DATA and continuing to wait for ACK...");
 								timedOut = true;  // have timed out once on this packet
 								send(data, addr, port); // send DATA
 							} else {
 								// have timed out a second time
-								System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
+								System.out.println("Client: Socket Timeout Again: Aborting file transfer:");
 								System.out.println("Client: You may try again, but the Server may not be running...");
+								try {
+									in.close(); // close buffered reader after WRQ
+								} catch (IOException e) { } 
 								return;
 							}
 						}		
@@ -516,57 +622,75 @@ public class Client
 				
 					// invalid packet received
 					if (receivePacket == null) {
-						System.out.println("\nClient: Invalid packet received: Aborting file transfer:");
+						System.out.println("Client: Invalid packet received: Aborting file transfer:");
 						System.out.println("Client: You may try to send another request...");
+						try {
+							in.close(); // close buffered reader after WRQ
+						} catch (IOException e) { } 
 						return;
 					}
 				
 					byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-					if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+					int op = twoBytesToInt(ackPacket[0], ackPacket[1]); // get opcode
+					
+					if (op == 5) {                            // ERROR received instead of ACK
 						parseError(ackPacket);	// print ERROR info and close connection
-						System.out.println("\nClient: Aborting Transfer.");
+						System.out.println("Client: Aborting Transfer.");
+						try {
+							in.close(); // close buffered reader after WRQ
+						} catch (IOException e) { } 
 						return;
-					} else if (ackPacket[1] == 4) {
+					} else if (op == 4) {
 						parseAck(ackPacket);	// print ACK info
-						if (ackPacket[3] == 0) { // received block numbers wrapped
+						int bn = twoBytesToInt(ackPacket[2], ackPacket[3]); // get block number
+						if (bn == 0) { // received block numbers wrapped
 							blockNumberWrap = false;
 						}
 						if (!blockNumberWrap){ // block number hasn't wrapped yet
-							if (ackPacket[3] < blockNumber){ // duplicate ACK) {
-								System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-							} else if (ackPacket[3] == blockNumber) {
+							if (bn < blockNumber){ // duplicate ACK) {
+								System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							} else if (bn == blockNumber) {
 								break;  // got ACK with correct block number, continuing
 							} else { // ACK with weird block number 
 								// create and send error response packet for "Illegal TFTP operation."
-								byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+								byte[] error = createError(4, "Received ACK with invalid block number.");
 								send(error, addr, port);
+								try {
+									in.close(); // close buffered reader after WRQ
+								} catch (IOException e) { } 
 								return;		
 							} 
 						} else {
-							if (ackPacket[3] > blockNumber){ // duplicate ACK
-								System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+							if (bn > blockNumber){ // duplicate ACK
+								System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
 							} else {
-								if (ackPacket[3] == blockNumber) {
+								if (bn == blockNumber) {
 									break;  // got ACK with correct block number, continuing
 								} else { // ACK with weird block number 
 									// create and send error response packet for "Illegal TFTP operation."
-									byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+									byte[] error = createError(4, "Received ACK with invalid block number.");
 									send(error, addr, port);
+									try {
+										in.close(); // close buffered reader after WRQ
+									} catch (IOException e) { } 
 									return;		
 								}
 							}
 						}
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
-						byte[] error = createError((byte)4, "Expected ACK as response.");
+						byte[] error = createError(4, "Expected ACK as response.");
 						send(error, addr, port);
+						try {
+							in.close(); // close buffered reader after WRQ
+						} catch (IOException e) { } 
 						return;		
 					}
 				}
 				blockNumber++; // increment DATA block number
 				
-				// blockNumber goes from 0-127, and then wraps to back to 0
-				if (blockNumber < 0) { 
+				// blockNumber goes from 0-65535, and then wraps to back to 0
+				if (blockNumber > 65535) { 
 					blockNumber = 0;
 					blockNumberWrap = true;
 				}
@@ -576,9 +700,12 @@ public class Client
 			byte[] error = createError((byte)1, "File (" + filename + 
 					") does not exist.");
 			send(error, addr, port);
+			try {
+				in.close(); // close buffered reader after WRQ
+			} catch (IOException e1) { } 
 			return;		
 		} catch (IOException e) {
-			System.out.println("\nError: could not read from BufferedInputStream.");
+			System.out.println("Error: could not read from BufferedInputStream.");
 			System.exit(1);
 		}
 			
@@ -600,13 +727,16 @@ public class Client
 					} catch (SocketTimeoutException e1) {
 						if (!timedOut) {
 							// response timeout, 
-							System.out.println("\nClient: Socket Timeout: Resending DATA and continuing to wait for ACK...");
+							System.out.println("Client: Socket Timeout: Resending DATA and continuing to wait for ACK...");
 							timedOut = true;  // have timed out once on this packet
 							send(data, addr, port); // send DATA
 						} else {
 							// have timed out a second time
-							System.out.println("\nClient: Socket Timeout Again: Aborting file transfer:");
+							System.out.println("Client: Socket Timeout Again: Aborting file transfer:");
 							System.out.println("Client: You may try again, but the Server may not be running...");
+							try {
+								in.close(); // close buffered reader after WRQ
+							} catch (IOException e) { } 
 							return;
 						}
 					}		
@@ -614,54 +744,75 @@ public class Client
 			
 				// invalid packet received
 				if (receivePacket == null) {
-					System.out.println("\nClient: Invalid packet received: Aborting file transfer:");
+					System.out.println("Client: Invalid packet received: Aborting file transfer:");
 					System.out.println("Client: You may try to send another request...");
+					try {
+						in.close(); // close buffered reader after WRQ
+					} catch (IOException e) { } 
 					return;
 				}
 			
 				byte[] ackPacket = processDatagram(receivePacket);  // read the expected ACK
-				if (ackPacket[1] == 5) {                            // ERROR received instead of ACK
+				int op = twoBytesToInt(ackPacket[0], ackPacket[1]); // get opcode
+				
+				if (op == 5) {                            // ERROR received instead of ACK
 					parseError(ackPacket);	// print ERROR info and close connection
-					System.out.println("\nClient: Aborting Transfer.");
+					System.out.println("Client: Aborting Transfer.");
+					try {
+						in.close(); // close buffered reader after WRQ
+					} catch (IOException e) { } 
 					return;
-				} else if (ackPacket[1] == 4) {
+				} else if (op == 4) {
 					parseAck(ackPacket);	// print ACK info
-					if (ackPacket[3] == 0) { // received block numbers wrapped
+					int bn = twoBytesToInt(ackPacket[2], ackPacket[3]); // get block number
+					if (bn == 0) { // received block numbers wrapped
 						blockNumberWrap = false;
 					}
 					if (!blockNumberWrap){ // block number hasn't wrapped yet
-						if (ackPacket[3] < blockNumber){ // duplicate ACK) {
-							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else if (ackPacket[3] == blockNumber) {
+						if (bn < blockNumber){ // duplicate ACK) {
+							System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else if (bn == blockNumber) {
 							break;  // got ACK with correct block number, continuing
 						} else { // ACK with weird block number 
 							// create and send error response packet for "Illegal TFTP operation."
-							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							byte[] error = createError(4, "Received ACK with invalid block number.");
 							send(error, addr, port);
+							try {
+								in.close(); // close buffered reader after WRQ
+							} catch (IOException e) { } 
 							return;		
 						}
 					} else {
-						if (ackPacket[3] > blockNumber){ // duplicate ACK
-							System.out.println("\nClient: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
-						} else if (ackPacket[3] == blockNumber) {
+						if (bn > blockNumber){ // duplicate ACK
+							System.out.println("Client: Received Duplicate ACK: Ignoring and waiting for correct ACK...");
+						} else if (bn == blockNumber) {
 							break;  // got ACK with correct block number, continuing
 						} else { // ACK with weird block number 
 							// create and send error response packet for "Illegal TFTP operation."
-							byte[] error = createError((byte)4, "Received ACK with invalid block number.");
+							byte[] error = createError(4, "Received ACK with invalid block number.");
 							send(error, addr, port);
+							try {
+								in.close(); // close buffered reader after WRQ
+							} catch (IOException e) { } 
 							return;		
 						}
 					}
 				} else {
 					// create and send error response packet for "Illegal TFTP operation."
-					byte[] error = createError((byte)4, "Expected ACK as response.");
+					byte[] error = createError(4, "Expected ACK as response.");
 					send(error, addr, port);
+					try {
+						in.close(); // close buffered reader after WRQ
+					} catch (IOException e) { } 
 					return;		
 				}
 			}
 		}			
 		/* done sending last packet */
 		System.out.println("\nClient: WRQ File Transfer Complete.");
+		try {
+			in.close(); // close buffered reader after WRQ
+		} catch (IOException e) { } 
 	}
 	
 	/**
@@ -672,13 +823,13 @@ public class Client
 	 * @param mode		mode of file transfer in TFTP
 	 * @return			the read/write request byte[]
 	 */
-	public static byte[] createRequest(byte opcode, String filename, String mode) 
+	public static byte[] createRequest(int opcode, String filename, String mode) 
 	{
 		byte data[]=new byte[filename.length() + mode.length() + 4];
 		
-		// request opcode
-		data[0] = 0;
-		data[1] = opcode;
+		// add opcode
+		data[0] = (byte)(opcode / 256);
+		data[1] = (byte)(opcode % 256);
 		
 		// convert filename and mode to byte[], with proper encoding
 		byte[] fn = null;	// filename
@@ -705,14 +856,20 @@ public class Client
 	 * @param blockNumber	the data block number that is being acknowledged
 	 * @return				the acknowledgment byte[]
 	 */
-	public byte[] createAck (byte blockNumber) 
+	public byte[] createAck (int blockNumber) 
 	{
-		byte[] temp = new byte[4];
-		temp[0] = (byte) 0;
-		temp[1] = (byte) 4;
-		temp[2] = (byte)0;
-		temp[3] = blockNumber;
-		return temp;
+		byte[] ack = new byte[4];
+		
+		// add opcode
+		int opcode = 4;
+		ack[0] = (byte)(opcode / 256);
+		ack[1] = (byte)(opcode % 256);
+		
+		// add block number
+		ack[2] = (byte)(blockNumber / 256);
+		ack[3] = (byte)(blockNumber % 256);
+		
+		return ack;
 	}
 	
 	/**
@@ -722,17 +879,18 @@ public class Client
 	 * @param passedData	the data to be sent
 	 * @return				the data byte[]
 	 */
-	public byte[] createData (byte blockNumber, byte[] passedData) 
+	public byte[] createData (int blockNumber, byte[] passedData) 
 	{
 		byte[] data = new byte[4 + passedData.length]; // new byte[] to be sent in DATA packet
 		
 		// add opcode
-		data[0] = 0;
-		data[1] = 3;
+		int opcode = 3;
+		data[0] = (byte)(opcode / 256);
+		data[1] = (byte)(opcode % 256);
 				
 		// add block number
-		data[2] = 0;
-		data[3] = blockNumber;
+		data[2] = (byte)(blockNumber / 256);
+		data[3] = (byte)(blockNumber % 256);
 		
 		// copy data, being passed in, to data byte[]
 		System.arraycopy(passedData, 0, data, 4, passedData.length);
@@ -747,21 +905,18 @@ public class Client
 	 * @param errorMsg	the message string that will give more detail on the error
 	 * @return			the error byte[]
 	 */
-	public byte[] createError (byte errorCode, String errorMsg) 
+	public byte[] createError (int errorCode, String errorMsg) 
 	{
 		byte[] error = new byte[4 + errorMsg.length() + 1];	// new error to eventually be sent to server
 		
-		// inform user
-		System.out.println("\nClient: 0" + errorCode + " Error: informing host: ");
-		System.out.println("Error Message: " + errorMsg);
-		
 		// add opcode
-		error[0] = 0;
-		error[1] = 5;
+		int opcode = 5;
+		error[0] = (byte)(opcode / 256);
+		error[1] = (byte)(opcode % 256);
 		
 		// add error code
-		error[2] = 0;
-		error[3] = errorCode;
+		error[2] = (byte)(errorCode / 256);
+		error[3] = (byte)(errorCode % 256);
 		
 		byte[] message = new byte[errorMsg.length()];	// new array for errorMsg, to be joined with codes
 		
@@ -780,46 +935,66 @@ public class Client
 	}
 	
 	/**
-	 * Parse the acknowledgment byte[] and display info to user.
+	 * Parse the read/write request byte[].
+	 * 
+	 * @param request	the read/write byte[]
+	 * @return			String representation of RRQ or WRQ
+	 */
+	public String parseRequest(byte[] request) 
+	{
+		String req = "";  // request type
+		
+		// get opcode
+		int op = twoBytesToInt(request[0], request[1]);
+		
+		// determine if RRQ or WRQ
+		if (op == 1) {
+			req = "Read Request   filename=\"";
+		} else {
+			req = "Write Request   filename=\"";
+		}		
+		
+		return req + filename + "\"   mode=\"" + mode + "\"";
+	}
+	
+	/**
+	 * Parse the acknowledgment byte[].
 	 * 
 	 * @param ack	the acknowledge byte[]
+	 * @return		String representation of ACK
 	 */
-	public void parseAck (byte[] ack) 
+	public String parseAck (byte[] ack) 
 	{
-		System.out.println("\nClient: Recieved packet is ACK: ");
-		System.out.println("Block#: " + ack[2] + ack[3]);
+		// get block number
+		int blockNumber = twoBytesToInt(ack[2], ack[3]);
+		
+		return "Acknowledgment #" + Integer.toString(blockNumber);
 	}
 	
 	/**
-	 * Parse the data byte[] and display info to user.
+	 * Parse the data byte[].
 	 * 
-	 * @param data	the DATA byte[]
-	 * @return		just the data portion of a DATA packet byte[]
+	 * @param data	the data byte[]
+	 * @return		String representation of DATA
 	 */
-	public byte[] parseData (byte[] data) 
+	public String parseData (byte[] data) 
 	{
-		// byte[] for the data portion of DATA packet byte[]
-		byte[] justData = new byte[data.length - 4];	
-		System.arraycopy(data, 4, justData, 0, data.length-4);
+		// get block number
+		int blockNumber = twoBytesToInt(data[2], data[3]);
 		
-		// print info to user
-		System.out.println("\nClient: Recieved packet is DATA: ");
-		System.out.println("Block#: " + data[2] + data[3] + 
-				", and containing data: ");
-		System.out.println(Arrays.toString(justData));
-		
-		return justData;
+		return "Data packet    #" + Integer.toString(blockNumber);
 	}
 	
 	/**
-	 * Parse the error byte[] and display info to user.
+	 * Parse the error byte[].
 	 * 
 	 * @param error	the error byte[]
-	 * @return 		the TFTP Error Code byte value
+	 * @return 		String representation of ERROR
 	 */
-	public void parseError (byte[] error) 
+	public String parseError (byte[] error) 
 	{
-		System.out.println("\nClient: Received packet is ERROR: ");		
+		// get error code
+		int errorCode = twoBytesToInt(error[2], error[3]);
 
 		// get the error message
 		byte[] errorMsg = new byte[error.length - 5];
@@ -830,38 +1005,23 @@ public class Client
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}		
-				
-		// display error code to user
-		byte errorCode = error[3];	// get error code
-		switch (errorCode) {
-			case 0:
-				System.out.println("Error Code: 00: Not defined, see error message (if any). ");
-				break;
-			case 1:
-				System.out.println("Error Code: 01: File not found. ");
-				break;
-			case 2:
-				System.out.println("Error Code: 02: Access violation. ");
-				break;
-			case 3:
-				System.out.println("Error Code: 03: Disk full or allocation exceeded. ");
-				break;
-			case 4:
-				System.out.println("Error Code: 04: Illegal TFTP operation. ");
-				break;
-			case 5:
-				System.out.println("Error Code: 05: Unknown transfer ID. ");
-				break;
-			case 6:
-				System.out.println("Error Code: 06: File already exists. ");
-				break;
-			case 7:
-				System.out.println("Error Code: 07: No such user. ");
-				break;
-		}
 		
-		// display error message to user
-		System.out.println("Error message: " + message);
+		return "Error " + Integer.toString(errorCode) + ": \"" + message + "\"";
+	}
+	
+	/**
+	 * Get the data field from the DATA packet.
+	 * 
+	 * @param data	the DATA byte[]
+	 * @return		just the data portion of a DATA packet byte[]
+	 */
+	public byte[] getData (byte[] data) 
+	{
+		// byte[] for the data portion of DATA packet byte[]
+		byte[] justData = new byte[data.length - 4];	
+		System.arraycopy(data, 4, justData, 0, data.length-4);
+		
+		return justData;
 	}
 	
 	/**
@@ -873,34 +1033,34 @@ public class Client
 	 */
 	public void send (byte[] data, InetAddress iAddr, int portNum) 
 	{
+		// create new DatagramPacket to send to server
 		sendPacket = new DatagramPacket(data, data.length, iAddr, portNum);
 		
-		// tell user what type of packet is being sent 
-		switch (data[1]) {
-			case 1: System.out.println("\nClient: Sending RRQ:");
+		// type of packet being sent 
+		int op = twoBytesToInt(data[0], data[1]);
+		String type = "";
+		switch (op) {
+			case 1: case 2: type = parseRequest(data); 
 				break;
-			case 2: System.out.println("\nClient: Sending WRQ:");
+			case 3: type = parseData(data);
 				break;
-			case 3: System.out.println("\nClient: Sending DATA:");
+			case 4: type = parseAck(data);
 				break;
-			case 4: System.out.println("\nClient: Sending ACK:");
+			case 5: type = parseError(data);
 				break;
-			case 5: System.out.println("\nClient: Sending ERROR:");
-				break;
-			default: System.out.println("\nClient: Sending packet:");
+			default: 
 				break;
 		}
-
-		System.out.println("To host: " + sendPacket.getAddress() + " : " + 
-				sendPacket.getPort());
-		System.out.println("Containing " + sendPacket.getLength() + " bytes: ");
-		System.out.println(Arrays.toString(data) + "\n"); 
 		
 		// send the DatagramPacket to the server via the send/receive socket
 		try {			
 			// attempt to send DatagramPacket
 			sendReceiveSocket.send(sendPacket);
-			System.out.println("Client: Packet sent");
+			// print out packet info
+			String direction = "-->";
+			System.out.printf("Client: %30s %3s %-30s   bytes: %3d   - %s \n", 
+					sendReceiveSocket.getLocalSocketAddress(), direction, sendPacket.getSocketAddress(),
+					sendPacket.getLength(), type);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -937,51 +1097,49 @@ public class Client
 				throw new SocketTimeoutException();  // timed out
 			}
 			
-			
-			// check for wrong transfer ID 
-			if (!((packet.getAddress().equals(addr)) && 
-					(packet.getPort() == port))) {				
-				// create and send error response packet for "Unknown transfer ID."
-				byte[] error = createError((byte)5, 
-						"Your packet was sent to the wrong place.");
-				
-				// create new DatagramPacket to send to send error
-				sendPacket = new DatagramPacket(error, error.length, 
-						packet.getAddress(), packet.getPort());
-				
-				// print out packet info to user
-				System.out.println("\nClient: Sending ERROR: ");
-				System.out.println("To host: " + sendPacket.getAddress() + 
-						" : " + sendPacket.getPort());
-				System.out.print("Containing " + sendPacket.getLength() + 
-						" bytes: ");
-				System.out.println(Arrays.toString(error) + "\n");
-				
-				// send the packet
-				try {
-					sendReceiveSocket.send(sendPacket);
-					System.out.println("Client: Packet sent ");
-				} catch (IOException e) {
-					e.printStackTrace();
-					System.exit(1);
-				}
+			// checks if the received packet is a valid TFTP packet
+			if (!isValidPacket(packet)) {
+				// error is sent from within isValidPacket method
+				return null;
+			// valid packet
 			} else {
-				// checks if the received packet is a valid TFTP packet
-				if (!isValidPacket(packet)) {
-					// create and send error response packet for "Illegal TFTP operation."
-					byte[] error = createError((byte)4, "Invalid packet.");
-					send(error, addr, port);
-					return null;
+				
+				byte[] packetData = packet.getData();  // the received packet's data
+				int op = twoBytesToInt(packetData[0], packetData[1]); // get the opcode
+				String type = "";  // type of packet
+				
+				// get packet info based on type of TFTP packet
+				switch (op) {
+					case 1: case 2: type = parseRequest(packetData);
+						break;
+					case 3: type = parseData(packetData);
+						break;
+					case 4: type = parseAck(packetData);
+						break;
+					case 5: type = parseError(packetData);
+						break;
+					default:
+						break;
 				}
 				
-				// print out thread and port info, from which the packet was sent
-				System.out.println("\nClient: packet received: ");
-				System.out.println("From host: " + packet.getAddress() + 
-						" : " + packet.getPort());
-				System.out.println("Containing " + packet.getLength() + 
-						" bytes: ");
+				// print out packet info
+				String direction = "<--";
+				System.out.printf("Client: %30s %3s %-30s   bytes: %3d   - %s \n", 
+						sendReceiveSocket.getLocalSocketAddress(), direction, packet.getSocketAddress(),
+						packet.getLength(), type);
 				
-				break;  // correct transfer ID and valid packet
+				// check for wrong transfer ID 
+				if (!((packet.getAddress().equals(addr)) && 
+						(packet.getPort() == port))) {				
+					// create and send error response packet for "Unknown transfer ID."
+					byte[] error = createError(5, 
+							"Your packet was sent to the wrong place.");
+					send(error, packet.getAddress(), packet.getPort());
+					
+				// packet came from the right place	
+				} else {
+					break;  // correct transfer ID and valid packet
+				}
 			}
 		}
 		
@@ -1000,46 +1158,24 @@ public class Client
 		System.arraycopy(packet.getData(), packet.getOffset(), data, 0, 
 				packet.getLength());
 		
-		// display info to user
-		System.out.println(Arrays.toString(data));
-		
 		return data;
 	}
-
+	
 	/**
-	 * Gets the opcode from the received packet.
+	 * Deals with two signed bytes and combines them into one int.
 	 * 
-	 * @param received	the DatagramPacket that was received
-	 * @return			the Opcode of the received DatagramPacket
+	 * @param one	first byte
+	 * @param two	second byte
+	 * @return		two bytes combined into an int (value: 0 to 65535)
 	 */
-	public Opcode getOpcode (DatagramPacket received) 
+	public int twoBytesToInt(byte one, byte two) 
 	{
-		byte[] data = received.getData();	// get data stored in received DatagramPacket
-		byte opcode = data[1];				// get second byte of opcode to determine packet type
-		Opcode op = null;					// opcode to return
+		// add 256 if needed to compensate for signed bytes in Java
+		int value1 = one < 0 ? one + 256 : one;
+		int value2 = two < 0 ? two + 256 : two;
 		
-		// determine if correctly formed opcode
-		if (data[0] != 0) {
-			return null;
-		}
-		
-		// determine which type of packet was received
-		switch (opcode) {
-			case 1: op = Opcode.RRQ;	// RRQ
-				break;
-			case 2: op = Opcode.WRQ;	// WRQ
-				break;
-			case 3:	op = Opcode.DATA;	// DATA
-				break;
-			case 4:	op = Opcode.ACK;	// ACK
-				break;
-			case 5:	op = Opcode.ERROR;	// ERROR
-				break;
-			default: op = null;			// invalid opcode
-				break;
-		}
-		
-		return op;
+		// left shift value1 and combine with value2 into one int
+		return (value2 | (value1 << 8));
 	}
 	
 	/**
@@ -1050,22 +1186,22 @@ public class Client
 	 */
 	public boolean isValidPacket (DatagramPacket received) 
 	{
-		int len = received.getLength();				            // number of data bytes in packet
-		byte[] data = new byte[len];                            // new byte[] for storing received data 
-		System.arraycopy(received.getData(), 0, data, 0, len);  // copy over data
+		byte[] data = received.getData();         // get data from received packet
+		int len = received.getLength();				       // number of data bytes in packet
 		
 		// check size of packet
 		if (len < 4) {
+			// create and send error response packet for "Illegal TFTP operation."
+			byte[] error = createError(4, "Packet is less than 4 bytes in size.");
+			send(error, addr, port);
 			return false;
 		} 
 		
-		Opcode op = getOpcode(received);	// get opcode
-		if (op == null)
-			return false;
+		int op = twoBytesToInt(data[0], data[1]);	// get opcode
 		
 		// organize by opcode
 		switch (op) {
-			case RRQ: case WRQ:						// read or write request
+			case 1: case 2:						// read or write request
 				int f;	// filename finding index
 				for (f = 2; f < len; f++) {
 					if (data[f] == 0) {	// filename is valid
@@ -1073,6 +1209,9 @@ public class Client
 					}
 				}
 				if (f == len) {			// didn't find 0 byte after filename
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Request does not contain null terminated filename.");
+					send(error, addr, port);
 					return false;
 				}
 				int m;	// mode finding index
@@ -1082,6 +1221,9 @@ public class Client
 					}
 				}
 				if (m == len) {			// didn't find 0 byte after mode
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Request does not contain null terminated mode.");
+					send(error, addr, port);
 					return false;
 				}
 			
@@ -1101,32 +1243,50 @@ public class Client
 				if (!(mode.equalsIgnoreCase("netascii") || 
 						mode.equalsIgnoreCase("octet") ||
 						mode.equalsIgnoreCase("mail"))) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Mode is not a valid TFTP mode choice.");
+					send(error, addr, port);
 					return false;
 				}
 				break;
-			case DATA:								// DATA packet
+			case 3:								// DATA packet
 				if (len > MAX_DATA + 4) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Data packet is too large.");
+					send(error, addr, port);
 					return false;
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
-			case ACK:								// ACK packet
+			case 4:								// ACK packet
 				if (len != 4) { 
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Ack packet is not 4 bytes in size.");
+					send(error, addr, port);
 					return false; 
 				}
-				// TODO: Can first byte of block number be anything but 0?
 				break;
-			case ERROR:								// ERROR packet
+			case 5:								// ERROR packet
 				if (data[len - 1] != 0) {
+					// create and send error response packet for "Illegal TFTP operation."
+					byte[] error = createError(4, "Error message is not null terminated.");
+					send(error, addr, port);
 					return false;	// error message not terminated with 0 byte
 				}
+				int ec = twoBytesToInt(data[2], data[3]); // get error code
 				for (int i = 0; i<8; i++) {
-					if (data[3] == (byte)i) {
+					if (ec == i) {
 						return true;	// found a valid error code
 					}
 				}
+				// create and send error response packet for "Illegal TFTP operation."
+				byte[] error = createError(4, "Error code is not a valid TFTP error code.");
+				send(error, addr, port);
 				return false; 			// not a valid error code
-			default: return false;					// invalid opcode
+			default: 
+				// create and send error response packet for "Illegal TFTP operation."
+				error = createError(4, "Invalid TFTP opcode.");
+				send(error, addr, port);
+				return false;					// invalid opcode
 		}		
 		return true;
 	}
