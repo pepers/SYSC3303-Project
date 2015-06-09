@@ -30,7 +30,7 @@ public class Client
 {	
 	DatagramPacket sendPacket;										// to send data to server 
 	DatagramPacket receivePacket;									// to receive data in
-	DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
+	static DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
 	private static final int TIMEOUT = 2000;						// sendReceiveSocket's timeout when receiving
 	private static Scanner input;									// scans user input in the simple console ui()
 	String filename = "test0.txt";									// the file to be sent/received
@@ -44,15 +44,6 @@ public class Client
 	private boolean blockNumberWrap = false;						// true if block number wraps back to zero
 	
 	/**
-	 * 
-	 * 
-	 * 
-	 * 
-	 * 
-	 * 
-	 * 
-	 * 
-	 * 
 	 * opcodes for the different DatagramPackets in TFTP
 	 */
 	public enum Opcode 
@@ -70,17 +61,6 @@ public class Client
 		}
 		
 		private byte op () { return op; }		
-	}
-	
-	public Client() 
-	{
-		try {
-			// new socket to send requests and receive responses
-			sendReceiveSocket = new DatagramSocket();	
-		} catch (SocketException se) {   // Can't create the socket.
-			se.printStackTrace();
-			System.exit(1);
-		}
 	}
 	
 	/**
@@ -147,6 +127,7 @@ public class Client
 		while(true) {
 			c.ui(dest, inet);	// start the user interface to send request
 			c.connection();	// receive and send packets with Server or ErrorSim
+			sendReceiveSocket.close();
 		}
 	}
 	
@@ -281,7 +262,15 @@ public class Client
 		
 		// get the request byte[] to send
 		byte[] request = createRequest((int)req, filename, mode);	
-				
+			
+		try {
+			// new socket to send requests and receive responses
+			sendReceiveSocket = new DatagramSocket();	
+		} catch (SocketException se) {   // Can't create the socket.
+			se.printStackTrace();
+			System.exit(1);
+		}
+		
 		// send request to correct port and InetAddress destination
 		send(request, inet, dest);
 	}
