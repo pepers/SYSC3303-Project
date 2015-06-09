@@ -1,5 +1,6 @@
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Scanner;
@@ -30,7 +32,7 @@ public class Client
 {	
 	DatagramPacket sendPacket;										// to send data to server 
 	DatagramPacket receivePacket;									// to receive data in
-	DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
+	static DatagramSocket sendReceiveSocket;								// to send to and receive packets from server
 	private static final int TIMEOUT = 2000;						// sendReceiveSocket's timeout when receiving
 	private static Scanner input;									// scans user input in the simple console ui()
 	String filename = "test0.txt";									// the file to be sent/received
@@ -61,17 +63,6 @@ public class Client
 		}
 		
 		private byte op () { return op; }		
-	}
-	
-	public Client() 
-	{
-		try {
-			// new socket to send requests and receive responses
-			sendReceiveSocket = new DatagramSocket();	
-		} catch (SocketException se) {   // Can't create the socket.
-			se.printStackTrace();
-			System.exit(1);
-		}
 	}
 	
 	/**
@@ -138,6 +129,7 @@ public class Client
 		while(true) {
 			c.ui(dest, inet);	// start the user interface to send request
 			c.connection();	// receive and send packets with Server or ErrorSim
+			sendReceiveSocket.close();
 		}
 	}
 	
@@ -221,9 +213,12 @@ public class Client
 			System.out.println("Please choose a file to modify.  Type in a file name: ");
 			filename = input.nextLine();	// user's choice
 			
+			Path p = Paths.get(fileDirectory + filename); // get path to file
+			File f = new File(p.toString()); // turn path to string
+			
 			// deal with user's choice of request
 			if (op == Opcode.RRQ) {
-				if (!(Files.exists(Paths.get(fileDirectory + filename)))) {	// file doesn't exist
+				if (!(f.exists())) {	// file doesn't exist
 					System.out.println("\nClient: You have chosen the file: " + 
 							filename + ", to be received in " + mode + " mode. \n");	
 					break;
@@ -244,7 +239,7 @@ public class Client
 					}
 				}
 			} else if (op == Opcode.WRQ) {					
-				if (Files.isReadable(Paths.get(fileDirectory + filename))) {	// file exists and is readable
+				if (f.canRead()) {	// file exists and is readable
 					System.out.println("\nClient: You have chosen the file: " + 
 							fileDirectory + filename + ", to be sent in " + 
 							mode + " mode. \n");
@@ -272,6 +267,14 @@ public class Client
 		
 		// get the request byte[] to send
 		byte[] request = createRequest((int)req, filename, mode);	
+		
+		try {
+			// new socket to send requests and receive responses
+			sendReceiveSocket = new DatagramSocket();	
+		} catch (SocketException se) {   // Can't create the socket.
+			se.printStackTrace();
+			System.exit(1);
+		}
 				
 		// send request to correct port and InetAddress destination
 		send(request, inet, dest);

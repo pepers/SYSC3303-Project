@@ -1,5 +1,6 @@
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Scanner;
@@ -603,7 +605,9 @@ class ClientConnection implements Runnable
 	 */
 	public void readReq() 
 	{
-		if (Files.exists(Paths.get(fileDirectory + filename))) {  // file exists
+		Path p = Paths.get(fileDirectory + filename); // get path to file
+		File f = new File(p.toString()); // turn path to string
+		if (f.exists()) {  // file exists
 			try {
 				in = new BufferedInputStream(new FileInputStream(fileDirectory 
 						+ filename));	// reads from file during RRQ
@@ -866,9 +870,6 @@ class ClientConnection implements Runnable
 			// create and send error response packet for "File not found."
 			byte[] error = createError(1, "File (" + filename + ") does not exist.");
 			send(error);
-			try {
-				in.close(); // close buffered reader after RRQ
-			} catch (IOException e) { } 
 			return;
 		}
 		System.out.println("\n" + threadName() + ": RRQ File Transfer Complete");
@@ -997,7 +998,7 @@ class ClientConnection implements Runnable
 					
 					// invalid packet received
 					if (receivePacket == null) {
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;
 					}
 					dataPacket = processDatagram(receivePacket);	// read the DatagramPacket
@@ -1009,13 +1010,13 @@ class ClientConnection implements Runnable
 						send(ack);          // send ACK
 					} else if (op == 5) { // ERROR received instead of DATA
 						parseError(dataPacket);         // print ERROR info
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;
 					} else {
 						// create and send error response packet for "Illegal TFTP operation."
 						byte[] error = createError(4, "Was expecting DATA packet.");
 						send(error);
-						System.out.println("\n" + threadName() + ": WRQ File Transfer Complete");
+						System.out.println("\n" + threadName() + ": WRQ File Transfer Incomplete");
 						return;		
 					}
 				} catch (SocketTimeoutException e1) {

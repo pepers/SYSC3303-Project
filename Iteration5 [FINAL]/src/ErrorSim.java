@@ -574,6 +574,7 @@ class ToServer implements Runnable
 	private DatagramSocket serverSocket, clientSocket, unknownSocket;
 
 	int sendPort = 0;  // port to send to
+	InetAddress saddr;
 
 	// choices when entering Error Simulation Mode
 	private ErrorSim.PacketType packetType = null;
@@ -593,6 +594,7 @@ class ToServer implements Runnable
 	// counters
 	private int packetCount = 0;  // number of packets received
 	private int typeCount = 0;    // number of packets received of packetType type
+	private InetAddress clientAddress;
 
 	
 	// max number of bytes for data field in packet
@@ -649,6 +651,13 @@ class ToServer implements Runnable
 				se.printStackTrace();
 				System.exit(1);
 			} 
+		}
+		
+		try {
+			this.saddr = InetAddress.getByName("127.0.0.1");
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 		// sockets
@@ -713,6 +722,13 @@ class ToServer implements Runnable
 				System.exit(1);
 			} 
 		}
+		
+		try {
+			this.saddr = InetAddress.getByName("127.0.0.1");
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		// sockets
 		this.serverSocket = serverSocket;
@@ -737,9 +753,10 @@ class ToServer implements Runnable
 
 			// get port for ToClient
 			int clientPort = receivePacket.getPort();
-
+			clientAddress = receivePacket.getAddress();
+			
 			// passes Client's packet to Server
-			send(received, receivePacket.getAddress(), 69, serverSocket); 
+			send(received, saddr, 69, serverSocket); 
 
 			// receive response from Server, in order to get port to send to later
 			receivePacket = receive(serverSocket);
@@ -751,7 +768,7 @@ class ToServer implements Runnable
 			if (packetDo == null) {
 				// start new ToClient connection in normal mode			
 				ConnectionThread = new Thread(new ToClient(
-						receivePacket, serverSocket, clientSocket, clientPort), 
+						receivePacket, serverSocket, clientSocket, clientPort, clientAddress), 
 						"TransferToClient");
 				System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 						ConnectionThread.getId() + " will connect to the client, in Normal Mode...");
@@ -761,7 +778,7 @@ class ToServer implements Runnable
 						receivePacket, packetType, packetDo, sendToServer, 
 						packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 						eDfFlag, errorCode,filename, serverSocket, clientSocket, 
-						clientPort, delay, unknownTID), "TransferToClient");
+						clientPort,clientAddress, delay, unknownTID), "TransferToClient");
 				System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 						ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");	
 			}
@@ -774,7 +791,7 @@ class ToServer implements Runnable
 				received = processDatagram(receivePacket); // gets received data without extra null bytes
 
 				// passes Client's packet to Server
-				send(received, receivePacket.getAddress(), sendPort, serverSocket);
+				send(received, saddr, sendPort, serverSocket);
 
 
 			}
@@ -789,8 +806,10 @@ class ToServer implements Runnable
 					receivePacket.getLength());
 
 			// get port for ToClient
+			
 			int clientPort = receivePacket.getPort();
-
+			clientAddress=receivePacket.getAddress();
+			
 			// determines if packet received is the type of packet the user
 			// wants to manipulate
 			int op = twoBytesToInt(received[0], received[1]); // get opcode
@@ -808,13 +827,13 @@ class ToServer implements Runnable
 				
 				// passes Client's packet to Server
 				if (createdPacket != null){
-					send(createdPacket, receivePacket.getAddress(), 69, serverSocket); 
+					send(createdPacket, saddr, 69, serverSocket); 
 				}
 			}	
 			
 			// passes Client's packet to Server
 			if (received != null){
-				send(received, receivePacket.getAddress(), 69, serverSocket); 
+				send(received, saddr, 69, serverSocket); 
 			}
 			
 			// receive response from Server, in order to get port to send to later
@@ -827,7 +846,7 @@ class ToServer implements Runnable
 					receivePacket, packetType, packetDo, sendToServer, 
 					packetNumber, eOpFlag, eFnFlag, eMdFlag, eBlockNumber, 
 					eDfFlag, errorCode,filename, serverSocket, clientSocket, 
-					clientPort, delay, unknownTID), "TransferToClient");
+					clientPort, clientAddress, delay, unknownTID), "TransferToClient");
 			
 			System.out.println("\n" + threadName() + ": " + ConnectionThread.getName() + 
 					ConnectionThread.getId() + " will connect to the client, in Error Simulation Mode...");		
@@ -862,7 +881,7 @@ class ToServer implements Runnable
 				
 				// passes Client's packet to Server
 				if (received != null){
-					send(received, receivePacket.getAddress(), sendPort, serverSocket); 
+					send(received, saddr, sendPort, serverSocket); 
 				}
 			}
 		}
@@ -903,7 +922,7 @@ class ToServer implements Runnable
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, serverSocket, delay),
+					saddr, port, serverSocket, delay),
 					"DelayThread");
 			System.out.println(threadName() + ": " + DelayThread.getName() + 
 					DelayThread.getId() + " will delay the packet for " + 
@@ -914,7 +933,7 @@ class ToServer implements Runnable
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, serverSocket, delay),
+					saddr, port, serverSocket, delay),
 					"DuplicationThread");
 			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
 					DuplicateThread.getId() + " will send a duplicate of the packet after "
@@ -1389,6 +1408,7 @@ class ToClient implements Runnable
 	// counters
 	private int packetCount = 0;  // number of packets received
 	private int typeCount = 0;    // number of packets received of packetType type
+	private InetAddress clientAddress;
 
 	// max number of bytes for data field in packet
 	public static final int MAX_DATA = 512;  
@@ -1430,6 +1450,7 @@ class ToClient implements Runnable
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
 			int sendPort,
+			InetAddress clientAddress,
 			int delay,
 			boolean unknownTID) 
 	{
@@ -1438,6 +1459,7 @@ class ToClient implements Runnable
 		this.clientSocket = clientSocket;
 
 		this.sendPort = sendPort;  // port to send to
+		this.clientAddress=clientAddress;
 
 		// the original packet received on ErrorSim's port 68, from client
 		this.receivePacket = receivePacket;  
@@ -1481,12 +1503,12 @@ class ToClient implements Runnable
 	public ToClient (DatagramPacket receivePacket,
 			DatagramSocket serverSocket,
 			DatagramSocket clientSocket,
-			int sendPort) 
+			int sendPort, InetAddress clientAddress) 
 	{
 		// sockets
 		this.serverSocket = serverSocket;
 		this.clientSocket = clientSocket;
-
+		this.clientAddress=clientAddress;
 		this.sendPort = sendPort;  // port to send to
 
 		// the original packet received on ErrorSim's port 68, from client
@@ -1506,7 +1528,7 @@ class ToClient implements Runnable
 
 			while (true) {
 				// passes Server's packet to Client
-				send(received, receivePacket.getAddress(), sendPort, clientSocket);
+				send(received, clientAddress, sendPort, clientSocket);
 				receivePacket = receive(serverSocket);  // receive packet from Server
 				received = processDatagram(receivePacket); // print packet data to user
 			}	
@@ -1538,14 +1560,14 @@ class ToClient implements Runnable
 					
 					// passes Server's packet to Client
 					if (createdPacket != null){
-						send(createdPacket, receivePacket.getAddress(), 
+						send(createdPacket, clientAddress, 
 								sendPort, clientSocket); 
 					}
 				}
 				
-				// passes Client's packet to Server
+				// passes Server's packet to Client
 				if (received != null){
-					send(received, receivePacket.getAddress(), sendPort, clientSocket); 
+					send(received, clientAddress, sendPort, clientSocket); 
 				}
 				
 				receivePacket = receive(serverSocket);  // receive packet from Server
@@ -1574,7 +1596,7 @@ class ToClient implements Runnable
 		if (packetDo == ErrorSim.PacketDo.delay) {
 			// call the delay thread
 			Thread DelayThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, clientSocket, delay),
+					clientAddress, port, clientSocket, delay),
 					"DelayThread");
 			System.out.println(threadName() + ": " + DelayThread.getName() + 
 					DelayThread.getId() + " will delay the packet for " + 
@@ -1585,7 +1607,7 @@ class ToClient implements Runnable
 			// re-send packet in another thread as well as in run() after this 
 			// method returns
 			Thread DuplicateThread = new Thread(new Delay(received, 
-					receivePacket.getAddress(), port, clientSocket, delay),
+					clientAddress, port, clientSocket, delay),
 					"DuplicationThread");
 			System.out.println(threadName() + ": " + DuplicateThread.getName() + 
 					DuplicateThread.getId() + " will send a duplicate of the packet after "
