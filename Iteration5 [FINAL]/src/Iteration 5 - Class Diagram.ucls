@@ -1,186 +1,160 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <class-diagram version="1.1.8" icons="true" always-add-relationships="false" generalizations="true" realizations="true" 
   associations="true" dependencies="false" nesting-relationships="true">  
-  <enumeration id="1" language="java" name="Server.Opcode" project="Iteration5 [FINAL]" 
-    file="/Iteration5 [FINAL]/src/Server.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="500" y="578"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </enumeration>  
-  <enumeration id="2" language="java" name="ErrorSim.PacketDo" project="Iteration5 [FINAL]" 
+  <enumeration id="1" language="java" name="ErrorSim.PacketDo" project="Iteration5 [FINAL]" 
     file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1195" y="2088"/>    
+    <position height="-1" width="-1" x="884" y="2006"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </enumeration>  
-  <class id="3" language="java" name="Delay" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/ErrorSim.java" 
+  <class id="2" language="java" name="ErrorSim" project="Iteration5 [FINAL]" 
+    file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="612" y="1936"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
+      sort-features="false" accessors="true" visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </class>  
+  <class id="3" language="java" name="ToServer" project="Iteration5 [FINAL]" 
+    file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="431" y="1226"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
+      sort-features="false" accessors="true" visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </class>  
+  <class id="4" language="java" name="Delay" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/ErrorSim.java" 
     binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="143" y="-31"/>    
+    <position height="-1" width="-1" x="155" y="1946"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="4" language="java" name="ToClient" project="Iteration5 [FINAL]" 
+  <class id="5" language="java" name="ToClient" project="Iteration5 [FINAL]" 
     file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="427" y="1427"/>    
+    <position height="-1" width="-1" x="433" y="397"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <enumeration id="5" language="java" name="ErrorSim.PacketType" project="Iteration5 [FINAL]" 
+  <enumeration id="6" language="java" name="ErrorSim.PacketType" project="Iteration5 [FINAL]" 
     file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="488" y="2138"/>    
+    <position height="-1" width="-1" x="356" y="1951"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </enumeration>  
-  <class id="6" language="java" name="UserInput" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/Server.java" 
-    binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="340" y="-91"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
   <class id="7" language="java" name="Quit" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/ErrorSim.java" 
     binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="447" y="-90"/>    
+    <position height="-1" width="-1" x="84" y="1752"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
       sort-features="false" accessors="true" visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="8" language="java" name="Server" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/Server.java" 
-    binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="438" y="179"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <enumeration id="9" language="java" name="Client.Opcode" project="Iteration5 [FINAL]" 
-    file="/Iteration5 [FINAL]/src/Client.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="357" y="585"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </enumeration>  
-  <class id="10" language="java" name="ErrorSim" project="Iteration5 [FINAL]" 
-    file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="883" y="2248"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <class id="11" language="java" name="ToServer" project="Iteration5 [FINAL]" 
-    file="/Iteration5 [FINAL]/src/ErrorSim.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="1264" y="1428"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <class id="12" language="java" name="ClientConnection" project="Iteration5 [FINAL]" 
-    file="/Iteration5 [FINAL]/src/Server.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="690" y="188"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <class id="13" language="java" name="Client" project="Iteration5 [FINAL]" file="/Iteration5 [FINAL]/src/Client.java" 
-    binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="139" y="439"/>    
-    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
-      sort-features="false" accessors="true" visibility="true">      
-      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
-      <operations public="true" package="true" protected="true" private="true" static="true"/>    
-    </display>  
-  </class>  
-  <association id="14">    
-    <end type="SOURCE" refId="11" navigable="false">      
-      <attribute id="15" name="packetType"/>      
-      <multiplicity id="16" minimum="0" maximum="1"/>    
+  <association id="8">    
+    <end type="SOURCE" refId="2" navigable="false">      
+      <attribute id="9" name="packetDo">        
+        <position height="18" width="53" x="747" y="1954"/>      
+      </attribute>      
+      <multiplicity id="10" minimum="0" maximum="1">        
+        <position height="16" width="23" x="770" y="1982"/>      
+      </multiplicity>    
     </end>    
-    <end type="TARGET" refId="5" navigable="true"/>    
+    <end type="TARGET" refId="1" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="11">    
+    <end type="SOURCE" refId="2" navigable="false">      
+      <attribute id="12" name="packetType">        
+        <position height="18" width="63" x="421" y="1915"/>      
+      </attribute>      
+      <multiplicity id="13" minimum="0" maximum="1">        
+        <position height="16" width="23" x="442" y="1947"/>      
+      </multiplicity>    
+    </end>    
+    <end type="TARGET" refId="6" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <association id="14">    
+    <bendpoint x="851" y="833"/>    
+    <bendpoint x="887" y="922"/>    
+    <end type="SOURCE" refId="5" navigable="false">      
+      <attribute id="15" name="packetDo">        
+        <position height="18" width="53" x="818" y="1736"/>      
+      </attribute>      
+      <multiplicity id="16" minimum="0" maximum="1">        
+        <position height="16" width="23" x="891" y="1739"/>      
+      </multiplicity>    
+    </end>    
+    <end type="TARGET" refId="1" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
   <nesting id="17">    
-    <end type="SOURCE" refId="10"/>    
-    <end type="TARGET" refId="5"/>  
+    <bendpoint x="771" y="2020"/>    
+    <end type="SOURCE" refId="2"/>    
+    <end type="TARGET" refId="1"/>  
   </nesting>  
   <association id="18">    
-    <end type="SOURCE" refId="4" navigable="false">      
-      <attribute id="19" name="packetType"/>      
-      <multiplicity id="20" minimum="0" maximum="1"/>    
+    <bendpoint x="464" y="1770"/>    
+    <end type="SOURCE" refId="3" navigable="false">      
+      <attribute id="19" name="packetType">        
+        <position height="18" width="63" x="373" y="1797"/>      
+      </attribute>      
+      <multiplicity id="20" minimum="0" maximum="1">        
+        <position height="16" width="23" x="440" y="1816"/>      
+      </multiplicity>    
     </end>    
-    <end type="TARGET" refId="5" navigable="true"/>    
+    <end type="TARGET" refId="6" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
   <association id="21">    
-    <end type="SOURCE" refId="10" navigable="false">      
-      <attribute id="22" name="packetDo"/>      
-      <multiplicity id="23" minimum="0" maximum="1"/>    
+    <bendpoint x="800" y="1819"/>    
+    <end type="SOURCE" refId="3" navigable="false">      
+      <attribute id="22" name="packetDo">        
+        <position height="18" width="53" x="752" y="1832"/>      
+      </attribute>      
+      <multiplicity id="23" minimum="0" maximum="1">        
+        <position height="16" width="23" x="815" y="1828"/>      
+      </multiplicity>    
     </end>    
-    <end type="TARGET" refId="2" navigable="true"/>    
+    <end type="TARGET" refId="1" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <nesting id="24">    
-    <end type="SOURCE" refId="10"/>    
-    <end type="TARGET" refId="2"/>  
-  </nesting>  
-  <association id="25">    
-    <end type="SOURCE" refId="11" navigable="false">      
-      <attribute id="26" name="packetDo"/>      
-      <multiplicity id="27" minimum="0" maximum="1"/>    
+  <association id="24">    
+    <bendpoint x="833" y="857"/>    
+    <bendpoint x="863" y="995"/>    
+    <bendpoint x="850" y="1689"/>    
+    <bendpoint x="841" y="1701"/>    
+    <bendpoint x="805" y="1700"/>    
+    <bendpoint x="749" y="1702"/>    
+    <bendpoint x="611" y="1705"/>    
+    <bendpoint x="470" y="1706"/>    
+    <bendpoint x="408" y="1711"/>    
+    <bendpoint x="367" y="1710"/>    
+    <bendpoint x="354" y="1714"/>    
+    <end type="SOURCE" refId="5" navigable="false">      
+      <attribute id="25" name="packetType"/>      
+      <multiplicity id="26" minimum="0" maximum="1"/>    
     </end>    
-    <end type="TARGET" refId="2" navigable="true"/>    
+    <end type="TARGET" refId="6" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <nesting id="28">    
-    <end type="SOURCE" refId="13"/>    
-    <end type="TARGET" refId="9"/>  
-  </nesting>  
-  <association id="29">    
-    <end type="SOURCE" refId="10" navigable="false">      
-      <attribute id="30" name="packetType"/>      
-      <multiplicity id="31" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="5" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <association id="32">    
-    <end type="SOURCE" refId="4" navigable="false">      
-      <attribute id="33" name="packetDo"/>      
-      <multiplicity id="34" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="2" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <nesting id="35">    
-    <end type="SOURCE" refId="8"/>    
-    <end type="TARGET" refId="1"/>  
+  <nesting id="27">    
+    <end type="SOURCE" refId="2"/>    
+    <end type="TARGET" refId="6"/>  
   </nesting>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
     sort-features="false" accessors="true" visibility="true">    
